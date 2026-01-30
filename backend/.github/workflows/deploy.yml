@@ -1,0 +1,54 @@
+name: Deploy Tijaratk API
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            set -e
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            echo "🚀 Install Node.js"
+
+            nvm ls 22.22.0 >/dev/null 2>&1 || nvm install 22.22.0 
+            nvm use 22.22.0
+
+            cd ~/apps/tijaratk-api
+
+            echo "📥 Pull latest code"
+            git pull origin main
+
+            echo "📦 Install dependencies"
+            pnpm install
+
+            echo "🏗️ Build application"
+            pnpm build
+
+            echo "🗄️ Run database migrations"
+            pnpm migration:run:prod
+
+            echo "♻️ Reload PM2 (zero downtime)"
+            pm2 reload tijaratk-api
+
+            echo "✅ Deployment finished successfully"
+          EOF
