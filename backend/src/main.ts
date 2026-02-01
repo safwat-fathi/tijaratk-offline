@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestInterceptor, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import CONSTANTS from './common/constants';
 import helmet from 'helmet';
@@ -7,6 +8,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AuthModule } from './auth/auth.module';
+import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -44,8 +46,8 @@ async function bootstrap() {
   });
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
-	  
-	app.use('/docs', (_req, res, next) => {
+
+  app.use('/docs', (_req, res, next) => {
     res.setHeader(
       'Cache-Control',
       'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -85,17 +87,36 @@ async function bootstrap() {
 
   const config = options.build();
 
-  const document = SwaggerModule.createDocument(app, config, {include: [AuthModule]});
+  const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('docs', app, document, {
     jsonDocumentUrl: 'docs/json',
     swaggerOptions: {
       persistAuthorization: true,
     },
-		customSiteTitle: 'Tijaratk API docs - ' + process.env.NODE_ENV,
-		customfavIcon: '/favicon.ico'
+    customSiteTitle: 'Tijaratk API docs - ' + process.env.NODE_ENV,
+    customfavIcon: '/favicon.ico',
   });
- 
+
+  // Global Pipe for validation
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      exceptionFactory(errors) {
+        return errors;
+      },
+    }),
+  );
+
+  // Global Interceptor for success responses
+  const interceptors: NestInterceptor[] = [new ResponseTransformInterceptor()];
+  app.useGlobalInterceptors(...interceptors);
+
   await app.listen(process.env.HTTP_SERVER_PORT, '127.0.0.1');
 }
 bootstrap();

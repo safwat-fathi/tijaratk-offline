@@ -18,11 +18,15 @@
  * generateSlugBase('  Hello World!  ') // returns 'hello-world'
  */
 export function generateSlugBase(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return (
+    text
+      .trim()
+      .toLowerCase()
+      // Keep Arabic + English + numbers
+      .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
 }
 
 /**

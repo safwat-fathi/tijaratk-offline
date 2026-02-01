@@ -18,6 +18,9 @@ export class Tenant extends BaseEntity {
   @Column({ unique: true })
   phone: string;
 
+  @Column({ unique: true })
+  slug: string;
+
   @Column({
     type: 'enum',
     enum: TenantStatus,

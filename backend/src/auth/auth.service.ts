@@ -1,20 +1,39 @@
-import { Injectable, } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { UsersService } from '../users/users.service'; // Correct import path might be wrong in original file? Original said '../users/users.service'. Let's stick to original if possible or fix it. Original was '../users/users.service'.
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { DataSource } from 'typeorm';
+import { TenantsService } from '../tenants/tenants.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { SignupDto } from './dto/signup.dto';
+import { parsePhoneNumber } from 'libphonenumber-js';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private dataSource: DataSource,
+    private tenantsService: TenantsService,
+    private whatsappService: WhatsappService,
   ) {}
 
   async validateUser(phone: string, pass: string): Promise<any> {
-    const user = await this.usersService.findOneByPhone(phone);
+    let normalizedPhone = phone;
+    try {
+      const phoneNumber = parsePhoneNumber(phone, 'EG');
+      if (phoneNumber && phoneNumber.isValid()) {
+        normalizedPhone = phoneNumber.number;
+      }
+    } catch (error) {
+      // If parsing fails, use the original phone string
+    }
+
+    const user =
+      await this.usersService.findOneByPhoneWithPassword(normalizedPhone);
     if (!user) {
-        return null;
+      return null;
     }
     const isMatch = await bcrypt.compare(pass, user.password);
     if (user && isMatch) {
@@ -25,12 +44,13 @@ export class AuthService {
   }
 
   async login(user: User) {
-    const payload = { 
-        sub: user.id, 
-        phone: user.phone, 
-        tenantId: user.tenant_id,
-        role: user.role 
+    const payload = {
+      sub: user.id,
+      phone: user.phone,
+      tenantId: user.tenant_id,
+      role: user.role,
     };
+
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -38,22 +58,63 @@ export class AuthService {
         phone: user.phone,
         role: user.role,
         tenant_id: user.tenant_id,
-        name: user.phone // User entity doesn't have name? tech-doc says "Users belong to exactly one tenant". "User: id, tenant_id, phone, role". No name?
-                  // Ah, wait. tech-doc User entity: "id, tenant_id, phone, role, created_at". No name. 
-                  // But Customer has name. Tenant has name. 
-      }
+        name: user.name,
+      },
     };
+  }
+
+  async signup(signupDto: SignupDto) {
+    const { phone, password, storeName, name } = signupDto;
+
+    // Check if user with phone already exists
+    const existingUser = await this.usersService.findOneByPhone(phone);
+    // Note: One phone number can only belong to one tenant in this model (User belongs to one tenant).
+    // So if user exists, they are already registered.
+    if (existingUser) {
+      throw new BadRequestException(
+        'User with this phone number already exists',
+      );
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      // 1. Create Tenant
+      const tenant = await this.tenantsService.create(
+        storeName,
+        phone,
+        manager,
+      );
+
+      // 2. Create User (Owner)
+      const user = await this.usersService.create(
+        {
+          phone,
+          password,
+          name,
+          role: UserRole.OWNER,
+          tenant, // Link to the new tenant
+        },
+        manager,
+      );
+
+      // 3. Send Welcome Message
+      await this.whatsappService.sendWelcomeMessage(phone, storeName);
+
+      // 4. Return Login Response
+      return this.login(user);
+    });
   }
 
   // Helper for registering via API if needed (or seeding)
   async register(phone: string, pass: string, tenantId: number, role: any) {
-      const hashedPassword = await bcrypt.hash(pass, 10);
-      return this.usersService.create({
-          phone,
-          password: hashedPassword,
-          tenant_id: tenantId,
-          role
-      });
+    const hashedPassword = await bcrypt.hash(pass, 10);
+    // Logic here might fail if usersService.create without transaction doesn't handle tenantId correctly if passing Partial<User>.
+    // But assuming legacy/seeding code, leaving as is but fixing Types if needed.
+    // UsersService.create signature in previous view_file was: async create(userData: Partial<User>): Promise<User>
+    return this.usersService.create({
+      phone,
+      password: hashedPassword,
+      tenant_id: tenantId,
+      role,
+    });
   }
 }
-

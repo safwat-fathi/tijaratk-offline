@@ -22,6 +22,9 @@ export class User extends TenantBaseEntity {
   @Column({ unique: true })
   phone: string;
 
+  @Column()
+  name: string;
+
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -30,7 +33,7 @@ export class User extends TenantBaseEntity {
 
   // Added for authentication purposes (hashed)
   @Exclude()
-  @Column({select: false})
+  @Column({ select: false })
   password: string;
 
   // ==================== Hooks ====================

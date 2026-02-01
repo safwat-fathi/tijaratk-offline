@@ -1,0 +1,117 @@
+"use server";
+
+import { z } from "zod";
+import { authService } from "@/services/api/auth.service";
+import { loginSchema, registerSchema } from "@/lib/validations/auth";
+import { redirect } from "next/navigation";
+import { setCookieAction, deleteCookieAction } from "@/app/actions/cookie-store";
+import { STORAGE_KEYS } from "@/constants";
+
+// We need a way to set cookies in Server Actions.
+// The existing `authService.login` (Step 140) ALREADY calls `setCookieAction`.
+// So we just need to call `authService.login`.
+
+export type ActionState = {
+  success?: boolean;
+  message?: string;
+  errors?: Record<string, string[] | undefined>;
+  timestamp?: number; // Force re-render on similar errors
+};
+
+export async function loginAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const rawData = Object.fromEntries(formData.entries());
+  
+  // Validate Fields
+  const validated = loginSchema.safeParse(rawData);
+  if (!validated.success) {
+    return {
+      success: false,
+      message: "Please fix the errors below.",
+      errors: validated.error.flatten().fieldErrors,
+      timestamp: Date.now(),
+    };
+  }
+
+  try {
+    // Determine mapping: form 'password' -> API 'pass'
+    const payload = {
+      phone: validated.data.phone,
+      pass: validated.data.password,
+    };
+
+    const response = await authService.login(payload);
+
+    if (response.success && response.data?.access_token) {
+      await setCookieAction(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
+      // Redirect to merchant dashboard
+    } else {
+      return {
+        success: false,
+        message: response.message || "Invalid credentials",
+        timestamp: Date.now(),
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: "An unexpected error occurred.",
+      timestamp: Date.now(),
+    };
+  }
+  
+  // Redirect needs to be outside try/catch to avoid catching NEXT_REDIRECT error
+  redirect("/merchant");
+}
+
+export async function registerAction(prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const rawData = Object.fromEntries(formData.entries());
+  
+  const validated = registerSchema.safeParse(rawData);
+  if (!validated.success) {
+    return {
+      success: false,
+      message: "Please fix the errors below.",
+      errors: validated.error.flatten().fieldErrors,
+      timestamp: Date.now(),
+    };
+  }
+
+  try {
+    const payload = {
+      name: validated.data.name,
+      storeName: validated.data.storeName,
+      phone: validated.data.phone,
+      password: validated.data.password,
+      confirm_password: validated.data.confirmPassword,
+    };
+
+    const response = await authService.signup(payload);
+
+    if (response.success) {
+       // Signup usually doesn't login automatically unless specified.
+       // We might want to login usually, or redirect to Login.
+       // Assuming redirect to login for now.
+    } else {
+        return {
+            success: false,
+            message: response.message || "Registration failed",
+            timestamp: Date.now(),
+        };
+    }
+
+  } catch (error) {
+     return {
+      success: false,
+      message: "An unexpected error occurred.",
+      timestamp: Date.now(),
+    };
+  }
+
+   redirect("/merchant/login");
+}
+
+export async function logoutAction() {
+  await deleteCookieAction(STORAGE_KEYS.ACCESS_TOKEN);
+  await authService.logout();
+  redirect("/merchant/login");
+}

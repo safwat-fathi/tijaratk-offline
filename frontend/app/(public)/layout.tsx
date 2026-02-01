@@ -1,0 +1,31 @@
+import Image from "next/image";
+
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+		<>
+			<div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+				<div className="w-full max-w-3xl space-y-8">{children}</div>
+			</div>
+			<footer className="w-full border-t border-gray-200 bg-white">
+				<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 md:flex md:items-center gap-2 lg:px-8">
+					<Image src="/logo.png" alt="Tijaratk" width={32} height={32} />
+					<div className="flex justify-center space-x-6 md:order-2">
+						<a href="#" className="text-gray-400 hover:text-gray-500">
+							<span className="sr-only">Facebook</span>
+							{/* SVG Icon */}
+						</a>
+					</div>
+					<div className="mt-8 md:order-1 md:mt-0">
+						<p className="text-center text-xs leading-5 text-gray-500">
+							&copy; {new Date().getFullYear()} Tijaratk. All rights reserved.
+						</p>
+					</div>
+				</div>
+			</footer>
+		</>
+	);
+}

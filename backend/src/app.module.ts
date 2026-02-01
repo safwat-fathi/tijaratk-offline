@@ -7,6 +7,11 @@ import dataSource from './config/orm.config';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { TenantsModule } from './tenants/tenants.module';
+import { ProductsModule } from './products/products.module';
+import { CustomersModule } from './customers/customers.module';
+import { OrdersModule } from './orders/orders.module';
 
 const ENV = process.env.NODE_ENV;
 
@@ -29,6 +34,11 @@ const ENV = process.env.NODE_ENV;
     ]),
     UsersModule,
     AuthModule,
+    WhatsappModule,
+    TenantsModule,
+    ProductsModule,
+    CustomersModule,
+    OrdersModule,
   ],
   controllers: [HealthController],
 })

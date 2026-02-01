@@ -5,16 +5,16 @@ import { IsPhoneNumber } from 'src/common/validators/is-phone-number.validator';
 export class LoginDto {
   @ApiProperty({
     description: 'The phone number of the user',
-    example: '+201234567890',
+    example: '+201112223334',
   })
   @IsString()
   @IsNotEmpty()
-  @IsPhoneNumber()
+  @IsPhoneNumber({ allowedCountries: ['EG'] })
   phone: string;
 
   @ApiProperty({
     description: 'The password of the user',
-    example: 'supersecret',
+    example: 'password123',
   })
   @IsString()
   @IsNotEmpty()
