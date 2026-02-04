@@ -1,13 +1,11 @@
+import { customersService } from "@/services/api/customers.service";
+import CustomersView from "./_components/CustomersView";
+
 export const metadata = {
 	title: "Customers",
 };
 
-const Customers = () => {
-	return (
-		<div>
-			<h1>Customers</h1>
-		</div>
-	)
-};
-
-export default Customers;
+export default async function CustomersPage() {
+	// Rendering client view which handles fetching
+	return <CustomersView initialCustomers={[]} />;
+}

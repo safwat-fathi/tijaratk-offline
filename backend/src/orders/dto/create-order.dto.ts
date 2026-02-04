@@ -36,18 +36,6 @@ export class CreateOrderItemDto {
 }
 
 export class CreateOrderDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  tenant_id?: number;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  tenant_slug?: string;
-
-
   @ApiProperty()
   @ValidateNested()
   @Type(() => CreateCustomerDto)

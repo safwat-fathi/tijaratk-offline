@@ -8,11 +8,11 @@ import { logoutAction } from "@/actions/auth-server";
 
 const navigation = [
 	{
-		name: "Dashboard",
+		name: "لوحة التحكم",
 		href: "/merchant",
 		icon: (
 			<svg
-				className="mr-3 h-6 w-6 shrink-0"
+				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
 				strokeWidth="1.5"
@@ -27,11 +27,11 @@ const navigation = [
 		),
 	},
 	{
-		name: "Orders",
+		name: "الطلبات",
 		href: "/merchant/orders",
 		icon: (
 			<svg
-				className="mr-3 h-6 w-6 shrink-0"
+				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
 				strokeWidth="1.5"
@@ -46,11 +46,11 @@ const navigation = [
 		),
 	},
 	{
-		name: "Customers",
+		name: "العملاء",
 		href: "/merchant/customers",
 		icon: (
 			<svg
-				className="mr-3 h-6 w-6 shrink-0"
+				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
 				strokeWidth="1.5"
@@ -65,11 +65,11 @@ const navigation = [
 		),
 	},
 	{
-		name: "Logout",
+		name: "تسجيل الخروج",
 		href: "/logout",
 		icon: (
 			<svg
-				className="mr-3 h-6 w-6 shrink-0"
+				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
 				strokeWidth="1.5"
@@ -96,156 +96,202 @@ export default function MerchantLayout({
   
 
   return (
-    <div>
-      {/* Mobile sidebar placeholder/trigger */}
-      <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
-        <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden" onClick={() => setSidebarOpen(true)}>
-          <span className="sr-only">Open sidebar</span>
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-        </button>
-        <div className="flex-1 text-sm font-semibold leading-6 text-gray-900">Dashboard</div>
-        <Link href="#">
-          <span className="sr-only">Your profile</span>
-          <Image
-            className="h-8 w-8 rounded-full bg-gray-50"
-            src="/logo-no-bg.png"
-            alt=""
-            width={32}
-            height={32}
-          />
-        </Link>
-      </div>
+		<div>
+			{/* Mobile sidebar placeholder/trigger */}
+			<div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+				<button
+					type="button"
+					className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+					onClick={() => setSidebarOpen(true)}
+				>
+					<span className="sr-only">فتح القائمة</span>
+					<svg
+						className="h-6 w-6"
+						fill="none"
+						viewBox="0 0 24 24"
+						strokeWidth="1.5"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+						/>
+					</svg>
+				</button>
+				<div className="flex-1 text-sm font-semibold leading-6 text-gray-900">
+					لوحة التحكم
+				</div>
+				<Link href="#">
+					<span className="sr-only">الملف الشخصي</span>
+					<Image
+						className="h-8 w-8 rounded-full bg-gray-50"
+						src="/logo-no-bg.png"
+						alt=""
+						width={32}
+						height={32}
+					/>
+				</Link>
+			</div>
 
-      {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6">
-          <div className="flex h-16 shrink-0 items-center">
-             <Image
-                className="h-8 w-auto"
-                src="/logo-no-bg.png"
-                alt="Tijaratk"
-                width={150}
-                height={40}
-              />
-          </div>
-          <nav className="flex flex-1 flex-col">
-            <ul role="list" className="flex flex-1 flex-col gap-y-7">
-              <li>
-                <ul role="list" className="-mx-2 space-y-1">
-                  {navigation.map((item) => (
-                    <li key={item.name}>
-                      {item.href === '/logout' ? (
-                        <form action={logoutAction}>
-                          <button
-                            type="submit"
-                            className="group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-                          >
-                            {item.icon}
-                            {item.name}
-                          </button>
-                        </form>
-                      ) : (
-                        <Link
-                          href={item.href}
-                          className={`
+			{/* Static sidebar for desktop */}
+			<div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col lg:start-0">
+				<div className="flex grow flex-col gap-y-5 overflow-y-auto border-e border-gray-200 bg-white px-6">
+					<div className="flex h-16 shrink-0 items-center">
+						<Image
+							className="h-8 w-auto"
+							src="/logo-no-bg.png"
+							alt="Tijaratk"
+							width={150}
+							height={40}
+						/>
+					</div>
+					<nav className="flex flex-1 flex-col">
+						<ul role="list" className="flex flex-1 flex-col gap-y-7">
+							<li>
+								<ul role="list" className="-mx-2 space-y-1">
+									{navigation.map(item => (
+										<li key={item.name}>
+											{item.href === "/logout" ? (
+												<form action={logoutAction}>
+													<button
+														type="submit"
+														className="cursor-pointer group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+													>
+														{item.icon}
+														{item.name}
+													</button>
+												</form>
+											) : (
+												<Link
+													href={item.href}
+													className={`
                             group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
-                            ${(item.href !== '/logout' && pathname.startsWith(item.href) && item.href !== '/merchant' && pathname !== '/merchant') || (item.href === '/merchant' && pathname === '/merchant')
-                              ? 'bg-gray-50 text-indigo-600'
-                              : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
-                            }
+                            ${
+															(item.href !== "/logout" &&
+																pathname.startsWith(item.href) &&
+																item.href !== "/merchant" &&
+																pathname !== "/merchant") ||
+															(item.href === "/merchant" &&
+																pathname === "/merchant")
+																? "bg-gray-50 text-indigo-600"
+																: "text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+														}
                           `}
-                        >
-                          {/* Icon implementation */}
-                          {item.icon}
-                          {item.name}
-                        </Link>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </div>
+												>
+													{/* Icon implementation */}
+													{item.icon}
+													{item.name}
+												</Link>
+											)}
+										</li>
+									))}
+								</ul>
+							</li>
+						</ul>
+					</nav>
+				</div>
+			</div>
 
-      {/* Main content */}
-      <main className="py-10 lg:pl-72">
-        <div className="px-4 sm:px-6 lg:px-8">
-            {children}
-        </div>
-      </main>
-      
-       {/* Mobile Sidebar Overlay (Simple implementation) */}
-       {sidebarOpen && (
-        <div className="relative z-50 lg:hidden" role="dialog" aria-modal="true">
-            <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen(false)}></div>
-            <div className="fixed inset-0 flex">
-                <div className="relative mr-16 flex w-full max-w-xs flex-1">
-                    <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                        <button type="button" className="-m-2.5 p-2.5 text-white" onClick={() => setSidebarOpen(false)}>
-                            <span className="sr-only">Close sidebar</span>
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
-                         <div className="flex h-16 shrink-0 items-center">
-                            <Image
-                                className="h-8 w-auto"
-                                src="/logo-no-bg.png"
-                                alt="Tijaratk"
-                                width={120}
-                                height={32}
-                            />
-                        </div>
-                        <nav className="flex flex-1 flex-col">
-                            <ul role="list" className="flex flex-1 flex-col gap-y-7">
-                                <li>
-                                    <ul role="list" className="-mx-2 space-y-1">
-                                        {navigation.map((item) => (
-                                            <li key={item.name}>
-                                                {item.href === '/logout' ? (
-                                                  <form action={logoutAction}>
-                                                    <button
-                                                      type="submit"
-                                                      className="group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
-                                                    >
-                                                      {item.icon}
-                                                      {item.name}
-                                                    </button>
-                                                  </form>
-                                                ) : (
-                                                  <Link
-                                                      href={item.href}
-                                                      onClick={() => setSidebarOpen(false)}
-                                                      className={`
+			{/* Main content */}
+			<main className="py-10 lg:ps-72">
+				<div className="px-4 sm:px-6 lg:px-8">{children}</div>
+			</main>
+
+			{/* Mobile Sidebar Overlay (Simple implementation) */}
+			{sidebarOpen && (
+				<div
+					className="relative z-50 lg:hidden"
+					role="dialog"
+					aria-modal="true"
+				>
+					<div
+						className="fixed inset-0 bg-gray-900/80"
+						onClick={() => setSidebarOpen(false)}
+					></div>
+					<div className="fixed inset-0 flex">
+						<div className="relative me-16 flex w-full max-w-xs flex-1">
+							<div className="absolute start-full top-0 flex w-16 justify-center pt-5">
+								<button
+									type="button"
+									className="-m-2.5 p-2.5 text-white"
+									onClick={() => setSidebarOpen(false)}
+								>
+									<span className="sr-only">إغلاق القائمة</span>
+									<svg
+										className="h-6 w-6"
+										fill="none"
+										viewBox="0 0 24 24"
+										strokeWidth="1.5"
+										stroke="currentColor"
+										aria-hidden="true"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											d="M6 18L18 6M6 6l12 12"
+										/>
+									</svg>
+								</button>
+							</div>
+							<div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
+								<div className="flex h-16 shrink-0 items-center">
+									<Image
+										className="h-8 w-auto"
+										src="/logo-no-bg.png"
+										alt="Tijaratk"
+										width={120}
+										height={32}
+									/>
+								</div>
+								<nav className="flex flex-1 flex-col">
+									<ul role="list" className="flex flex-1 flex-col gap-y-7">
+										<li>
+											<ul role="list" className="-mx-2 space-y-1">
+												{navigation.map(item => (
+													<li key={item.name}>
+														{item.href === "/logout" ? (
+															<form action={logoutAction}>
+																<button
+																	type="submit"
+																	className="group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+																>
+																	{item.icon}
+																	{item.name}
+																</button>
+															</form>
+														) : (
+															<Link
+																href={item.href}
+																onClick={() => setSidebarOpen(false)}
+																className={`
                                                         group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
-                                                        ${(item.href === '/merchant' && pathname === '/merchant') 
-                                                          ? 'bg-gray-50 text-indigo-600' 
-                                                          : 'text-gray-700 hover:text-indigo-600 hover:bg-gray-50'
-                                                        }
+                                                        ${
+																													item.href ===
+																														"/merchant" &&
+																													pathname ===
+																														"/merchant"
+																														? "bg-gray-50 text-indigo-600"
+																														: "text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+																												}
                                                       `}
-                                                  >
-                                                       {item.icon}
-                                                      {item.name}
-                                                  </Link>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-        </div>
-       )}
-
-    </div>
-  );
+															>
+																{item.icon}
+																{item.name}
+															</Link>
+														)}
+													</li>
+												))}
+											</ul>
+										</li>
+									</ul>
+								</nav>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
 }

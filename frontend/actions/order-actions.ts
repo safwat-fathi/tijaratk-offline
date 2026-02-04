@@ -1,81 +1,101 @@
 "use server";
 
-import { z } from "zod";
 import { ordersService } from "@/services/api/orders.service";
+import { OrderStatus, OrderType } from "@/types/enums";
+import { revalidatePath } from "next/cache";
 import { createOrderSchema } from "@/lib/validations/order";
 
-export type ActionState = {
-  success?: boolean;
-  message?: string;
-  errors?: Record<string, string[] | undefined>;
-  timestamp?: number;
-  data?: any;
+export async function updateOrderStatus(orderId: number, status: OrderStatus) {
+	try {
+		const response = await ordersService.updateOrder(orderId, { status });
+
+		// Revalidate both the list and the details page
+		revalidatePath("/merchant/orders");
+		revalidatePath(`/merchant/orders/${orderId}`);
+
+		return { success: true, data: response.data };
+	} catch (error) {
+		console.error("Failed to update order status:", error);
+		return { success: false, error: "Failed to update order status" };
+	}
+}
+
+export type CreateOrderState = {
+	success: boolean;
+	message: string;
+	errors?: Record<string, string[]>;
+	data?: any;
 };
 
 export async function createOrderAction(
-  tenantSlug: string,
-  prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const rawData = Object.fromEntries(formData.entries());
+	tenantSlug: string,
+	prevState: CreateOrderState,
+	formData: FormData,
+): Promise<CreateOrderState> {
+	const rawData = Object.fromEntries(formData.entries());
 
-  // Validate Fields
-  const validated = createOrderSchema.safeParse(rawData);
-  if (!validated.success) {
-    return {
-      success: false,
-      message: "Please fix the errors below.",
-      errors: validated.error.flatten().fieldErrors,
-      timestamp: Date.now(),
-    };
-  }
+	// Validate fields
+	const validatedFields = createOrderSchema.safeParse(rawData);
 
-  // Construct items from cart JSON
-  let items: any[] = [];
-  if (validated.data.cart) {
-    try {
-      items = JSON.parse(validated.data.cart);
-    } catch (e) {
-      console.error("Failed to parse cart JSON", e);
-    }
-  }
+	if (!validatedFields.success) {
+		return {
+			success: false,
+			message: "Validation failed, please check inputs.",
+			errors: validatedFields.error.flatten().fieldErrors,
+		};
+	}
 
-  const payload = {
-    customer: {
-      name: "Guest", // Optional or could be added to form
-      phone: validated.data.phone.startsWith("+20") 
-        ? validated.data.phone 
-        : `+20${validated.data.phone.replace(/^0+/, '')}`,
-      address: validated.data.address,
-    },
-    order_type: items.length > 0 ? "catalog" : "free_text",
-    items: items.length > 0 ? items : undefined,
-    notes: validated.data.notes,
-    free_text_payload: items.length === 0 ? { text: validated.data.notes } : undefined,
-  };
+	const { cart, order_request, ...customerData } = validatedFields.data;
 
-  try {
-    const res = await ordersService.createPublicOrder(tenantSlug, payload);
+	// Parse cart items
+	let items = [];
+	if (cart) {
+		try {
+			items = JSON.parse(cart);
+		} catch (e) {
+			console.error("Failed to parse cart items:", e);
+		}
+	}
 
-    if (res.success) {
-      return {
-        success: true,
-        message: "Order placed successfully!",
-        timestamp: Date.now(),
-        data: res.data,
-      };
-    } else {
-      return {
-        success: false,
-        message: res.message || "Failed to place order.",
-        timestamp: Date.now(),
-      };
-    }
-  } catch (error) {
-    return {
-      success: false,
-      message: "An unexpected error occurred. Please try again.",
-      timestamp: Date.now(),
-    };
-  }
+	// Construct payload
+	// Adjust based on what backend expects. Usually needs items, customer info, etc.
+	// Based on OrderForm, we have name, phone, address, notes, order_request
+	// Determine order type
+	const orderType = items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT;
+
+	const payload = {
+		customer: {
+			name: customerData.name,
+			phone: customerData.phone,
+			address: customerData.address,
+		},
+		items: items,
+		notes: customerData.notes,
+		free_text_payload: order_request ? { text: order_request } : undefined,
+		order_type: orderType,
+	};
+
+	try {
+		const response = await ordersService.createPublicOrder(tenantSlug, payload);
+
+		if (response.success) {
+			return {
+				success: true,
+				message: "Order created successfully",
+				data: response.data,
+			};
+		} else {
+			return {
+				success: false,
+				message: response.message || "Failed to create order",
+				errors: response.errors as Record<string, string[]> | undefined,
+			};
+		}
+	} catch (error: any) {
+		console.error("Failed to create order:", error);
+		return {
+			success: false,
+			message: error.message || "Failed to create order. Please try again.",
+		};
+	}
 }

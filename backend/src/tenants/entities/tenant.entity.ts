@@ -1,5 +1,10 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseEntity } from 'src/common/entities/base.entity';
+import {
+  TENANT_CATEGORIES,
+  TENANT_CATEGORY_VALUES,
+  TenantCategory,
+} from '../constants/tenant-category';
 
 enum TenantStatus {
   ACTIVE = 'active',
@@ -17,6 +22,16 @@ export class Tenant extends BaseEntity {
 
   @Column({ unique: true })
   phone: string;
+
+  @Column({ type: 'int', default: 0 })
+  customer_counter: number;
+
+  @Column({
+    type: 'enum',
+    enum: TENANT_CATEGORY_VALUES,
+    default: TENANT_CATEGORIES.OTHER.value,
+  })
+  category: TenantCategory;
 
   @Column({ unique: true })
   slug: string;

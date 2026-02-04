@@ -7,7 +7,7 @@ export default function PublicLayout({
 }) {
   return (
 		<>
-			<div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+			<div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 sm:px-6 lg:px-8">
 				<div className="w-full max-w-3xl space-y-8">{children}</div>
 			</div>
 			<footer className="w-full border-t border-gray-200 bg-white">
@@ -15,13 +15,13 @@ export default function PublicLayout({
 					<Image src="/logo.png" alt="Tijaratk" width={32} height={32} />
 					<div className="flex justify-center space-x-6 md:order-2">
 						<a href="#" className="text-gray-400 hover:text-gray-500">
-							<span className="sr-only">Facebook</span>
+							<span className="sr-only">فيسبوك</span>
 							{/* SVG Icon */}
 						</a>
 					</div>
 					<div className="mt-8 md:order-1 md:mt-0">
 						<p className="text-center text-xs leading-5 text-gray-500">
-							&copy; {new Date().getFullYear()} Tijaratk. All rights reserved.
+							&copy; {new Date().getFullYear()} تجارتك. جميع الحقوق محفوظة.
 						</p>
 					</div>
 				</div>

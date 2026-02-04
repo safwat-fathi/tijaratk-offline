@@ -12,6 +12,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { ProductsModule } from './products/products.module';
 import { CustomersModule } from './customers/customers.module';
 import { OrdersModule } from './orders/orders.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 const ENV = process.env.NODE_ENV;
 
@@ -39,6 +40,7 @@ const ENV = process.env.NODE_ENV;
     ProductsModule,
     CustomersModule,
     OrdersModule,
+    WebhooksModule,
   ],
   controllers: [HealthController],
 })

@@ -6,28 +6,28 @@ import {
 } from "@/types/services/auth";
 
 class AuthService extends HttpService {
-  constructor() {
-    super("/auth");
-  }
+	constructor() {
+		super("/auth");
+	}
 
-  public async login(payload: LoginRequest) {
-    const response = await this.post<LoginResponse>("login", payload);
-    return response;
-  }
+	public async login(payload: LoginRequest) {
+		const response = await this.post<LoginResponse>("login", payload);
+		return response;
+	}
 
-  public async signup(payload: RegisterRequest) {
-    return this.post("signup", payload);
-  }
+	public async signup(payload: RegisterRequest) {
+		return this.post("signup", payload);
+	}
 
-  public async logout() {
-    // Best effort API call
-    try {
-      await this.post("logout", {});
-    } catch (e) {
-      // Ignore errors
-    }
-    return { success: true };
-  }
+	public async logout() {
+		// Best effort API call
+		try {
+			await this.post("logout", {});
+		} catch (e) {
+			// Ignore errors
+		}
+		return { success: true };
+	}
 }
 
 export const authService = new AuthService();

@@ -16,6 +16,9 @@ declare global {
       FACEBOOK_APP_SECRET: string;
       FACEBOOK_CALLBACK_URL: string;
       CLIENT_URL: string;
+      WHATS_APP_API_KEY: string;
+      WHATS_APP_BASE_URL: string;
+      WHATS_APP_SENDER: string;
     }
   }
 }

@@ -4,11 +4,15 @@ import { EntityManager, Repository } from 'typeorm';
 import { Customer } from './entities/customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 
+import { Order } from 'src/orders/entities/order.entity';
+
 @Injectable()
 export class CustomersService {
   constructor(
     @InjectRepository(Customer)
     private readonly customersRepository: Repository<Customer>,
+    @InjectRepository(Order)
+    private readonly ordersRepository: Repository<Order>,
   ) {}
 
   async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
@@ -16,12 +20,58 @@ export class CustomersService {
     return this.customersRepository.save(customer);
   }
 
-  async findAll(): Promise<Customer[]> {
-    return this.customersRepository.find();
+  async findAll(
+    search?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ data: Customer[]; meta: any }> {
+    const query = this.customersRepository.createQueryBuilder('customer');
+
+    if (search) {
+      // Check if search is a number (for code search)
+      const isNumeric = !isNaN(Number(search));
+
+      if (isNumeric) {
+        query.where(
+          '(customer.code = :code OR customer.phone ILIKE :search OR customer.name ILIKE :search OR customer.merchant_label ILIKE :search)',
+          { code: Number(search), search: `%${search}%` },
+        );
+      } else {
+        query.where(
+          '(customer.name ILIKE :search OR customer.phone ILIKE :search OR customer.merchant_label ILIKE :search)',
+          { search: `%${search}%` },
+        );
+      }
+    }
+
+    query.orderBy('customer.last_order_at', 'DESC', 'NULLS LAST'); // Sort by recent activity
+
+    // Pagination
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        last_page: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async findOne(id: number): Promise<Customer | null> {
-    return this.customersRepository.findOne({ where: { id } });
+  async findOne(id: number): Promise<any | null> {
+    const customer = await this.customersRepository.findOne({ where: { id } });
+    if (!customer) return null;
+
+    const orders = await this.ordersRepository.find({
+      where: { customer_id: id },
+      order: { created_at: 'DESC' },
+      take: 5,
+    });
+
+    return { ...customer, orders };
   }
 
   async findOrCreate(
@@ -31,27 +81,112 @@ export class CustomersService {
     address?: string,
     manager?: EntityManager,
   ): Promise<Customer> {
-    const repo = manager ? manager.getRepository(Customer) : this.customersRepository;
-    
+    const repo = manager
+      ? manager.getRepository(Customer)
+      : this.customersRepository;
+
     let customer = await repo.findOne({
       where: { phone, tenant_id: tenantId },
     });
 
     if (!customer) {
-      customer = repo.create({
-        phone,
-        tenant_id: tenantId,
-        name,
-        address,
-      });
+      // New Customer Creation Logic
+      if (!manager) {
+        // If no manager provided, we MUST start a transaction to ensure counter safety
+        return this.customersRepository.manager.transaction(
+          async (txManager) => {
+            return this.createCustomerWithCode(
+              txManager,
+              phone,
+              tenantId,
+              name,
+              address,
+            );
+          },
+        );
+      } else {
+        // Already in a transaction
+        return this.createCustomerWithCode(
+          manager,
+          phone,
+          tenantId,
+          name,
+          address,
+        );
+      }
+    }
+
+    // Update existing customer details if provided
+    let hasUpdates = false;
+    if (name && customer.name !== name) {
+      customer.name = name;
+      hasUpdates = true;
+    }
+
+    if (address && customer.address !== address) {
+      customer.address = address;
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
       return repo.save(customer);
-    } 
-    
-    // Optional: update name/address if provided and currently empty?
-    // For now, keep it simple: return existing.
-    // Actually, updating address might be good if it's new.
-    // But let's stick to the plan: "If exists -> reuse".
-    
+    }
+
     return customer;
+  }
+
+  private async createCustomerWithCode(
+    manager: EntityManager,
+    phone: string,
+    tenantId: number,
+    name?: string,
+    address?: string,
+  ): Promise<Customer> {
+    // Lock the tenant row to prevent race conditions on counter
+    // 'pessimistic_write' locks the row for update
+    /* 
+       Note: We need to access Tenant entity. Since we don't have Tenant repository injected,
+       we use manager.getRepository('Tenant') or query builder.
+       Assuming Tenant entity is available in typeorm context.
+    */
+
+    // Increment counter
+    await manager.query(
+      `UPDATE tenants SET customer_counter = customer_counter + 1 WHERE id = $1`,
+      [tenantId],
+    );
+
+    // Fetch the new counter value
+    const result = await manager.query(
+      `SELECT customer_counter FROM tenants WHERE id = $1`,
+      [tenantId],
+    );
+    const newCode = result[0].customer_counter;
+
+    const customer = manager.create(Customer, {
+      phone,
+      tenant_id: tenantId,
+      name,
+      address,
+      code: newCode,
+    });
+
+    return manager.save(customer);
+  }
+
+  async updateMerchantLabel(id: number, label: string): Promise<Customer> {
+    const customer = await this.findOne(id);
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    await this.customersRepository.update(id, { merchant_label: label });
+    // Use findOne to return the updated entity, assuming standard findOne logic is fine
+    // Or just use findOneBy if we just want the entity
+    const updated = await this.customersRepository.findOneBy({ id });
+    if (!updated) {
+      throw new Error('Customer not found after update');
+    }
+    return updated;
   }
 }

@@ -64,7 +64,7 @@ export class AuthService {
   }
 
   async signup(signupDto: SignupDto) {
-    const { phone, password, storeName, name } = signupDto;
+    const { phone, password, storeName, name, category } = signupDto;
 
     // Check if user with phone already exists
     const existingUser = await this.usersService.findOneByPhone(phone);
@@ -81,6 +81,7 @@ export class AuthService {
       const tenant = await this.tenantsService.create(
         storeName,
         phone,
+        category,
         manager,
       );
 

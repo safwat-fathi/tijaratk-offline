@@ -3,6 +3,7 @@ import { TenantBaseEntity } from 'src/common/entities/tenant-base.entity';
 
 @Entity('customers')
 @Unique(['tenant_id', 'phone'])
+@Unique(['tenant_id', 'code'])
 export class Customer extends TenantBaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
@@ -12,6 +13,12 @@ export class Customer extends TenantBaseEntity {
 
   @Column({ nullable: true })
   name?: string;
+
+  @Column({ type: 'int' })
+  code: number;
+
+  @Column({ nullable: true })
+  merchant_label?: string;
 
   @Column({ type: 'text', nullable: true })
   address?: string;

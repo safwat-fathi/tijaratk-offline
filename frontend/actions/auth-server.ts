@@ -43,6 +43,12 @@ export async function loginAction(prevState: ActionState, formData: FormData): P
 
     if (response.success && response.data?.access_token) {
       await setCookieAction(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
+      if (response.data.user) {
+				await setCookieAction(
+					STORAGE_KEYS.USER,
+					JSON.stringify(response.data.user),
+				);
+			}
       // Redirect to merchant dashboard
     } else {
       return {
@@ -78,12 +84,13 @@ export async function registerAction(prevState: ActionState, formData: FormData)
 
   try {
     const payload = {
-      name: validated.data.name,
-      storeName: validated.data.storeName,
-      phone: validated.data.phone,
-      password: validated.data.password,
-      confirm_password: validated.data.confirmPassword,
-    };
+			name: validated.data.name,
+			storeName: validated.data.storeName,
+			phone: validated.data.phone,
+			category: validated.data.category,
+			password: validated.data.password,
+			confirm_password: validated.data.confirmPassword,
+		};
 
     const response = await authService.signup(payload);
 
@@ -112,6 +119,7 @@ export async function registerAction(prevState: ActionState, formData: FormData)
 
 export async function logoutAction() {
   await deleteCookieAction(STORAGE_KEYS.ACCESS_TOKEN);
+  await deleteCookieAction(STORAGE_KEYS.USER);
   await authService.logout();
   redirect("/merchant/login");
 }

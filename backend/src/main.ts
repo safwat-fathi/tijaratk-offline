@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { NestInterceptor, ValidationPipe } from '@nestjs/common';
+import { urlencoded } from 'express';
 import { AppModule } from './app.module';
 import CONSTANTS from './common/constants';
 import helmet from 'helmet';
@@ -7,8 +8,8 @@ import cookieParser from 'cookie-parser';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AuthModule } from './auth/auth.module';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
+
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -36,6 +37,9 @@ async function bootstrap() {
 
   // cookies
   app.use(cookieParser());
+
+  // urlencoded
+  app.use(urlencoded({ extended: true }));
 
   // cors
   app.enableCors({

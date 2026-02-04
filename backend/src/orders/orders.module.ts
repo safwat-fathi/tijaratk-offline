@@ -6,6 +6,8 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CustomersModule } from 'src/customers/customers.module';
 import { TenantsModule } from 'src/tenants/tenants.module';
+import { OrderWhatsappService } from './order-whatsapp.service';
+
 
 
 @Module({
@@ -15,7 +17,7 @@ import { TenantsModule } from 'src/tenants/tenants.module';
     TenantsModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService],
+  providers: [OrdersService, OrderWhatsappService],
   exports: [OrdersService],
 })
 export class OrdersModule {}

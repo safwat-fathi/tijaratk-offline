@@ -59,6 +59,15 @@ export class Order extends TenantBaseEntity {
   @Column('decimal', { precision: 10, scale: 2, default: 0 })
   delivery_fee?: number;
 
+  @Column({ type: 'text', nullable: true })
+  delivery_address?: string;
+
+  @Column({ nullable: true })
+  customer_phone?: string;
+
+  @Column({ nullable: true })
+  customer_name?: string;
+
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   total?: number;
 
@@ -68,8 +77,8 @@ export class Order extends TenantBaseEntity {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
-	@BeforeInsert()
-	generatePublicToken() {
-		this.public_token = crypto.randomUUID();
-	}
+  @BeforeInsert()
+  generatePublicToken() {
+    this.public_token = crypto.randomUUID();
+  }
 }
