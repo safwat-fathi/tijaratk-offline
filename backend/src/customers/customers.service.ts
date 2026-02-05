@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Customer } from './entities/customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { formatPhoneNumber } from 'src/common/utils/phone.util';
 
 import { Order } from 'src/orders/entities/order.entity';
 
@@ -75,12 +76,13 @@ export class CustomersService {
   }
 
   async findOrCreate(
-    phone: string,
+    rawPhone: string,
     tenantId: number,
     name?: string,
     address?: string,
     manager?: EntityManager,
   ): Promise<Customer> {
+    const phone = formatPhoneNumber(rawPhone);
     const repo = manager
       ? manager.getRepository(Customer)
       : this.customersRepository;

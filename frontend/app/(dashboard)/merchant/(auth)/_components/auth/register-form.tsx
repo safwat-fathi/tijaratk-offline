@@ -88,7 +88,7 @@ export default function RegisterForm() {
 						htmlFor="name"
 						className="block text-sm font-medium text-gray-700"
 					>
-						اسمك
+						الاسم
 					</label>
 					<div className="mt-1">
 						<input

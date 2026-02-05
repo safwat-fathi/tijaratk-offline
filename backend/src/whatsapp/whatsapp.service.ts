@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import twilio from 'twilio';
+import { formatPhoneNumber } from 'src/common/utils/phone.util';
 
 
 @Injectable()
@@ -42,10 +43,15 @@ export class WhatsappService {
     }
 
     try {
-      this.logger.log(`Sending WhatsApp message to ${to}: ${body}`);
+      const formattedTo = formatPhoneNumber(to);
+      this.logger.log(
+        `Sending WhatsApp message to ${formattedTo} (original: ${to}): ${body}`,
+      );
       // Ensure number has whatsapp: prefix if not present, though typically passed cleanly.
       // Twilio requires 'whatsapp:+1234567890' format.
-      const toStr = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+      const toStr = formattedTo.startsWith('whatsapp:')
+        ? formattedTo
+        : `whatsapp:${formattedTo}`;
       const fromStr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
       await client.messages.create({
@@ -53,7 +59,7 @@ export class WhatsappService {
         from: fromStr,
         to: toStr,
       });
-      this.logger.log(`Message sent to ${to}`);
+      this.logger.log(`Message sent to ${formattedTo}`);
     } catch (error) {
       const details =
         error instanceof Error ? error.stack || error.message : String(error);

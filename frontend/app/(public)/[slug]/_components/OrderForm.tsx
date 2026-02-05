@@ -298,7 +298,7 @@ export default function OrderForm({
 								<input
 									name="name"
 									type="text"
-									placeholder="اسمك"
+									placeholder="الاسم"
 									className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
 									required
 									defaultValue={initialOrder?.customer?.name || ""}
