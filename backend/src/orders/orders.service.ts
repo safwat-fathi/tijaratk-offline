@@ -10,6 +10,7 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { Customer } from 'src/customers/entities/customer.entity';
 import { CustomersService } from 'src/customers/customers.service';
 import { PricingMode } from 'src/common/enums/pricing-mode.enum';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
@@ -118,6 +119,14 @@ export class OrdersService {
         );
         await manager.getRepository(OrderItem).save(items);
       }
+
+      // 5. Update Customer Stats
+      await manager.increment(Customer, { id: customer.id }, 'order_count', 1);
+      await manager.update(
+        Customer,
+        { id: customer.id },
+        { last_order_at: new Date() },
+      );
 
       return savedOrder;
     });

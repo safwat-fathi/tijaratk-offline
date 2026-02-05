@@ -41,12 +41,14 @@ export class CustomersController {
   @Get()
   @ApiOperation({ summary: 'Get all customers' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all customers' })
-  findAll(
+  async findAll(
     @Query('search') search?: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.customersService.findAll(search, +page, +limit);
+    const result = await this.customersService.findAll(search, +page, +limit);
+
+    return result;
   }
 
   @Get(':id')

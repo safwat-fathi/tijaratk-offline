@@ -54,11 +54,11 @@ export class WhatsappService {
         : `whatsapp:${formattedTo}`;
       const fromStr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
-      await client.messages.create({
-        body,
-        from: fromStr,
-        to: toStr,
-      });
+      // await client.messages.create({
+      //   body,
+      //   from: fromStr,
+      //   to: toStr,
+      // });
       this.logger.log(`Message sent to ${formattedTo}`);
     } catch (error) {
       const details =

@@ -24,16 +24,16 @@ function getTimeAgo(dateString: string): string {
 	const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
 	let interval = seconds / 31536000;
-	if (interval > 1) return Math.floor(interval) + "y ago";
+	if (interval > 1) return "منذ " + Math.floor(interval) + " سنة";
 	interval = seconds / 2592000;
-	if (interval > 1) return Math.floor(interval) + "mo ago";
+	if (interval > 1) return "منذ " + Math.floor(interval) + " شهر";
 	interval = seconds / 86400;
-	if (interval > 1) return Math.floor(interval) + "d ago";
+	if (interval > 1) return "منذ " + Math.floor(interval) + " يوم";
 	interval = seconds / 3600;
-	if (interval > 1) return Math.floor(interval) + "h ago";
+	if (interval > 1) return "منذ " + Math.floor(interval) + " ساعة";
 	interval = seconds / 60;
-	if (interval > 1) return Math.floor(interval) + "m ago";
-	return Math.floor(seconds) + "s ago";
+	if (interval > 1) return "منذ " + Math.floor(interval) + " دقيقة";
+	return "منذ " + Math.floor(seconds) + " ثانية";
 }
 
 function isToday(dateString: string): boolean {
@@ -49,10 +49,11 @@ function isToday(dateString: string): boolean {
 export default async function Dashboard() {
 	const userCookie = await getCookieAction(STORAGE_KEYS.USER);
 	const user = userCookie ? JSON.parse(userCookie) : null;
-	const name = user?.name || "Merchant";
+	const name = user?.name || "تاجر";
 
 	// Fetch orders (Server Side)
 	const response = await ordersService.getOrders();
+
 	const allOrders = response.success && response.data ? response.data : [];
 
 	// 1. Process Today's Snapshot

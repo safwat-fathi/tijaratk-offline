@@ -66,11 +66,20 @@ export class CustomersService {
     const customer = await this.customersRepository.findOne({ where: { id } });
     if (!customer) return null;
 
-    const orders = await this.ordersRepository.find({
+    const [orders, totalOrders] = await this.ordersRepository.findAndCount({
       where: { customer_id: id },
       order: { created_at: 'DESC' },
       take: 5,
     });
+
+    // Self-healing: Update stats if mismatched
+    if (customer.order_count !== totalOrders) {
+      customer.order_count = totalOrders;
+      if (orders.length > 0) {
+        customer.last_order_at = orders[0].created_at;
+      }
+      await this.customersRepository.save(customer);
+    }
 
     return { ...customer, orders };
   }
