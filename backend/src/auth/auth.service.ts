@@ -7,7 +7,7 @@ import { DataSource } from 'typeorm';
 import { TenantsService } from '../tenants/tenants.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { SignupDto } from './dto/signup.dto';
-import { parsePhoneNumber } from 'libphonenumber-js';
+import { formatPhoneNumber } from 'src/common/utils/phone.util';
 
 @Injectable()
 export class AuthService {
@@ -20,15 +20,7 @@ export class AuthService {
   ) {}
 
   async validateUser(phone: string, pass: string): Promise<any> {
-    let normalizedPhone = phone;
-    try {
-      const phoneNumber = parsePhoneNumber(phone, 'EG');
-      if (phoneNumber && phoneNumber.isValid()) {
-        normalizedPhone = phoneNumber.number;
-      }
-    } catch (error) {
-      // If parsing fails, use the original phone string
-    }
+    const normalizedPhone = formatPhoneNumber(phone);
 
     const user =
       await this.usersService.findOneByPhoneWithPassword(normalizedPhone);
@@ -64,7 +56,9 @@ export class AuthService {
   }
 
   async signup(signupDto: SignupDto) {
-    const { phone, password, storeName, name, category } = signupDto;
+    const { phone: rawPhone, password, storeName, name, category } = signupDto;
+
+    const phone = formatPhoneNumber(rawPhone);
 
     // Check if user with phone already exists
     const existingUser = await this.usersService.findOneByPhone(phone);

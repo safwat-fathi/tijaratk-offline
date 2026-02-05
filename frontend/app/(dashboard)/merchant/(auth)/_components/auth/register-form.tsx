@@ -33,12 +33,7 @@ export default function RegisterForm() {
 
 			<form action={action} className="space-y-6">
 				<div>
-					<label
-						htmlFor="storeName"
-						className="block text-sm font-medium text-gray-700"
-					>
-						اسم المتجر
-					</label>
+					<label htmlFor="storeName">اسم المتجر</label>
 					<div className="mt-1">
 						<input
 							id="storeName"

@@ -145,8 +145,8 @@ export default async function Dashboard() {
 		<div className="flex flex-col gap-6 pb-20">
 			{/* Header / Welcome - Minimal */}
 			<div className="flex justify-between items-center">
-				<h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-					Good {new Date().getHours() < 12 ? "morning" : "evening"}, {name}
+				<h1 className="text-2xl font-bold tracking-tight">
+					{new Date().getHours() < 12 ? "صباح الخير" : "مساء الخير"} {name}
 				</h1>
 			</div>
 
@@ -154,13 +154,13 @@ export default async function Dashboard() {
 			<TodaySnapshot stats={stats} />
 
 			{/* 2. Action Center */}
-			<ActionCenter items={actionItems} />
+			{/* <ActionCenter items={actionItems} /> */}
 
 			{/* 4. Quick Actions */}
-			<QuickActions />
+			{/* <QuickActions /> */}
 
 			{/* 3. Latest Orders */}
-			<LatestOrders orders={latestOrdersData} />
+			{/* <LatestOrders orders={latestOrdersData} /> */}
 
 			{/* 6. End-of-Day Teaser */}
 			{/* Show only if it's evening? Design says "After 6-7 PM". 
