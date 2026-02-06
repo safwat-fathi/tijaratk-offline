@@ -11,8 +11,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
 
 
+import { TypeOrmExceptionFilter } from './common/filters/db-exception.filter';
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Register Global TypeORM Exception Filter
+  app.useGlobalFilters(new TypeOrmExceptionFilter());
 
   // Remove COOP header to fix Swagger UI issues
   app.use((_req, res, next) => {
