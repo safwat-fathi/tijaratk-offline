@@ -48,6 +48,8 @@ export class OrdersService {
     tenantId: number,
     createOrderDto: CreateOrderDto,
   ): Promise<Order> {
+    let isFirstOrder = false;
+
     const savedOrder = await this.dataSource.transaction(async (manager) => {
       // 1. Resolve Customer
       const customer = await this.customersService.findOrCreate(
@@ -128,11 +130,18 @@ export class OrdersService {
         { last_order_at: new Date() },
       );
 
+      if (customer.order_count === 0) {
+        isFirstOrder = true;
+      }
+
       return savedOrder;
     });
 
-    await this.notifySellerNewOrder(savedOrder.id);
-    return savedOrder;
+    // Notify Seller & Customer
+    const completeOrder = await this.findOne(savedOrder.id);
+    await this.notifyOrderCreated(completeOrder, isFirstOrder);
+
+    return completeOrder;
   }
 
   async findAll(tenantId: number, date?: string): Promise<Order[]> {
@@ -248,20 +257,27 @@ export class OrdersService {
     }
   }
 
-  private async notifySellerNewOrder(orderId: number): Promise<void> {
+  private async notifyOrderCreated(
+    order: Order,
+    isFirstOrder: boolean,
+  ): Promise<void> {
     try {
-      const order = await this.ordersRepository.findOne({
-        where: { id: orderId },
-        relations: ['customer', 'tenant'],
-      });
-
-      if (!order) {
-        return;
-      }
-
+      // 1. Notify Seller
       await this.orderWhatsappService.notifySellerNewOrder(order);
+
+      // 2. Notify Customer (Order Confirmed)
+      const trackingUrl = this.buildTrackingUrl(order.public_token);
+      await this.orderWhatsappService.notifyCustomerConfirmed(
+        order,
+        trackingUrl,
+      );
+
+      // 3. Welcome Message (if first order)
+      if (isFirstOrder) {
+        await this.orderWhatsappService.notifyWelcomeCustomer(order);
+      }
     } catch (error) {
-      this.logger.warn(`Failed to notify seller for order ${orderId}`);
+      this.logger.warn(`Failed to notify for order ${order.id}`, error);
     }
   }
 
@@ -282,6 +298,10 @@ export class OrdersService {
 
       if (order.status === OrderStatus.CANCELLED) {
         await this.orderWhatsappService.notifyCustomerCancelled(order);
+      }
+
+      if (order.status === OrderStatus.COMPLETED) {
+        await this.orderWhatsappService.notifyCustomerDelivered(order);
       }
     } catch (error) {
       this.logger.warn(

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import twilio from 'twilio';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';
+import { welcomeMerchant } from './templates/welcome-merchant';
 
 
 @Injectable()
@@ -54,11 +55,11 @@ export class WhatsappService {
         : `whatsapp:${formattedTo}`;
       const fromStr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
-      // await client.messages.create({
-      //   body,
-      //   from: fromStr,
-      //   to: toStr,
-      // });
+      await client.messages.create({
+        body,
+        from: fromStr,
+        to: toStr,
+      });
       this.logger.log(`Message sent to ${formattedTo}`);
     } catch (error) {
       const details =
@@ -68,7 +69,8 @@ export class WhatsappService {
   }
 
   async sendWelcomeMessage(phone: string, storeName: string): Promise<void> {
-    const message = `مرحبًا بك في Tijaratk، ${storeName}`;
+    const loginUrl = `${process.env.CLIENT_URL || 'https://tijaratk.com'}/merchant/login`;
+    const message = welcomeMerchant({ storeName, loginUrl });
     await this.sendMessage(phone, message);
   }
 }

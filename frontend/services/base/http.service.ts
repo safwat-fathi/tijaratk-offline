@@ -118,19 +118,22 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 					errorBody = `<<failed to read body: ${String(readError)}>>`;
 				}
 
-				console.error(
-					`HTTP error for ${method} ${fullURL}`,
-					JSON.stringify(
-						{
-							status: response.status,
-							statusText: response.statusText,
-							headers: Object.fromEntries(response.headers.entries()),
-							body: errorBody,
-						},
-						null,
-						2
-					)
-				);
+				// Attempt to parse JSON error response
+				let errorMessage = response.statusText;
+				let errorData = null;
+				try {
+					const errorJson = JSON.parse(errorBody || "{}");
+					errorMessage = errorJson.message || errorMessage;
+					errorData = errorJson;
+				} catch {
+					errorMessage = errorBody || errorMessage;
+				}
+
+				return {
+					success: false,
+					message: errorMessage,
+					data: errorData as R, // usage of as R is tricky here but standard for error payloads if they match T
+				};
 			}
 
 			if (response.status === 401) {

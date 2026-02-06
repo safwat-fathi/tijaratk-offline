@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -34,19 +35,25 @@ export class CustomersController {
     status: HttpStatus.CREATED,
     description: 'Customer created successfully',
   })
-  create(@Body() createCustomerDto: CreateCustomerDto) {
-    return this.customersService.create(createCustomerDto);
+  create(@Body() createCustomerDto: CreateCustomerDto, @Request() req) {
+    return this.customersService.create(createCustomerDto, req.user.tenant_id);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all customers' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all customers' })
   async findAll(
-    @Query('search') search?: string,
+    @Query('search') search: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
+    @Request() req,
   ) {
-    const result = await this.customersService.findAll(search, +page, +limit);
+    const result = await this.customersService.findAll(
+      req.user.tenant_id,
+      search,
+      +page,
+      +limit,
+    );
 
     return result;
   }
@@ -58,14 +65,22 @@ export class CustomersController {
     status: HttpStatus.NOT_FOUND,
     description: 'Customer not found',
   })
-  findOne(@Param('id') id: string) {
-    return this.customersService.findOne(+id);
+  findOne(@Param('id') id: string, @Request() req) {
+    return this.customersService.findOne(+id, req.user.tenant_id);
   }
 
   @Post(':id/label')
   @ApiOperation({ summary: 'Update merchant label for a customer' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Customer updated' })
-  updateLabel(@Param('id') id: string, @Body('label') label: string) {
-    return this.customersService.updateMerchantLabel(+id, label);
+  updateLabel(
+    @Param('id') id: string,
+    @Body('label') label: string,
+    @Request() req,
+  ) {
+    return this.customersService.updateMerchantLabel(
+      +id,
+      label,
+      req.user.tenant_id,
+    );
   }
 }

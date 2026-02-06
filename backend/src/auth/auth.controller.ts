@@ -1,3 +1,4 @@
+import { AuthExceptionFilter } from '../common/filters/auth-exceptions.filter';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   UseGuards,
   Get,
   Request,
+  UseFilters,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
@@ -22,9 +24,9 @@ import CONSTANTS from '../common/constants';
 
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-
 @ApiTags('auth')
 @Controller('auth')
+@UseFilters(AuthExceptionFilter)
 export class AuthController {
   constructor(private authService: AuthService) {}
 

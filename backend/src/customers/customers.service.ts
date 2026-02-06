@@ -16,29 +16,38 @@ export class CustomersService {
     private readonly ordersRepository: Repository<Order>,
   ) {}
 
-  async create(createCustomerDto: CreateCustomerDto): Promise<Customer> {
-    const customer = this.customersRepository.create(createCustomerDto);
+  async create(
+    createCustomerDto: CreateCustomerDto,
+    tenantId: number,
+  ): Promise<Customer> {
+    const customer = this.customersRepository.create({
+      ...createCustomerDto,
+      tenant_id: tenantId,
+    });
     return this.customersRepository.save(customer);
   }
 
   async findAll(
+    tenantId: number,
     search?: string,
     page = 1,
     limit = 20,
   ): Promise<{ data: Customer[]; meta: any }> {
-    const query = this.customersRepository.createQueryBuilder('customer');
+    const query = this.customersRepository
+      .createQueryBuilder('customer')
+      .where('customer.tenant_id = :tenantId', { tenantId });
 
     if (search) {
       // Check if search is a number (for code search)
       const isNumeric = !isNaN(Number(search));
 
       if (isNumeric) {
-        query.where(
+        query.andWhere(
           '(customer.code = :code OR customer.phone ILIKE :search OR customer.name ILIKE :search OR customer.merchant_label ILIKE :search)',
           { code: Number(search), search: `%${search}%` },
         );
       } else {
-        query.where(
+        query.andWhere(
           '(customer.name ILIKE :search OR customer.phone ILIKE :search OR customer.merchant_label ILIKE :search)',
           { search: `%${search}%` },
         );
@@ -62,8 +71,10 @@ export class CustomersService {
     };
   }
 
-  async findOne(id: number): Promise<any | null> {
-    const customer = await this.customersRepository.findOne({ where: { id } });
+  async findOne(id: number, tenantId: number): Promise<any | null> {
+    const customer = await this.customersRepository.findOne({
+      where: { id, tenant_id: tenantId },
+    });
     if (!customer) return null;
 
     const [orders, totalOrders] = await this.ordersRepository.findAndCount({
@@ -185,8 +196,12 @@ export class CustomersService {
     return manager.save(customer);
   }
 
-  async updateMerchantLabel(id: number, label: string): Promise<Customer> {
-    const customer = await this.findOne(id);
+  async updateMerchantLabel(
+    id: number,
+    label: string,
+    tenantId: number,
+  ): Promise<Customer> {
+    const customer = await this.findOne(id, tenantId);
     if (!customer) {
       throw new Error('Customer not found');
     }
