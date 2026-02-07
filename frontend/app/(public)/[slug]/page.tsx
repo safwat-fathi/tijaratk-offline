@@ -34,7 +34,7 @@ async function getOrder(token?: string): Promise<Order | null> {
 			return response.data;
 		}
 		return null;
-	} catch (e) {
+	} catch {
 		return null;
 	}
 }
@@ -69,11 +69,11 @@ export default async function StorePage({
 					</div>
 				)}
 
-				<OrderForm
-					tenantSlug={tenant.slug}
-					products={products}
-					initialOrder={initialOrder as any} // Cast as any because Order type might miss some fields or frontend type is not fully aligned
-				/>
+					<OrderForm
+						tenantSlug={tenant.slug}
+						products={products}
+						initialOrder={initialOrder}
+					/>
 			</div>
 		</div>
 	);

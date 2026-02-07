@@ -1,14 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { Order } from './entities/order.entity';
-import {
-  newOrderSeller,
-  orderConfirmed,
-  outForDelivery,
-  orderCancelled,
-  orderDelivered,
-  welcomeCustomer,
-} from 'src/whatsapp/templates';
+import { orderCancelled, welcomeCustomer } from 'src/whatsapp/templates';
 
 @Injectable()
 export class OrderWhatsappService {
@@ -19,43 +12,42 @@ export class OrderWhatsappService {
     if (!sellerNumber) return;
 
     const customerName = order.customer?.name || 'عميل';
-    // const address = order.customer?.address || 'بدون عنوان';
-    const area = order.customer?.address || 'غير محدد'; // Mapping address to area for now
-    
-    // Calculate total if not present (though it should be)
+    const area = order.customer?.address || 'غير محدد';
     const total = Number(order.total || 0);
 
-    const message = newOrderSeller({
-      orderId: `#${order.id}`,
-      customerName,
-      area,
-      total,
+    await this.whatsappService.sendTemplatedMessage({
+      key: 'new_order_merchant',
+      to: sellerNumber,
+      payload: {
+        customerName,
+        orderNumber: `#${order.id}`,
+        area,
+        totalEgp: total,
+      },
     });
-
-    await this.whatsappService.sendMessage(sellerNumber, message);
   }
 
   async notifyCustomerConfirmed(
     order: Order,
-    trackingUrl: string, // Kept for interface compatibility but template doesn't use it yet? 
-    // Wait, orderConfirmed template DOES NOT use trackingUrl in the provided version. 
-    // It creates a list of items.
+    trackingUrl: string,
   ): Promise<void> {
+    void trackingUrl;
+
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber) return;
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
-    const items = order.items?.map(i => ({ name: i.title, qty: i.quantity })) || [];
     const total = Number(order.total || 0);
 
-    const message = orderConfirmed({
-      customerName,
-      orderId: `#${order.id}`,
-      total,
-      items,
+    await this.whatsappService.sendTemplatedMessage({
+      key: 'order_received_customer',
+      to: customerNumber,
+      payload: {
+        customerName,
+        orderNumber: `#${order.id}`,
+        totalEgp: total,
+      },
     });
-
-    await this.whatsappService.sendMessage(customerNumber, message);
   }
 
   async notifyCustomerOutForDelivery(order: Order): Promise<void> {
@@ -63,14 +55,15 @@ export class OrderWhatsappService {
     if (!customerNumber) return;
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
-    
-    const message = outForDelivery({
-      customerName,
-      orderId: `#${order.id}`,
-      // driverPhone: '...' // Optional, we don't have driver info yet
-    });
 
-    await this.whatsappService.sendMessage(customerNumber, message);
+    await this.whatsappService.sendTemplatedMessage({
+      key: 'order_out_for_delivery',
+      to: customerNumber,
+      payload: {
+        customerName,
+        orderNumber: `#${order.id}`,
+      },
+    });
   }
 
   async notifyCustomerCancelled(order: Order): Promise<void> {
@@ -82,7 +75,6 @@ export class OrderWhatsappService {
     const message = orderCancelled({
       customerName,
       orderId: `#${order.id}`,
-      // reason: '...' // Optional
     });
 
     await this.whatsappService.sendMessage(customerNumber, message);
@@ -94,12 +86,15 @@ export class OrderWhatsappService {
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
 
-    const message = orderDelivered({
-      customerName,
-      orderId: `#${order.id}`,
+    await this.whatsappService.sendTemplatedMessage({
+      key: 'order_status_update_customer',
+      to: customerNumber,
+      payload: {
+        customerName,
+        orderNumber: `#${order.id}`,
+        statusLabel: 'تم التوصيل',
+      },
     });
-
-    await this.whatsappService.sendMessage(customerNumber, message);
   }
 
   async notifyWelcomeCustomer(order: Order): Promise<void> {

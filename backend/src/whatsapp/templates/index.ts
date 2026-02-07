@@ -8,3 +8,4 @@ export * from './new-order-seller';
 export * from './daily-summary';
 export * from './welcome-merchant';
 export * from './low-stock';
+export * from './templates.registry';

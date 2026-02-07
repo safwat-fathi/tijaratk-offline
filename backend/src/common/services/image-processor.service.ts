@@ -1,92 +1,92 @@
-// import { Injectable, Logger } from '@nestjs/common';
-// import * as fs from 'fs';
-// import * as path from 'path';
-// import sharp from 'sharp';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { mkdir, rm } from 'fs/promises';
+import { basename, join } from 'path';
+import sharp from 'sharp';
 
-// @Injectable()
-// export class ImageProcessorService {
-//   private readonly logger = new Logger(ImageProcessorService.name);
+/**
+ * Handles image normalization and thumbnail generation for uploaded assets.
+ */
+@Injectable()
+export class ImageProcessorService {
+  private readonly logger = new Logger(ImageProcessorService.name);
 
-//   /**
-//    * Converts an uploaded image to WebP format for optimal web delivery.
-//    * Deletes the original file after successful conversion.
-//    *
-//    * @param filePath - Absolute path to the uploaded file
-//    * @returns New filename with .webp extension
-//    */
-//   async convertToWebP(filePath: string): Promise<string> {
-//     const directory = path.dirname(filePath);
-//     const originalFilename = path.basename(filePath);
-//     const nameWithoutExt = path.parse(originalFilename).name;
-//     const webpFilename = `${nameWithoutExt}.webp`;
-//     const webpPath = path.join(directory, webpFilename);
+  /**
+   * Processes an uploaded product image into a normalized 256x256 WebP thumbnail.
+   *
+   * @param inputPath Absolute path of multer temporary file.
+   * @returns Public URL path for stored thumbnail.
+   */
+  async processProductThumbnail(inputPath: string): Promise<string> {
+    const uploadsRoot = join(process.cwd(), 'uploads');
+    const productsDir = join(uploadsRoot, 'products');
 
-//     try {
-//       // Convert to WebP with good quality settings
-//       await sharp(filePath)
-//         .webp({
-//           quality: 85,
-//           effort: 4, // Balance between speed and compression
-//         })
-//         .toFile(webpPath);
+    await mkdir(productsDir, { recursive: true });
 
-//       // Delete original file after successful conversion
-//       await fs.promises.unlink(filePath);
+    const outputFilename = this.createOutputFilename();
+    const outputPath = join(productsDir, outputFilename);
 
-//       this.logger.log(`Converted ${originalFilename} to ${webpFilename}`);
-//       return webpFilename;
-//     } catch (error) {
-//       this.logger.error(`Failed to convert ${originalFilename} to WebP`, error);
-//       // Return original filename if conversion fails
-//       return originalFilename;
-//     }
-//   }
+    try {
+      await sharp(inputPath)
+        .resize(256, 256, {
+          fit: 'cover',
+          position: 'centre',
+        })
+        .webp({
+          quality: 82,
+          effort: 4,
+        })
+        .toFile(outputPath);
 
-//   /**
-//    * Resizes and converts an image to WebP format.
-//    * Maintains aspect ratio while limiting max dimensions.
-//    *
-//    * @param filePath - Absolute path to the uploaded file
-//    * @param maxWidth - Maximum width in pixels (default: 1920)
-//    * @param maxHeight - Maximum height in pixels (default: 1080)
-//    * @returns New filename with .webp extension
-//    */
-//   async optimizeImage(
-//     filePath: string,
-//     maxWidth: number = 1920,
-//     maxHeight: number = 1080,
-//   ): Promise<string> {
-//     const directory = path.dirname(filePath);
-//     const originalFilename = path.basename(filePath);
-//     const nameWithoutExt = path.parse(originalFilename).name;
-//     const webpFilename = `${nameWithoutExt}.webp`;
-//     const webpPath = path.join(directory, webpFilename);
+      await this.deleteFileQuietly(inputPath);
 
-//     try {
-//       await sharp(filePath)
-//         .resize(maxWidth, maxHeight, {
-//           fit: 'inside',
-//           withoutEnlargement: true,
-//         })
-//         .webp({
-//           quality: 85,
-//           effort: 4,
-//         })
-//         .toFile(webpPath);
+      return `/uploads/products/${outputFilename}`;
+    } catch (error) {
+      await this.deleteFileQuietly(inputPath);
+      await this.deleteFileQuietly(outputPath);
 
-//       // Delete original file after successful conversion
-//       await fs.promises.unlink(filePath);
+      this.logger.error(
+        `Failed to process uploaded image ${basename(inputPath)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
 
-//       this.logger.log(
-//         `Optimized and converted ${originalFilename} to ${webpFilename}`,
-//       );
-//       return webpFilename;
-//     } catch (error) {
-//       this.logger.error(
-//         `Failed to optimize ${originalFilename}`,
-//         error.message,
-//       );
-//       return originalFilename;
-//     }
-//   }
-// }
+      throw new InternalServerErrorException('Failed to process product image');
+    }
+  }
+
+  /**
+   * Deletes a previously generated product image if it is a managed uploads file.
+   *
+   * @param imageUrl Public image URL value stored on product entity.
+   */
+  async deleteManagedProductImage(imageUrl?: string | null): Promise<void> {
+    if (!imageUrl || !imageUrl.startsWith('/uploads/products/')) {
+      return;
+    }
+
+    const absolutePath = join(process.cwd(), imageUrl.replace(/^\//, ''));
+    await this.deleteFileQuietly(absolutePath);
+  }
+
+  /**
+   * Creates a unique deterministic output filename for generated thumbnails.
+   */
+  private createOutputFilename(): string {
+    const suffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    return `product-${suffix}.webp`;
+  }
+
+  /**
+   * Deletes a file while swallowing ENOENT and other cleanup-only errors.
+   */
+  private async deleteFileQuietly(filePath: string): Promise<void> {
+    try {
+      await rm(filePath, { force: true });
+    } catch {
+      // Best effort cleanup only.
+    }
+  }
+}

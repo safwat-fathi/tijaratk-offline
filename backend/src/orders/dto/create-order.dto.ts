@@ -9,6 +9,7 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { OrderType } from 'src/common/enums/order-type.enum';
@@ -20,19 +21,34 @@ export class CreateOrderItemDto {
   @IsNumber()
   product_id?: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'عيش بلدي' })
+  @ValidateIf((dto: CreateOrderItemDto) => !dto.product_id)
   @IsString()
-  title: string;
+  @MaxLength(120)
+  name?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2' })
+  @IsString()
+  @MaxLength(50)
+  quantity: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  unit_price: number;
+  unit_price?: number;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsNumber()
-  @Min(1)
-  quantity: number;
+  @Min(0)
+  total_price?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  notes?: string;
 }
 
 export class CreateOrderDto {
@@ -54,7 +70,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-	@IsObject()
+  @IsObject()
   free_text_payload?: Record<string, any>;
 
   @ApiPropertyOptional()
@@ -66,7 +82,7 @@ export class CreateOrderDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-	@MaxLength(255)
+  @MaxLength(255)
   notes?: string;
 
   @ApiPropertyOptional()

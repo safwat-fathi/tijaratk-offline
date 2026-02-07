@@ -1,4 +1,5 @@
 import {
+	HttpRequestOptions,
 	HttpServiceAbstract,
 	IPaginatedResponse,
 	IParams,
@@ -10,6 +11,7 @@ import {
 } from "@/app/actions/cookie-store";
 
 import { STORAGE_KEYS } from "@/constants";
+import { isNextRedirectError } from "@/lib/auth/navigation-errors";
 import { createParams } from "@/lib/utils/qs";
 
 // Enhanced response type for better type safety
@@ -21,6 +23,8 @@ export interface ServiceResponse<T = unknown> {
 }
 
 const DEFAULT_TIMEOUT = 10000;
+const LOGIN_ROUTE = "/merchant/login";
+const REVOKE_ROUTE = `/api/auth/session/revoke?redirect=${encodeURIComponent(LOGIN_ROUTE)}`;
 
 export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	private readonly _baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -42,11 +46,50 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 		};
 	}
 
+	private async _handleUnauthorized(): Promise<void> {
+		if (typeof window === "undefined") {
+			const { redirect } = await import("next/navigation");
+			redirect(REVOKE_ROUTE);
+			return;
+		}
+
+		const { revokeSessionAndRedirectClient } = await import(
+			"@/lib/auth/unauthorized.client"
+		);
+		await revokeSessionAndRedirectClient();
+	}
+
+	private async _parseErrorResponse(
+		response: Response,
+	): Promise<{ message: string; data: unknown | null }> {
+		let errorBody: string | undefined;
+
+		try {
+			errorBody = await response.clone().text();
+		} catch (readError) {
+			errorBody = `<<failed to read body: ${String(readError)}>>`;
+		}
+
+		let errorMessage = response.statusText;
+		let errorData: unknown = null;
+		try {
+			const errorJson = JSON.parse(errorBody || "{}");
+			errorMessage = errorJson.message || errorMessage;
+			errorData = errorJson;
+		} catch {
+			errorMessage = errorBody || errorMessage;
+		}
+
+		return { message: errorMessage, data: errorData };
+	}
+
 	private async _getAuthHeaders(): Promise<HeadersInit> {
+		if (typeof window !== "undefined") {
+			return {};
+		}
+
 		// Always get fresh token from cookies
 		this._token = await getCookieAction(STORAGE_KEYS.ACCESS_TOKEN);
-
-
 
 		const headers: HeadersInit = {};
 
@@ -68,7 +111,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	private async _request<R = T>(
 		route: string,
 		method: TMethod,
-		options: RequestInit = {},
+		options: HttpRequestOptions = {},
 		params?: IParams
 	): Promise<ServiceResponse<R>> {
 		try {
@@ -87,22 +130,22 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 			const fullURL = searchParams
 				? `${this._baseUrl}/${route}?${searchParams}`
 				: `${this._baseUrl}/${route}`;
+			const { authRequired = false, ...requestOverrides } = options;
 
 			// Create a new AbortSignal for each request
 			const requestOptions: RequestInit = {
-				...options,
-				signal: options.signal || AbortSignal.timeout(this._timeout),
+				...requestOverrides,
+				signal: requestOverrides.signal || AbortSignal.timeout(this._timeout),
 				method,
 				headers: {
 					...this._defaultHeaders,
 					...authHeaders,
-					...options.headers,
+					...requestOverrides.headers,
 				},
 				credentials: "include",
 			};
 
 			const response = await fetch(fullURL, requestOptions);
-			const responseClone = response.clone();
 
 			// Handle no content
 			if (response.status === 204) {
@@ -110,34 +153,17 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 			}
 
 			if (!response.ok) {
-				let errorBody: string | undefined;
+				const { message, data } = await this._parseErrorResponse(response);
 
-				try {
-					errorBody = await responseClone.text();
-				} catch (readError) {
-					errorBody = `<<failed to read body: ${String(readError)}>>`;
-				}
-
-				// Attempt to parse JSON error response
-				let errorMessage = response.statusText;
-				let errorData = null;
-				try {
-					const errorJson = JSON.parse(errorBody || "{}");
-					errorMessage = errorJson.message || errorMessage;
-					errorData = errorJson;
-				} catch {
-					errorMessage = errorBody || errorMessage;
+				if (response.status === 401 && authRequired) {
+					await this._handleUnauthorized();
 				}
 
 				return {
 					success: false,
-					message: errorMessage,
-					data: errorData as R, // usage of as R is tricky here but standard for error payloads if they match T
+					message,
+					data: data as R,
 				};
-			}
-
-			if (response.status === 401) {
-				throw new Error("Unauthorized");
 			}
 
 			// Parse response
@@ -148,10 +174,15 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 
 			if (isJson) {
 				try {
-					const rawData: any = await response.json();
+					const rawData = (await response.json()) as unknown;
 					// Unwrap NestJS standard response { success, message, data }
-					if (rawData && typeof rawData === "object" && "data" in rawData && "success" in rawData) {
-						data = rawData.data;
+					if (
+						rawData &&
+						typeof rawData === "object" &&
+						"data" in rawData &&
+						"success" in rawData
+					) {
+						data = (rawData as { data: unknown }).data;
 					} else {
 						data = rawData;
 					}
@@ -167,6 +198,10 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 				data: data as R,
 			};
 		} catch (error) {
+			if (isNextRedirectError(error)) {
+				throw error;
+			}
+
 			return {
 				success: false,
 				message:
@@ -204,7 +239,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	protected async get<R = T>(
 		route: string,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		return this._request<R>(route, "GET", options, params);
 	}
@@ -212,7 +247,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	protected async getList<R = T[]>(
 		route: string,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		return this._request<R>(route, "GET", options, params);
 	}
@@ -221,7 +256,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 		route: string,
 		body: unknown,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		const { processedBody, headers } = this._prepareBody(body);
 
@@ -241,7 +276,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 		route: string,
 		body: unknown,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		const { processedBody, headers } = this._prepareBody(body);
 
@@ -261,7 +296,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 		route: string,
 		body: unknown,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		const { processedBody, headers } = this._prepareBody(body);
 
@@ -280,7 +315,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	protected async delete<R = T>(
 		route: string,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<R>> {
 		return this._request<R>(route, "DELETE", options, params);
 	}
@@ -289,7 +324,7 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	protected async getPaginated<R = T>(
 		route: string,
 		params?: IParams,
-		options?: RequestInit
+		options?: HttpRequestOptions
 	): Promise<ServiceResponse<IPaginatedResponse<R>>> {
 		return this._request<IPaginatedResponse<R>>(route, "GET", options, params);
 	}

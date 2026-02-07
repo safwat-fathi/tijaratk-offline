@@ -1,5 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { TenantBaseEntity } from 'src/common/entities/tenant-base.entity';
+import { ProductSource } from 'src/common/enums/product-source.enum';
+import { ProductStatus } from 'src/common/enums/product-status.enum';
 
 @Entity('products')
 export class Product extends TenantBaseEntity {
@@ -9,15 +11,20 @@ export class Product extends TenantBaseEntity {
   @Column()
   name: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  price: number;
-
-  @Column({ nullable: true })
-  sku?: string;
-
   @Column({ type: 'text', nullable: true })
-  description?: string;
+  image_url?: string;
 
-  @Column({ default: true })
-  is_active: boolean;
+  @Column({
+    type: 'enum',
+    enum: ProductSource,
+    default: ProductSource.MANUAL,
+  })
+  source: ProductSource;
+
+  @Column({
+    type: 'enum',
+    enum: ProductStatus,
+    default: ProductStatus.ACTIVE,
+  })
+  status: ProductStatus;
 }

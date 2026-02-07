@@ -22,21 +22,31 @@ export class OrderItem {
   order: Relation<Order>;
 
   @Column({ nullable: true })
-  product_id?: number;
+  product_id?: number | null;
 
   @ManyToOne(() => Product, { nullable: true })
   @JoinColumn({ name: 'product_id' })
   product?: Relation<Product>;
 
   @Column()
-  title: string;
+  name_snapshot: string;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  unit_price: number;
+  @Column({ type: 'text' })
+  quantity: string;
 
-  @Column({ type: 'int' })
-  quantity: number;
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  unit_price?: number | null;
 
-  @Column('decimal', { precision: 10, scale: 2 })
-  total: number;
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  total_price?: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  notes?: string;
+
+  @Column({ nullable: true })
+  replaced_by_product_id?: number | null;
+
+  @ManyToOne(() => Product, { nullable: true })
+  @JoinColumn({ name: 'replaced_by_product_id' })
+  replaced_by_product?: Relation<Product>;
 }

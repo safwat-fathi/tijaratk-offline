@@ -1,15 +1,23 @@
-import { Order } from "../models/order";
+import { Order } from '../models/order';
+import { OrderType } from '../enums';
 
 export interface CreateOrderRequest {
-  // Define based on CreateOrderDto if implementation needs it
-  customer_id: number;
-  items: Array<{
+  customer: {
+    name?: string;
+    phone: string;
+    address?: string;
+  };
+  items?: Array<{
     product_id?: number;
-    quantity: number;
+    name?: string;
+    quantity: string;
     notes?: string;
-    // For manual pricing mode
     unit_price?: number;
+    total_price?: number;
   }>;
+  notes?: string;
+  free_text_payload?: { text: string };
+  order_type: OrderType;
 }
 
 export interface OrderListResponse {

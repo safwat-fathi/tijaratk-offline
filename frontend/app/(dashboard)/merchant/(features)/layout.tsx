@@ -46,6 +46,25 @@ const navigation = [
 		),
 	},
 	{
+		name: "المنتجات",
+		href: "/merchant/products/new",
+		icon: (
+			<svg
+				className="me-3 h-6 w-6 shrink-0"
+				fill="none"
+				viewBox="0 0 24 24"
+				strokeWidth="1.5"
+				stroke="currentColor"
+			>
+				<path
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					d="M6 6.75 12 3l6 3.75M6 6.75v10.5L12 21m-6-14.25L12 10.5m0 10.5 6-3.75V6.75m-6 3.75 6-3.75"
+				/>
+			</svg>
+		),
+	},
+	{
 		name: "العملاء",
 		href: "/merchant/customers",
 		icon: (
@@ -268,10 +287,12 @@ export default function MerchantLayout({
 																className={`
                                                         group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
                                                         ${
-																													item.href ===
-																														"/merchant" &&
-																													pathname ===
-																														"/merchant"
+																													(item.href !== "/logout" &&
+																														pathname.startsWith(item.href) &&
+																														item.href !== "/merchant" &&
+																														pathname !== "/merchant") ||
+																													(item.href === "/merchant" &&
+																														pathname === "/merchant")
 																														? "bg-gray-50 text-indigo-600"
 																														: "text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
 																												}

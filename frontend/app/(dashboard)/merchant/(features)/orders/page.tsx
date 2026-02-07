@@ -1,5 +1,6 @@
 import { ordersService } from "@/services/api/orders.service";
 import OrdersView from "./_components/OrdersView";
+import { isNextRedirectError } from "@/lib/auth/navigation-errors";
 
 export const metadata = {
 	title: "Orders",
@@ -15,6 +16,9 @@ async function getOrders(date?: string) {
 		}
 		return [];
 	} catch (error) {
+		if (isNextRedirectError(error)) {
+			throw error;
+		}
 		console.error("Failed to fetch orders", error);
 		return [];
 	}

@@ -141,7 +141,7 @@ async function getOrder(token: string) {
     }
 
     return null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -192,10 +192,10 @@ export default async function TrackOrder({ params }: Props) {
 				<dl>
 					<div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
 						<dt className="text-sm font-medium text-gray-500">الحالة</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-							<StatusBadge status={order.status as any} />
-						</dd>
-					</div>
+							<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+								<StatusBadge status={order.status as OrderStatus} />
+							</dd>
+						</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
 						<dt className="text-sm font-medium text-gray-500">المجر</dt>
 						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
@@ -213,7 +213,9 @@ export default async function TrackOrder({ params }: Props) {
 							المجموع الفرعي
 						</dt>
 						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-							{formatCurrency(Number(order.subtotal) || 0)}
+							{order.subtotal !== null && order.subtotal !== undefined
+								? formatCurrency(Number(order.subtotal) || 0)
+								: 'السعر يتم تأكيده بعد الطلب'}
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -225,7 +227,9 @@ export default async function TrackOrder({ params }: Props) {
 					<div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
 						<dt className="text-sm font-medium text-gray-500">الإجمالي</dt>
 						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 font-bold">
-							{formatCurrency(Number(order.total) || 0)}
+							{order.total !== null && order.total !== undefined
+								? formatCurrency(Number(order.total) || 0)
+								: 'السعر يتم تأكيده بعد الطلب'}
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -240,12 +244,15 @@ export default async function TrackOrder({ params }: Props) {
 										>
 											<div className="w-0 flex-1 flex items-center">
 												<span className="ml-2 flex-1 w-0 truncate">
-													{(item.product_snapshot?.name as string) || "منتج"} x{" "}
+													{item.replaced_by_product?.name || item.name_snapshot} x{' '}
 													{item.quantity}
 												</span>
 											</div>
 											<div className="ml-4 shrink-0">
-												{formatCurrency(Number(item.total_price) || 0)}
+												{item.total_price !== null &&
+												item.total_price !== undefined
+													? formatCurrency(Number(item.total_price) || 0)
+													: 'يُحدد لاحقاً'}
 											</div>
 										</li>
 									))

@@ -1,27 +1,26 @@
-// import { applyDecorators, UseInterceptors } from '@nestjs/common';
-// import { FileInterceptor } from '@nestjs/platform-express';
-// import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
-// import { diskStorage } from 'multer';
-// import { extname } from 'path';
+import { applyDecorators, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
+import { join } from 'path';
+import { mkdirSync } from 'fs';
 
-// export function UploadFile(
-//   fieldName: string = 'file',
-//   options: Partial<MulterOptions> = {},
-// ) {
-//   return applyDecorators(
-//     UseInterceptors(
-//       FileInterceptor(fieldName, {
-//         storage: diskStorage({
-//           destination: './uploads',
-//           filename: (req, file, callback) => {
-//             const uniqueSuffix =
-//               Date.now() + '-' + Math.round(Math.random() * 1e9);
-//             const ext = extname(file.originalname);
-//             callback(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-//           },
-//         }),
-//         ...options,
-//       }),
-//     ),
-//   );
-// }
+/**
+ * Reusable file upload decorator built on top of Multer's FileInterceptor.
+ * Stores uploads under ./uploads by default.
+ */
+export function UploadFile(
+  fieldName: string = 'file',
+  options: Partial<MulterOptions> = {},
+) {
+  const uploadDir = join(process.cwd(), 'uploads');
+  mkdirSync(uploadDir, { recursive: true });
+
+  return applyDecorators(
+    UseInterceptors(
+      FileInterceptor(fieldName, {
+        dest: uploadDir,
+        ...options,
+      }),
+    ),
+  );
+}

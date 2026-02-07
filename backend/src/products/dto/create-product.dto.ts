@@ -1,34 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'زيت عباد الشمس' })
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
   name: string;
 
-  @ApiProperty()
-  @IsNumber()
-  @Min(0)
-  price: number;
-
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'https://example.com/image.jpg' })
   @IsOptional()
   @IsString()
-  sku?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({ default: true })
-  @IsOptional()
-  @IsBoolean()
-  is_active?: boolean;
+  image_url?: string;
 }

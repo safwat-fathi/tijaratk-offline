@@ -7,7 +7,7 @@ export const orderConfirmed = ({
   customerName: string;
   orderId: string;
   total: number;
-  items: { name: string; qty: number }[];
+  items: { name: string; qty: string | number }[];
 }) => `
 *🛒 تم استلام طلبك*
 

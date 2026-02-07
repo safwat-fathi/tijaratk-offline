@@ -11,6 +11,13 @@ class TenantsService extends HttpService {
       cache: "no-store",
     });
   }
+
+  public async getMyTenant() {
+    return this.get<Tenant>("me", undefined, {
+      authRequired: true,
+      cache: "no-store",
+    });
+  }
 }
 
 export const tenantsService = new TenantsService();

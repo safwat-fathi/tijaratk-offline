@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { NestInterceptor, ValidationPipe } from '@nestjs/common';
-import { urlencoded } from 'express';
+import { NextFunction, Request, Response, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import CONSTANTS from './common/constants';
 import helmet from 'helmet';
@@ -9,8 +9,6 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
-
-
 import { TypeOrmExceptionFilter } from './common/filters/db-exception.filter';
 
 async function bootstrap() {
@@ -20,13 +18,13 @@ async function bootstrap() {
   app.useGlobalFilters(new TypeOrmExceptionFilter());
 
   // Remove COOP header to fix Swagger UI issues
-  app.use((_req, res, next) => {
+  app.use((_req: Request, res: Response, next: NextFunction) => {
     res.removeHeader('Cross-Origin-Opener-Policy');
     next();
   });
 
   // remove header x-powered-by
-  app.use((_, res, next) => {
+  app.use((_: Request, res: Response, next: NextFunction) => {
     res.removeHeader('X-Powered-By');
     next();
   });
@@ -55,8 +53,11 @@ async function bootstrap() {
   });
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads',
+  });
 
-  app.use('/docs', (_req, res, next) => {
+  app.use('/docs', (_req: Request, res: Response, next: NextFunction) => {
     res.setHeader(
       'Cache-Control',
       'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -128,4 +129,4 @@ async function bootstrap() {
 
   await app.listen(process.env.HTTP_SERVER_PORT, '127.0.0.1');
 }
-bootstrap();
+void bootstrap();

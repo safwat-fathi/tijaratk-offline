@@ -1,101 +1,133 @@
-"use server";
+'use server';
 
-import { ordersService } from "@/services/api/orders.service";
-import { OrderStatus, OrderType } from "@/types/enums";
-import { revalidatePath } from "next/cache";
-import { createOrderSchema } from "@/lib/validations/order";
+import { ordersService } from '@/services/api/orders.service';
+import { OrderStatus, OrderType } from '@/types/enums';
+import { CreateOrderRequest } from '@/types/services/orders';
+import { revalidatePath } from 'next/cache';
+import { createOrderSchema } from '@/lib/validations/order';
+import { isNextRedirectError } from '@/lib/auth/navigation-errors';
 
 export async function updateOrderStatus(orderId: number, status: OrderStatus) {
-	try {
-		const response = await ordersService.updateOrder(orderId, { status });
+  try {
+    const response = await ordersService.updateOrder(orderId, { status });
 
-		// Revalidate both the list and the details page
-		revalidatePath("/merchant/orders");
-		revalidatePath(`/merchant/orders/${orderId}`);
+    revalidatePath('/merchant/orders');
+    revalidatePath(`/merchant/orders/${orderId}`);
 
-		return { success: true, data: response.data };
-	} catch (error) {
-		console.error("Failed to update order status:", error);
-		return { success: false, error: "Failed to update order status" };
-	}
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to update order status:', error);
+    return { success: false, error: 'Failed to update order status' };
+  }
+}
+
+export async function replaceOrderItemAction(
+  orderId: number,
+  itemId: number,
+  replacedByProductId: number | null,
+) {
+  try {
+    const response = await ordersService.replaceOrderItem(itemId, {
+      replaced_by_product_id: replacedByProductId,
+    });
+
+    revalidatePath(`/merchant/orders/${orderId}`);
+    revalidatePath('/merchant/orders');
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to replace order item:', error);
+    return { success: false, error: 'Failed to replace order item' };
+  }
 }
 
 export type CreateOrderState = {
-	success: boolean;
-	message: string;
-	errors?: Record<string, string[]>;
-	data?: any;
+  success: boolean;
+  message: string;
+  errors?: Record<string, string[]>;
+  data?: unknown;
 };
 
 export async function createOrderAction(
-	tenantSlug: string,
-	prevState: CreateOrderState,
-	formData: FormData,
+  tenantSlug: string,
+  _prevState: CreateOrderState,
+  formData: FormData,
 ): Promise<CreateOrderState> {
-	const rawData = Object.fromEntries(formData.entries());
+  const rawData = Object.fromEntries(formData.entries());
 
-	// Validate fields
-	const validatedFields = createOrderSchema.safeParse(rawData);
+  const validatedFields = createOrderSchema.safeParse(rawData);
 
-	if (!validatedFields.success) {
-		return {
-			success: false,
-			message: "Validation failed, please check inputs.",
-			errors: validatedFields.error.flatten().fieldErrors,
-		};
-	}
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: 'Validation failed, please check inputs.',
+      errors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
 
-	const { cart, order_request, ...customerData } = validatedFields.data;
+  const { cart, order_request, ...customerData } = validatedFields.data;
 
-	// Parse cart items
-	let items = [];
-	if (cart) {
-		try {
-			items = JSON.parse(cart);
-		} catch (e) {
-			console.error("Failed to parse cart items:", e);
-		}
-	}
+  let items: Array<{ product_id: number; quantity: string; name?: string }> = [];
+  if (cart) {
+    try {
+      const parsed = JSON.parse(cart) as Array<{
+        product_id: number;
+        quantity: string;
+        name?: string;
+      }>;
 
-	// Construct payload
-	// Adjust based on what backend expects. Usually needs items, customer info, etc.
-	// Based on OrderForm, we have name, phone, address, notes, order_request
-	// Determine order type
-	const orderType = items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT;
+      items = parsed.filter(
+        (item) => item.product_id && String(item.quantity || '').trim().length > 0,
+      );
+    } catch (e) {
+      console.error('Failed to parse cart items:', e);
+    }
+  }
 
-	const payload = {
-		customer: {
-			name: customerData.name,
-			phone: customerData.phone,
-			address: customerData.address,
-		},
-		items: items,
-		notes: customerData.notes,
-		free_text_payload: order_request ? { text: order_request } : undefined,
-		order_type: orderType,
-	};
+  const orderType = items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT;
 
-	try {
-		const response = await ordersService.createPublicOrder(tenantSlug, payload);
+  const payload: CreateOrderRequest = {
+    customer: {
+      name: customerData.name,
+      phone: customerData.phone,
+      address: customerData.address,
+    },
+    items,
+    notes: customerData.notes,
+    free_text_payload: order_request ? { text: order_request } : undefined,
+    order_type: orderType,
+  };
 
-		if (response.success) {
-			return {
-				success: true,
-				message: "Order created successfully",
-				data: response.data,
-			};
-		} else {
-			return {
-				success: false,
-				message: response.message || "Failed to create order",
-				errors: response.errors as Record<string, string[]> | undefined,
-			};
-		}
-	} catch (error: any) {
-		console.error("Failed to create order:", error);
-		return {
-			success: false,
-			message: error.message || "Failed to create order. Please try again.",
-		};
-	}
+  try {
+    const response = await ordersService.createPublicOrder(tenantSlug, payload);
+
+    if (response.success) {
+      return {
+        success: true,
+        message: 'Order created successfully',
+        data: response.data,
+      };
+    }
+
+    return {
+      success: false,
+      message: response.message || 'Failed to create order',
+      errors: response.errors as Record<string, string[]> | undefined,
+    };
+  } catch (error: unknown) {
+    console.error('Failed to create order:', error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to create order. Please try again.',
+    };
+  }
 }

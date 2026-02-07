@@ -44,6 +44,16 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 
+## WhatsApp Content Template Env Vars
+
+Set these env vars to enable Twilio Content Template sends. If any SID is missing,
+the backend automatically falls back to the existing plaintext WhatsApp message.
+
+- `TWILIO_CONTENT_SID_NEW_ORDER_MERCHANT`
+- `TWILIO_CONTENT_SID_ORDER_RECEIVED_CUSTOMER`
+- `TWILIO_CONTENT_SID_ORDER_OUT_FOR_DELIVERY`
+- `TWILIO_CONTENT_SID_ORDER_STATUS_UPDATE_CUSTOMER`
+
 ## Run tests
 
 ```bash

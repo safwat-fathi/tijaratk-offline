@@ -1,40 +1,16 @@
 import { getCookieAction } from "@/app/actions/cookie-store";
 import { STORAGE_KEYS } from "@/constants";
 import { ordersService } from "@/services/api/orders.service";
+import { tenantsService } from "@/services/api/tenants.service";
 import { OrderStatus } from "@/types/enums";
-import { Order } from "@/types/models/order";
 import TodaySnapshot from "./_components/TodaySnapshot";
-import ActionCenter from "./_components/ActionCenter";
-import LatestOrders from "./_components/LatestOrders";
-import QuickActions from "./_components/QuickActions";
 import EndOfDayTeaser from "./_components/EndOfDayTeaser";
-import {
-	ActionItem,
-	DashboardStats,
-	LatestOrder,
-} from "./_components/dashboard.types";
+import StorefrontLinkCard from "./_components/StorefrontLinkCard";
+import { DashboardStats } from "./_components/dashboard.types";
 
 export const metadata = {
 	title: "Dashboard Home",
 };
-
-function getTimeAgo(dateString: string): string {
-	const date = new Date(dateString);
-	const now = new Date();
-	const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-	let interval = seconds / 31536000;
-	if (interval > 1) return "منذ " + Math.floor(interval) + " سنة";
-	interval = seconds / 2592000;
-	if (interval > 1) return "منذ " + Math.floor(interval) + " شهر";
-	interval = seconds / 86400;
-	if (interval > 1) return "منذ " + Math.floor(interval) + " يوم";
-	interval = seconds / 3600;
-	if (interval > 1) return "منذ " + Math.floor(interval) + " ساعة";
-	interval = seconds / 60;
-	if (interval > 1) return "منذ " + Math.floor(interval) + " دقيقة";
-	return "منذ " + Math.floor(seconds) + " ثانية";
-}
 
 function isToday(dateString: string): boolean {
 	const date = new Date(dateString);
@@ -51,10 +27,17 @@ export default async function Dashboard() {
 	const user = userCookie ? JSON.parse(userCookie) : null;
 	const name = user?.name || "تاجر";
 
-	// Fetch orders (Server Side)
-	const response = await ordersService.getOrders();
+	const [ordersResponse, tenantResponse] = await Promise.all([
+		ordersService.getOrders(),
+		tenantsService.getMyTenant(),
+	]);
 
-	const allOrders = response.success && response.data ? response.data : [];
+	const allOrders =
+		ordersResponse.success && ordersResponse.data ? ordersResponse.data : [];
+	const tenantSlug =
+		tenantResponse.success && tenantResponse.data
+			? tenantResponse.data.slug
+			: undefined;
 
 	// 1. Process Today's Snapshot
 	const todayOrders = allOrders.filter(o => isToday(o.created_at));
@@ -64,83 +47,12 @@ export default async function Dashboard() {
 		ordersCount: todayOrders.length,
 		pendingOrdersCount: todayOrders.filter(
 			o => o.status === OrderStatus.DRAFT || o.status === OrderStatus.CONFIRMED,
-		).length, // Assuming Draft/Confirmed are 'Pending' work. Or specifically 'New'
+		).length,
 		deliveryFees: todayOrders.reduce(
 			(sum, o) => sum + Number(o.delivery_fee || 0),
 			0,
 		),
 	};
-
-	// Correction: "Pending / New Orders" usually means ones that need action.
-	// "New orders" = DRAFT. "Confirmed" are already processed?
-	// Let's refine based on "Action Center" logic.
-	// Snapshot "Pending" probably means "Active orders today" or "New".
-	// Let's stick to DRAFT (New) + CONFIRMED (in progress) for the count.
-
-	// 2. Process Action Center
-	// "New orders not confirmed": Status DRAFT
-	// "Orders out for delivery": Status OUT_FOR_DELIVERY
-	// "Orders waiting too long": DRAFT > 30mins.
-
-	const now = new Date();
-	const actionItems: ActionItem[] = [];
-
-	// Sort orders by date DESC (should be already, but ensure)
-	const sortedOrders = [...allOrders].sort(
-		(a, b) =>
-			new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-	);
-
-	sortedOrders.forEach(order => {
-		// Only care about active orders? Or all history?
-		// Usually action center is for ACTIVE orders.
-		// Completed/Cancelled don't need action.
-		if (
-			order.status === OrderStatus.COMPLETED ||
-			order.status === OrderStatus.CANCELLED
-		)
-			return;
-
-		const createdAt = new Date(order.created_at);
-		const diffMs = now.getTime() - createdAt.getTime();
-		const diffMins = diffMs / (1000 * 60);
-
-		let type: ActionItem["type"] | null = null;
-
-		if (order.status === OrderStatus.OUT_FOR_DELIVERY) {
-			type = "out_for_delivery";
-		} else if (order.status === OrderStatus.DRAFT) {
-			if (diffMins > 30) {
-				type = "late_order";
-			} else {
-				type = "new_order";
-			}
-		}
-
-		if (type) {
-			actionItems.push({
-				type,
-				orderId: order.id,
-				customerName: order.customer?.name || "Unknown",
-				totalAmount: Number(order.total || 0),
-				timeAgo: getTimeAgo(order.created_at),
-				publicToken: order.public_token,
-			});
-		}
-	});
-
-	// Limit action items? Design doesn't say, but "Action Center" suggests all relevant.
-	// Design says "If there’s nothing to act on → don’t show this section".
-
-	// 3. Latest Orders (Last 5)
-	// already sorted
-	const latestOrdersData: LatestOrder[] = sortedOrders.slice(0, 5).map(o => ({
-		id: o.id,
-		customerName: o.customer?.name || "Walk-in",
-		status: o.status,
-		totalPrice: Number(o.total || 0),
-		timeAgo: getTimeAgo(o.created_at),
-	}));
 
 	return (
 		<div className="flex flex-col gap-6 pb-20">
@@ -150,6 +62,7 @@ export default async function Dashboard() {
 					{new Date().getHours() < 12 ? "صباح الخير" : "مساء الخير"} {name}
 				</h1>
 			</div>
+			<StorefrontLinkCard slug={tenantSlug} />
 
 			{/* 1. Today Snapshot */}
 			<TodaySnapshot stats={stats} />

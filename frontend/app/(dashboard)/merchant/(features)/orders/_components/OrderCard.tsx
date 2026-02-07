@@ -85,7 +85,12 @@ export default function OrderCard({ order, isHighlighted }: OrderCardProps) {
 
   const renderItemsContent = () => {
     if (order.items && order.items.length > 0) {
-      return order.items.map((item) => `${item.quantity}× ${item.title}`).join(", ");
+      return order.items
+        .map((item) => {
+          const itemName = item.replaced_by_product?.name || item.name_snapshot;
+          return `${item.quantity}× ${itemName}`;
+        })
+        .join(", ");
     }
     
     // Check for free text payload

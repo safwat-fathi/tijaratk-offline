@@ -3,17 +3,41 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
+  Req,
+  UnauthorizedException,
+  UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
-import { HttpStatus, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
 import CONSTANTS from 'src/common/constants';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
+import { UploadFile } from 'src/common/decorators/upload-file.decorator';
+import { imageFileFilter } from 'src/common/utils/file-filters';
+import { ProductStatus } from 'src/common/enums/product-status.enum';
+
+type AuthenticatedRequest = Request & {
+  user?: {
+    tenant_id?: number;
+  };
+};
 
 @ApiTags('Products')
 @Controller('products')
@@ -23,25 +47,91 @@ export class ProductsController {
   @Post()
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
-  @ApiOperation({ summary: 'Create a new product' })
+  @ApiOperation({ summary: 'Create product (quick manual add)' })
   @ApiBody({ type: CreateProductDto })
-  @ApiResponse({ status: HttpStatus.CREATED, description: 'Product created successfully' })
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Product created successfully',
+  })
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createProductDto: CreateProductDto,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.create(tenantId, createProductDto);
+  }
+
+  @Post('from-catalog')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiOperation({ summary: 'Create product from catalog item' })
+  @ApiBody({ type: AddProductFromCatalogDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Product created from catalog successfully',
+  })
+  createFromCatalog(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: AddProductFromCatalogDto,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.createFromCatalog(tenantId, body);
+  }
+
+  @Get('catalog/categories')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiOperation({ summary: 'Get catalog categories' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Return active catalog categories',
+  })
+  findCatalogCategories() {
+    return this.productsService.findCatalogCategories();
+  }
+
+  @Get('catalog')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiOperation({ summary: 'Get catalog items' })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    description: 'Filter items by category',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return catalog items' })
+  findCatalogItems(@Query('category') category?: string) {
+    return this.productsService.findCatalogItems(category);
   }
 
   @Get()
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
-  @ApiOperation({ summary: 'Get all products' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Return all products' })
-  findAll() {
-    return this.productsService.findAll();
+  @ApiOperation({ summary: 'Get all tenant products' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return tenant products' })
+  findAll(@Req() req: AuthenticatedRequest) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.findAll(tenantId);
   }
 
   @Get('public/:slug')
-  @ApiOperation({ summary: 'Get all products by tenant slug (Public)' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Return all products for tenant' })
+  @ApiOperation({ summary: 'Get all active products by tenant slug (Public)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Return active products for tenant',
+  })
   findAllByTenantSlug(@Param('slug') slug: string) {
     return this.productsService.findAllByTenantSlug(slug);
   }
@@ -51,27 +141,71 @@ export class ProductsController {
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get a product by ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return the product' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Product not found' })
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Product not found',
+  })
+  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.findOne(+id, tenantId);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Update a product' })
-  @ApiBody({ type: UpdateProductDto })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Product updated successfully' })
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productsService.update(+id, updateProductDto);
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        image_url: { type: 'string' },
+        status: { type: 'string', enum: Object.values(ProductStatus) },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UploadFile('file', {
+    fileFilter: imageFileFilter,
+    limits: { fileSize: 1024 * 1024 * 5 },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Product updated successfully',
+  })
+  update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.update(+id, tenantId, updateProductDto, file);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
-  @ApiOperation({ summary: 'Delete a product' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Product deleted successfully' })
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(+id);
+  @ApiOperation({ summary: 'Archive a product' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Product archived successfully',
+  })
+  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.remove(+id, tenantId);
   }
 }

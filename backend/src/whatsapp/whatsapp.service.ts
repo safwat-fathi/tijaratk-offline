@@ -1,8 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import twilio from 'twilio';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';
+import { ZodError } from 'zod';
+import {
+  buildContentVariables,
+  getTemplateSid,
+  renderFallbackText,
+  validateTemplatePayload,
+} from './templates/templates.registry.utils';
+import {
+  type TemplateKey,
+  type TemplatePayload,
+} from './templates/templates.registry';
 import { welcomeMerchant } from './templates/welcome-merchant';
-
 
 @Injectable()
 export class WhatsappService {
@@ -35,32 +45,23 @@ export class WhatsappService {
   }
 
   async sendMessage(to: string, body: string): Promise<void> {
-    const client = this.getClient();
-    const from = process.env.WHATSAPP_PHONE_NUMBER;
-
-    if (!client || !from) {
-      if (!from) this.logger.warn('WHATSAPP_PHONE_NUMBER is missing');
+    const context = this.resolveMessageContext(to);
+    if (!context) {
       return;
     }
 
     try {
-      const formattedTo = formatPhoneNumber(to);
+      const { client, from, to: recipient } = context;
       this.logger.log(
-        `Sending WhatsApp message to ${formattedTo} (original: ${to}): ${body}`,
+        `Sending WhatsApp message to ${recipient} (original: ${to}): ${body}`,
       );
-      // Ensure number has whatsapp: prefix if not present, though typically passed cleanly.
-      // Twilio requires 'whatsapp:+1234567890' format.
-      const toStr = formattedTo.startsWith('whatsapp:')
-        ? formattedTo
-        : `whatsapp:${formattedTo}`;
-      const fromStr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
 
       await client.messages.create({
         body,
-        from: fromStr,
-        to: toStr,
+        from,
+        to: recipient,
       });
-      this.logger.log(`Message sent to ${formattedTo}`);
+      this.logger.log(`Message sent to ${recipient}`);
     } catch (error) {
       const details =
         error instanceof Error ? error.stack || error.message : String(error);
@@ -68,9 +69,117 @@ export class WhatsappService {
     }
   }
 
+  /**
+   * Sends a Twilio Content Template message using content SID and variables JSON.
+   */
+  async sendContentMessage(
+    to: string,
+    contentSid: string,
+    contentVariables: string,
+  ): Promise<void> {
+    const context = this.resolveMessageContext(to);
+    if (!context) {
+      throw new Error('WhatsApp transport is not configured');
+    }
+
+    const { client, from, to: recipient } = context;
+
+    await client.messages.create({
+      from,
+      to: recipient,
+      contentSid,
+      contentVariables,
+    });
+  }
+
+  /**
+   * Sends a typed WhatsApp template and falls back to plaintext on content failures.
+   */
+  async sendTemplatedMessage<K extends TemplateKey>({
+    key,
+    to,
+    payload,
+  }: {
+    key: K;
+    to: string;
+    payload: TemplatePayload<K>;
+  }): Promise<void> {
+    let validatedPayload: TemplatePayload<K>;
+
+    try {
+      validatedPayload = validateTemplatePayload(key, payload);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        this.logger.warn(
+          `Skipping WhatsApp template send for ${key}: payload validation failed.`,
+        );
+        return;
+      }
+
+      throw error;
+    }
+
+    const fallbackMessage = renderFallbackText(key, validatedPayload);
+    const contentSid = getTemplateSid(key);
+
+    if (!contentSid) {
+      this.logger.warn(
+        `Missing content SID for template ${key}; sending fallback text message.`,
+      );
+      await this.sendMessage(to, fallbackMessage);
+      return;
+    }
+
+    try {
+      const contentVariables = buildContentVariables(key, validatedPayload);
+      await this.sendContentMessage(to, contentSid, contentVariables);
+      this.logger.log(`Template message sent using content SID for ${key}.`);
+    } catch (error) {
+      const details =
+        error instanceof Error ? error.stack || error.message : String(error);
+      this.logger.error(
+        `Failed to send content template ${key}; sending fallback text.`,
+        details,
+      );
+      await this.sendMessage(to, fallbackMessage);
+    }
+  }
+
   async sendWelcomeMessage(phone: string, storeName: string): Promise<void> {
     const loginUrl = `${process.env.CLIENT_URL || 'https://tijaratk.com'}/merchant/login`;
     const message = welcomeMerchant({ storeName, loginUrl });
     await this.sendMessage(phone, message);
+  }
+
+  /**
+   * Resolves the normalized Twilio message context for WhatsApp transport.
+   */
+  private resolveMessageContext(
+    to: string,
+  ): { client: twilio.Twilio; from: string; to: string } | null {
+    const client = this.getClient();
+    const from = process.env.WHATSAPP_PHONE_NUMBER;
+
+    if (!client || !from) {
+      if (!from) {
+        this.logger.warn('WHATSAPP_PHONE_NUMBER is missing');
+      }
+
+      return null;
+    }
+
+    const formattedTo = formatPhoneNumber(to);
+    const toWithPrefix = formattedTo.startsWith('whatsapp:')
+      ? formattedTo
+      : `whatsapp:${formattedTo}`;
+    const fromWithPrefix = from.startsWith('whatsapp:')
+      ? from
+      : `whatsapp:${from}`;
+
+    return {
+      client,
+      from: fromWithPrefix,
+      to: toWithPrefix,
+    };
   }
 }

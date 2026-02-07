@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 
-import { useState, useActionState, useEffect } from "react";
+import { useState, useActionState } from "react";
 import { Product } from "@/types/models/product";
+import { Order } from "@/types/models/order";
 import ProductList from "./ProductList";
 import { createOrderAction } from "@/actions/order-actions";
 
@@ -21,13 +22,17 @@ export default function OrderForm({
 }: {
 	tenantSlug: string;
 	products: Product[];
-	initialOrder?: any;
+	initialOrder?: Order | null;
 }) {
 	// Initialize cart from initialOrder
 	const initialCart =
 		initialOrder?.items?.reduce(
-			(acc: any, item: any) => {
-				acc[item.product_id] = item.quantity;
+			(acc: Record<number, number>, item) => {
+				if (item.product_id) {
+					const parsedQty = Number.parseFloat(String(item.quantity ?? "1"));
+					acc[item.product_id] =
+						Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 1;
+				}
 				return acc;
 			},
 			{} as Record<number, number>,
@@ -38,23 +43,25 @@ export default function OrderForm({
 	const [orderRequest, setOrderRequest] = useState(
 		initialOrder?.free_text_payload?.text || "",
 	);
-	const [orderToken, setOrderToken] = useState<string | null>(null); // New state for orderToken
 	const [state, formAction, isPending] = useActionState(
 		createOrderAction.bind(null, tenantSlug),
 		initialState,
 	);
 
-	// Effect to handle success state and capture orderToken
-	useEffect(() => {
-		if (state.success && state.data?.public_token) {
-			setOrderToken(state.data.public_token);
-		}
-	}, [state]);
+	const orderToken =
+		state.success &&
+		state.data &&
+		typeof state.data === "object" &&
+		"public_token" in state.data &&
+		typeof state.data.public_token === "string"
+			? state.data.public_token
+			: null;
 
 	const handleUpdateCart = (pid: number, qty: number) => {
 		setCart(prev => {
 			if (qty === 0) {
-				const { [pid]: _, ...rest } = prev;
+				const rest = { ...prev };
+				delete rest[pid];
 				return rest;
 			}
 			return { ...prev, [pid]: qty };
@@ -62,19 +69,14 @@ export default function OrderForm({
 	};
 
 	const totalItems = Object.values(cart).reduce((a, b) => a + b, 0);
-	const totalPrice = Object.entries(cart).reduce((sum, [pid, qty]) => {
-		const product = products.find(p => p.id === Number(pid));
-		return sum + (product ? Number(product.price) * qty : 0);
-	}, 0);
 
 	// Prepare cart items data for hidden input
 	const cartItems = Object.entries(cart).map(([pid, qty]) => {
 		const product = products.find(p => p.id === Number(pid));
 		return {
 			product_id: Number(pid),
-			title: product?.name || "Unknown",
-			unit_price: Number(product?.price || 0),
-			quantity: qty,
+			name: product?.name || "منتج",
+			quantity: String(qty),
 		};
 	});
 
@@ -205,7 +207,7 @@ export default function OrderForm({
 				{/* Manual Order Section (Primary) */}
 				<div
 					id="order-notes"
-					className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 scroll-mt-52"
+					className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-4 transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 scroll-mt-52"
 				>
 					<div className="flex items-center gap-3 mb-3">
 						<div className="bg-orange-100 p-2.5 rounded-xl text-orange-600">
@@ -260,7 +262,8 @@ export default function OrderForm({
 						{products.length > 5 && (
 							<div className="text-center mt-4">
 								<p className="text-sm text-gray-400 italic">
-									عرض أهم 5 منتجات. استخدم "ملاحظات الطلب" لأي شيء آخر.
+									عرض أهم 5 منتجات. استخدم &quot;ملاحظات الطلب&quot; لأي شيء
+									آخر.
 								</p>
 							</div>
 						)}
@@ -431,21 +434,21 @@ export default function OrderForm({
 					<div className="max-w-md mx-auto">
 						<div className="flex justify-between items-end mb-4 px-2">
 							<div className="text-sm font-medium text-gray-500">
-								الإجمالي التقديري
+								العناصر المختارة
 							</div>
 							<div className="flex items-baseline gap-1">
-								{totalPrice > 0 ? (
+								{totalItems > 0 ? (
 									<>
 										<span className="text-2xl font-bold text-gray-900">
-											{totalPrice.toFixed(2)}
+											{totalItems}
 										</span>
 										<span className="text-sm font-semibold text-gray-500">
-											ج.م
+											عنصر
 										</span>
 									</>
 								) : (
 									<span className="text-sm font-medium text-gray-500 italic">
-										يتم تأكيده من المتجر
+										السعر يتم تأكيده بعد الطلب
 									</span>
 								)}
 							</div>

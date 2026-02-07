@@ -1,5 +1,5 @@
 import {
-	BeforeInsert,
+  BeforeInsert,
   Column,
   Entity,
   JoinColumn,
@@ -14,6 +14,7 @@ import { OrderItem } from './order-item.entity';
 import { OrderType } from 'src/common/enums/order-type.enum';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 import { PricingMode } from 'src/common/enums/pricing-mode.enum';
+import { randomUUID } from 'node:crypto';
 
 @Entity('orders')
 export class Order extends TenantBaseEntity {
@@ -79,6 +80,8 @@ export class Order extends TenantBaseEntity {
 
   @BeforeInsert()
   generatePublicToken() {
-    this.public_token = crypto.randomUUID();
+    if (!this.public_token) {
+      this.public_token = randomUUID();
+    }
   }
 }

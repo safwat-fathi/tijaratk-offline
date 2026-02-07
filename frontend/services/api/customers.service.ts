@@ -1,6 +1,11 @@
 import HttpService from "@/services/base/http.service";
 import { Customer } from "@/types/models/customer";
 
+type CustomersListResponse = {
+	data: Customer[];
+	meta: Record<string, unknown>;
+};
+
 class CustomersService extends HttpService {
 	constructor() {
 		super("/customers");
@@ -12,11 +17,15 @@ class CustomersService extends HttpService {
 		if (params?.page) searchParams.append("page", params.page.toString());
 		if (params?.limit) searchParams.append("limit", params.limit.toString());
 		
-		return this.get<{ data: Customer[]; meta: any }>(`?${searchParams.toString()}`);
+		return this.get<CustomersListResponse>(
+			`?${searchParams.toString()}`,
+			undefined,
+			{ authRequired: true },
+		);
 	}
 
 	public async getCustomer(id: number) {
-		return this.get<Customer>(`${id}`);
+		return this.get<Customer>(`${id}`, undefined, { authRequired: true });
 	}
 }
 

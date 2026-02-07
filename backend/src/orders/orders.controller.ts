@@ -24,8 +24,8 @@ import CONSTANTS from 'src/common/constants';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ReplaceOrderItemDto } from './dto/replace-order-item.dto';
 
-@ApiTags('Orders')
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
@@ -71,8 +71,23 @@ export class OrdersController {
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all orders' })
   findAll(@Req() req: any, @Query('date') date?: string) {
-    const tenantId = req.user?.tenant_id || 1;
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
     return this.ordersService.findAll(tenantId, date);
+  }
+
+  @Get('tracking/:token')
+  @ApiOperation({
+    summary: 'Get an order by public token (Tracking)',
+    description: 'Get an order by public token (Tracking)',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return the order' })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Order not found' })
+  findByPublicToken(@Param('token') token: string) {
+    return this.ordersService.findByPublicToken(token);
   }
 
   @Get(':id')
@@ -85,8 +100,7 @@ export class OrdersController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Return the order' })
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Order not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
-    // Check if ParseIntPipe is imported or just use it
-    return this.ordersService.findOne(+id);
+    return this.ordersService.findOne(id);
   }
 
   @Patch(':id')
@@ -105,14 +119,32 @@ export class OrdersController {
     return this.ordersService.update(+id, updateOrderDto);
   }
 
-  @Get('tracking/:token')
+  @Patch('items/:id/replace')
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiOperation({
-    summary: 'Get an order by public token (Tracking)',
-    description: 'Get an order by public token (Tracking)',
+    summary: 'Replace order item product',
+    description: 'Set or clear merchant-selected alternative for an order item',
   })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Return the order' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Order not found' })
-  findByPublicToken(@Param('token') token: string) {
-    return this.ordersService.findByPublicToken(token);
+  @ApiBody({ type: ReplaceOrderItemDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Order item replacement updated successfully',
+  })
+  replaceOrderItem(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReplaceOrderItemDto,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.ordersService.replaceOrderItem(
+      tenantId,
+      id,
+      dto.replaced_by_product_id ?? null,
+    );
   }
 }

@@ -4,8 +4,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, Between } from 'typeorm';
+import { Between, DataSource, DeepPartial, In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -16,6 +17,8 @@ import { PricingMode } from 'src/common/enums/pricing-mode.enum';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 import { TenantsService } from 'src/tenants/tenants.service';
 import { OrderWhatsappService } from './order-whatsapp.service';
+import { Product } from 'src/products/entities/product.entity';
+import { ProductStatus } from 'src/common/enums/product-status.enum';
 
 @Injectable()
 export class OrdersService {
@@ -26,6 +29,8 @@ export class OrdersService {
     private readonly ordersRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemsRepository: Repository<OrderItem>,
+    @InjectRepository(Product)
+    private readonly productsRepository: Repository<Product>,
     private readonly customersService: CustomersService,
     private readonly tenantsService: TenantsService,
     private readonly orderWhatsappService: OrderWhatsappService,
@@ -44,6 +49,9 @@ export class OrdersService {
     return this.createForTenantId(tenant.id, createOrderDto);
   }
 
+  /**
+   * Creates an order and items while preserving historical snapshots.
+   */
   async createForTenantId(
     tenantId: number,
     createOrderDto: CreateOrderDto,
@@ -51,7 +59,6 @@ export class OrdersService {
     let isFirstOrder = false;
 
     const savedOrder = await this.dataSource.transaction(async (manager) => {
-      // 1. Resolve Customer
       const customer = await this.customersService.findOrCreate(
         createOrderDto.customer.phone,
         tenantId,
@@ -60,69 +67,109 @@ export class OrdersService {
         manager,
       );
 
-      // 2. Determine Pricing Mode & Totals
-      let pricingMode = PricingMode.AUTO;
-      let subtotal = 0;
-      let deliveryFee = createOrderDto.delivery_fee || 0;
-      let total = 0;
+      const hasItems = Boolean(createOrderDto.items?.length);
+      const items = createOrderDto.items || [];
 
-      const hasItems = createOrderDto.items && createOrderDto.items.length > 0;
+      const productIds = Array.from(
+        new Set(
+          items
+            .map((item) => item.product_id)
+            .filter((id): id is number => typeof id === 'number'),
+        ),
+      );
 
-      if (createOrderDto.total !== undefined && createOrderDto.total !== null) {
-        // Manual total override
-        pricingMode = PricingMode.MANUAL;
-        total = createOrderDto.total;
-        if (hasItems && createOrderDto.items) {
-          subtotal = createOrderDto.items.reduce(
-            (sum, item) =>
-              sum + Number(item.unit_price) * Number(item.quantity),
-            0,
-          );
-        }
-      } else {
-        // Auto calculation
-        if (hasItems && createOrderDto.items) {
-          subtotal = createOrderDto.items.reduce(
-            (sum, item) =>
-              sum + Number(item.unit_price) * Number(item.quantity),
-            0,
-          );
-        }
-        total = subtotal + deliveryFee;
-      }
+      const products = productIds.length
+        ? await manager.getRepository(Product).find({
+            where: {
+              id: In(productIds),
+              tenant_id: tenantId,
+              status: ProductStatus.ACTIVE,
+            },
+          })
+        : [];
 
-      // 3. Create Order
-      const order = manager.getRepository(Order).create({
+      const productsById = new Map(products.map((product) => [product.id, product]));
+
+      const deliveryFee = createOrderDto.delivery_fee || 0;
+      let subtotal: number | undefined;
+      let total: number | undefined;
+      let pricingMode = PricingMode.MANUAL;
+
+      const orderPayload: DeepPartial<Order> = {
         tenant_id: tenantId,
         customer_id: customer.id,
+        public_token: randomUUID(),
         order_type: createOrderDto.order_type,
         status: OrderStatus.DRAFT,
         pricing_mode: pricingMode,
-        subtotal,
         delivery_fee: deliveryFee,
-        total,
         free_text_payload: createOrderDto.free_text_payload,
         notes: createOrderDto.notes,
-      });
+      };
 
-      const savedOrder = await manager.getRepository(Order).save(order);
+      const orderRepository = manager.getRepository(Order);
+      const orderEntity = orderRepository.create(orderPayload);
+      const persistedOrder = await orderRepository.save(orderEntity);
 
-      // 4. Create Items
-      if (hasItems && createOrderDto.items) {
-        const items = createOrderDto.items.map((item) =>
-          manager.getRepository(OrderItem).create({
-            order: savedOrder,
-            product_id: item.product_id,
-            title: item.title,
-            unit_price: item.unit_price,
-            quantity: item.quantity,
-            total: Number(item.unit_price) * Number(item.quantity),
-          }),
-        );
-        await manager.getRepository(OrderItem).save(items);
+      if (hasItems) {
+        const orderItemsPayload: DeepPartial<OrderItem>[] = items.map((item) => {
+          const matchedProduct = item.product_id
+            ? productsById.get(item.product_id)
+            : undefined;
+
+          const quantityText = String(item.quantity).trim();
+          const lineTotal = this.resolveItemTotal(
+            quantityText,
+            item.unit_price,
+            item.total_price,
+          );
+
+          return {
+            order_id: persistedOrder.id,
+            product_id: matchedProduct?.id,
+            name_snapshot:
+              item.name?.trim() || matchedProduct?.name || 'منتج غير محدد',
+            quantity: quantityText,
+            unit_price: item.unit_price ?? null,
+            total_price: lineTotal,
+            notes: item.notes,
+          };
+        });
+
+        const orderItems = await manager
+          .getRepository(OrderItem)
+          .save(orderItemsPayload);
+
+        const pricedLines = orderItems
+          .map((item) => (item.total_price !== null ? Number(item.total_price) : null))
+          .filter((value): value is number => value !== null && !Number.isNaN(value));
+
+        if (pricedLines.length > 0) {
+          subtotal = this.roundCurrency(
+            pricedLines.reduce((sum, lineTotal) => sum + lineTotal, 0),
+          );
+        }
       }
 
-      // 5. Update Customer Stats
+      if (createOrderDto.total !== undefined && createOrderDto.total !== null) {
+        pricingMode = PricingMode.MANUAL;
+        total = Number(createOrderDto.total);
+      } else if (subtotal !== undefined) {
+        pricingMode = PricingMode.AUTO;
+        total = this.roundCurrency(subtotal + Number(deliveryFee));
+      } else if (deliveryFee > 0) {
+        pricingMode = PricingMode.MANUAL;
+        total = Number(deliveryFee);
+      } else {
+        pricingMode = PricingMode.MANUAL;
+        total = undefined;
+      }
+
+      persistedOrder.pricing_mode = pricingMode;
+      persistedOrder.subtotal = subtotal;
+      persistedOrder.total = total;
+      await orderRepository.save(persistedOrder);
+
       await manager.increment(Customer, { id: customer.id }, 'order_count', 1);
       await manager.update(
         Customer,
@@ -134,10 +181,9 @@ export class OrdersService {
         isFirstOrder = true;
       }
 
-      return savedOrder;
+      return persistedOrder;
     });
 
-    // Notify Seller & Customer
     const completeOrder = await this.findOne(savedOrder.id);
     await this.notifyOrderCreated(completeOrder, isFirstOrder);
 
@@ -159,7 +205,7 @@ export class OrdersService {
 
     return this.ordersRepository.find({
       where,
-      relations: ['customer', 'items'],
+      relations: ['customer', 'items', 'items.replaced_by_product'],
       order: { created_at: 'DESC' },
     });
   }
@@ -167,11 +213,13 @@ export class OrdersService {
   async findOne(id: number): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { id },
-      relations: ['customer', 'items', 'tenant'],
+      relations: ['customer', 'items', 'items.replaced_by_product', 'tenant'],
     });
+
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
+
     return order;
   }
 
@@ -183,15 +231,8 @@ export class OrdersService {
       this.validateStatusTransition(previousStatus, updateOrderDto.status);
     }
 
-    // Simplistic update for now - just update fields on order
-    // Handling item updates requires more logic (diffing etc), skipping for MVP creation focus
-    // unless explicitly asked. The prompt mentioned "Allow adding items... later".
-    // For now, let's just update the main order fields.
-
     Object.assign(order, updateOrderDto);
 
-    // Recalculate if total is not manually fixed?
-    // If update has total, switch to manual?
     if (updateOrderDto.total !== undefined) {
       order.pricing_mode = PricingMode.MANUAL;
     }
@@ -205,12 +246,54 @@ export class OrdersService {
     return savedOrder;
   }
 
+  /**
+   * Sets or clears replacement product for a specific order item.
+   */
+  async replaceOrderItem(
+    tenantId: number,
+    itemId: number,
+    replacedByProductId: number | null,
+  ): Promise<OrderItem> {
+    const orderItem = await this.orderItemsRepository.findOne({
+      where: { id: itemId },
+      relations: ['order'],
+    });
+
+    if (!orderItem || orderItem.order.tenant_id !== tenantId) {
+      throw new NotFoundException(`Order item with ID ${itemId} not found`);
+    }
+
+    if (replacedByProductId === null) {
+      orderItem.replaced_by_product_id = null;
+      return this.orderItemsRepository.save(orderItem);
+    }
+
+    const replacement = await this.productsRepository.findOne({
+      where: {
+        id: replacedByProductId,
+        tenant_id: tenantId,
+        status: ProductStatus.ACTIVE,
+      },
+    });
+
+    if (!replacement) {
+      throw new NotFoundException(
+        `Replacement product with ID ${replacedByProductId} not found`,
+      );
+    }
+
+    orderItem.replaced_by_product_id = replacement.id;
+    return this.orderItemsRepository.save(orderItem);
+  }
+
   async findByPublicToken(token: string): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { public_token: token },
       relations: {
         customer: true,
-        items: true,
+        items: {
+          replaced_by_product: true,
+        },
         tenant: true,
       },
       select: {
@@ -221,9 +304,11 @@ export class OrdersService {
         },
       },
     });
+
     if (!order) {
       throw new NotFoundException(`Order with token ${token} not found`);
     }
+
     return order;
   }
 
@@ -257,22 +342,67 @@ export class OrdersService {
     }
   }
 
+  /**
+   * Resolves total price from explicit total or a unit-price calculation.
+   */
+  private resolveItemTotal(
+    quantityText: string,
+    unitPrice?: number,
+    totalPrice?: number,
+  ): number | null {
+    if (totalPrice !== undefined && totalPrice !== null) {
+      return this.roundCurrency(Number(totalPrice));
+    }
+
+    if (unitPrice === undefined || unitPrice === null) {
+      return null;
+    }
+
+    const numericQty = this.parseNumericQuantity(quantityText);
+    if (numericQty === null) {
+      return null;
+    }
+
+    return this.roundCurrency(Number(unitPrice) * numericQty);
+  }
+
+  /**
+   * Parses numeric quantity from free-text input when possible.
+   */
+  private parseNumericQuantity(quantityText: string): number | null {
+    const match = quantityText.trim().replace(',', '.').match(/\d+(\.\d+)?/);
+    if (!match) {
+      return null;
+    }
+
+    const parsed = Number(match[0]);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return null;
+    }
+
+    return parsed;
+  }
+
+  /**
+   * Rounds currency values to 2 decimal places.
+   */
+  private roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
   private async notifyOrderCreated(
     order: Order,
     isFirstOrder: boolean,
   ): Promise<void> {
     try {
-      // 1. Notify Seller
       await this.orderWhatsappService.notifySellerNewOrder(order);
 
-      // 2. Notify Customer (Order Confirmed)
       const trackingUrl = this.buildTrackingUrl(order.public_token);
       await this.orderWhatsappService.notifyCustomerConfirmed(
         order,
         trackingUrl,
       );
 
-      // 3. Welcome Message (if first order)
       if (isFirstOrder) {
         await this.orderWhatsappService.notifyWelcomeCustomer(order);
       }
