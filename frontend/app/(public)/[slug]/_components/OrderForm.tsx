@@ -184,6 +184,11 @@ export default function OrderForm({
 		];
 	}, [initialCategories, initialProducts, initialProductsMeta.total]);
 
+	const hasMerchantProducts =
+		initialProductsMeta.total > 0 ||
+		initialProducts.length > 0 ||
+		initialCategories.some(category => category.count > 0);
+
 	const activeProducts = productsByCategory[activeCategory] || [];
 	const activePagination =
 		paginationByCategory[activeCategory] || DEFAULT_PAGINATION_STATE;
@@ -529,7 +534,7 @@ export default function OrderForm({
 				</div>
 
 				{/* Product List (Secondary) */}
-				{categoryTabs.length > 0 && (
+				{hasMerchantProducts && (
 					<div className="mt-8">
 						<div className="flex items-center justify-center mb-6">
 							<div className="h-px bg-gray-200 w-full"></div>

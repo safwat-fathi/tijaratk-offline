@@ -16,7 +16,7 @@ export const templatesRegistry = {
       customerName: z.string().trim().min(1),
       orderNumber: z.string().trim().min(1),
       area: z.string().trim().min(1),
-      totalEgp: z.number().positive(),
+      totalEgp: z.number().nonnegative(),
     }),
     fallbackText: (data: {
       customerName: string;
@@ -42,7 +42,7 @@ export const templatesRegistry = {
     schema: z.object({
       customerName: z.string().trim().min(1),
       orderNumber: z.string().trim().min(1),
-      totalEgp: z.number().positive(),
+      totalEgp: z.number().nonnegative(),
     }),
     fallbackText: (data: {
       customerName: string;
