@@ -7,7 +7,11 @@ import { ordersService } from "@/services/api/orders.service";
 
 // Types
 import { Tenant } from "@/types/models/tenant";
-import { Product } from "@/types/models/product";
+import {
+	Product,
+	PublicProductCategory,
+	PublicProductsMeta,
+} from "@/types/models/product";
 import { Order } from "@/types/models/order";
 import { notFound } from "next/navigation";
 
@@ -19,9 +23,38 @@ async function getTenant(slug: string): Promise<Tenant | null> {
 	return response.data;
 }
 
-async function getProducts(slug: string): Promise<Product[]> {
-	const response = await productsService.getPublicProducts(slug);
+const EMPTY_PRODUCTS_META: PublicProductsMeta = {
+	total: 0,
+	page: 1,
+	limit: 20,
+	last_page: 1,
+	has_next: false,
+};
 
+async function getInitialProducts(slug: string): Promise<{
+	products: Product[];
+	meta: PublicProductsMeta;
+}> {
+	const response = await productsService.getPublicProducts(slug, {
+		page: 1,
+		limit: 20,
+	});
+
+	if (!response.success || !response.data) {
+		return {
+			products: [],
+			meta: EMPTY_PRODUCTS_META,
+		};
+	}
+
+	return {
+		products: response.data.data,
+		meta: response.data.meta,
+	};
+}
+
+async function getPublicCategories(slug: string): Promise<PublicProductCategory[]> {
+	const response = await productsService.getPublicProductCategories(slug);
 	if (!response.success || !response.data) return [];
 	return response.data;
 }
@@ -50,7 +83,10 @@ export default async function StorePage({
 	const { reorder } = await searchParams;
 
 	const tenant = await getTenant(slug);
-	const products = await getProducts(slug);
+	const [{ products, meta }, categories] = await Promise.all([
+		getInitialProducts(slug),
+		getPublicCategories(slug),
+	]);
 	const initialOrder = await getOrder(reorder);
 
 	if (!tenant || !tenant.id) {
@@ -71,7 +107,9 @@ export default async function StorePage({
 
 					<OrderForm
 						tenantSlug={tenant.slug}
-						products={products}
+						initialProducts={products}
+						initialProductsMeta={meta}
+						initialCategories={categories}
 						initialOrder={initialOrder}
 					/>
 			</div>

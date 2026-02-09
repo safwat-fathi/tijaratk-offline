@@ -1,41 +1,44 @@
 "use client";
 
-import { useState } from "react";
 import { Product } from "@/types/models/product";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
 
 type ProductListProps = {
 	products: Product[];
+	quantities: Record<number, number>;
 	onUpdateCart: (productId: number, qty: number) => void;
+	loadMoreTriggerIndex?: number;
+	setLoadMoreTarget?: (node: HTMLDivElement | null) => void;
 };
 
 export default function ProductList({
 	products,
+	quantities,
 	onUpdateCart,
+	loadMoreTriggerIndex,
+	setLoadMoreTarget,
 }: ProductListProps) {
-	const [quantities, setQuantities] = useState<Record<number, number>>({});
-
 	const handleUpdate = (productId: number, delta: number) => {
 		const current = quantities[productId] || 0;
 		const next = Math.max(0, current + delta);
-
-		setQuantities(prev => ({
-			...prev,
-			[productId]: next,
-		}));
 
 		onUpdateCart(productId, next);
 	};
 
 	return (
 		<div className="space-y-4">
-			{products.map(product => {
+			{products.map((product, index) => {
 				const qty = quantities[product.id] || 0;
+				const shouldAttachLoadMoreRef =
+					typeof loadMoreTriggerIndex === "number" &&
+					loadMoreTriggerIndex >= 0 &&
+					index === loadMoreTriggerIndex;
 
 				return (
 					<div
 						key={product.id}
+						ref={shouldAttachLoadMoreRef ? setLoadMoreTarget : undefined}
 						className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
 					>
 						<div className="flex items-center gap-3">

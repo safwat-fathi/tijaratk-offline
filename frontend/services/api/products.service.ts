@@ -1,5 +1,10 @@
 import HttpService from '@/services/base/http.service';
-import { CatalogItem, Product } from '@/types/models/product';
+import {
+  CatalogItem,
+  Product,
+  PublicProductCategory,
+  PublicProductsResponse,
+} from '@/types/models/product';
 
 class ProductsService extends HttpService {
   constructor() {
@@ -13,8 +18,17 @@ class ProductsService extends HttpService {
     });
   }
 
-  public async getPublicProducts(slug: string) {
-    return this.get<Product[]>(`public/${slug}`, undefined, {
+  public async getPublicProducts(
+    slug: string,
+    params?: { category?: string; page?: number; limit?: number },
+  ) {
+    return this.get<PublicProductsResponse>(`public/${slug}`, params, {
+      cache: 'no-store',
+    });
+  }
+
+  public async getPublicProductCategories(slug: string) {
+    return this.get<PublicProductCategory[]>(`public/${slug}/categories`, undefined, {
       cache: 'no-store',
     });
   }

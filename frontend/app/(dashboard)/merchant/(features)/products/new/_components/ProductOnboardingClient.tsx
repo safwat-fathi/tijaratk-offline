@@ -65,6 +65,23 @@ export default function ProductOnboardingClient({
     [catalogItems],
   );
 
+  const categoryImages = useMemo(() => {
+    const imagesByCategory: Record<string, string | null> = {};
+
+    for (const item of catalogItems) {
+      if (imagesByCategory[item.category]) {
+        continue;
+      }
+
+      const imageUrl = resolveImageUrl(item.image_url);
+      if (imageUrl) {
+        imagesByCategory[item.category] = imageUrl;
+      }
+    }
+
+    return imagesByCategory;
+  }, [catalogItems]);
+
   const filteredCatalogItems = useMemo(() => {
     if (activeCategory === ALL_CATALOG_ITEMS) {
       return catalogItems;
@@ -238,13 +255,29 @@ export default function ProductOnboardingClient({
               key={category}
               type="button"
               onClick={() => setActiveCategory(category)}
-              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm ${
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
                 activeCategory === category
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
                   : 'border-gray-300 text-gray-700'
               }`}
             >
-              {category}
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                {categoryImages[category] ? (
+                  <Image
+                    src={categoryImages[category]!}
+                    alt={category}
+                    width={18}
+                    height={18}
+                    unoptimized
+                    className="h-[18px] w-[18px] rounded-full border border-gray-200 object-cover"
+                  />
+                ) : (
+                  <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gray-100 text-[10px]">
+                    🛒
+                  </span>
+                )}
+                <span>{category}</span>
+              </span>
             </button>
           ))}
         </div>

@@ -32,6 +32,7 @@ import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { UploadFile } from 'src/common/decorators/upload-file.decorator';
 import { imageFileFilter } from 'src/common/utils/file-filters';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
+import { GetPublicProductsDto } from './dto/get-public-products.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -132,8 +133,28 @@ export class ProductsController {
     status: HttpStatus.OK,
     description: 'Return active products for tenant',
   })
-  findAllByTenantSlug(@Param('slug') slug: string) {
-    return this.productsService.findAllByTenantSlug(slug);
+  findAllByTenantSlug(
+    @Param('slug') slug: string,
+    @Query() query: GetPublicProductsDto,
+  ) {
+    return this.productsService.findAllByTenantSlug(
+      slug,
+      query.page,
+      query.limit,
+      query.category,
+    );
+  }
+
+  @Get('public/:slug/categories')
+  @ApiOperation({
+    summary: 'Get public product categories by tenant slug (Public)',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Return public storefront category summaries',
+  })
+  findPublicCategoriesByTenantSlug(@Param('slug') slug: string) {
+    return this.productsService.findPublicCategoriesByTenantSlug(slug);
   }
 
   @Get(':id')

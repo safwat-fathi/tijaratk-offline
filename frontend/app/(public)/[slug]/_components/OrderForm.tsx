@@ -1,27 +1,75 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
-import { useState, useActionState } from "react";
-import { Product } from "@/types/models/product";
+import {
+	useActionState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	Product,
+	PublicProductCategory,
+	PublicProductsMeta,
+} from "@/types/models/product";
 import { Order } from "@/types/models/order";
 import ProductList from "./ProductList";
 import { createOrderAction } from "@/actions/order-actions";
+import { productsService } from "@/services/api/products.service";
+import { getImageUrl } from "@/lib/utils/image";
 
 const initialState = {
-  success: false,
-  message: "",
-  errors: undefined,
-  data: undefined, // Add data to initial state to hold public_token
+	success: false,
+	message: "",
+	errors: undefined,
+	data: undefined,
+};
+
+const ALL_PRODUCTS_CATEGORY = "__all_products__";
+const PAGE_SIZE = 20;
+const PRELOAD_THRESHOLD_ITEMS = 5;
+
+type PaginationState = {
+	page: number;
+	lastPage: number;
+	isLoading: boolean;
+	error: string | null;
+};
+
+const DEFAULT_PAGINATION_STATE: PaginationState = {
+	page: 1,
+	lastPage: 1,
+	isLoading: false,
+	error: null,
+};
+
+const dedupeProducts = (products: Product[]): Product[] => {
+	const seen = new Set<number>();
+
+	return products.filter(product => {
+		if (seen.has(product.id)) {
+			return false;
+		}
+		seen.add(product.id);
+		return true;
+	});
 };
 
 export default function OrderForm({
 	tenantSlug,
-	products,
+	initialProducts,
+	initialProductsMeta,
+	initialCategories,
 	initialOrder,
 }: {
 	tenantSlug: string;
-	products: Product[];
+	initialProducts: Product[];
+	initialProductsMeta: PublicProductsMeta;
+	initialCategories: PublicProductCategory[];
 	initialOrder?: Order | null;
 }) {
 	// Initialize cart from initialOrder
@@ -47,6 +95,211 @@ export default function OrderForm({
 		createOrderAction.bind(null, tenantSlug),
 		initialState,
 	);
+	const [activeCategory, setActiveCategory] = useState(ALL_PRODUCTS_CATEGORY);
+	const [productsByCategory, setProductsByCategory] = useState<
+		Record<string, Product[]>
+	>({
+		[ALL_PRODUCTS_CATEGORY]: initialProducts,
+	});
+	const [paginationByCategory, setPaginationByCategory] = useState<
+		Record<string, PaginationState>
+	>({
+		[ALL_PRODUCTS_CATEGORY]: {
+			page: initialProductsMeta.page,
+			lastPage: initialProductsMeta.last_page,
+			isLoading: false,
+			error: null,
+		},
+	});
+	const [knownProductsById, setKnownProductsById] = useState<
+		Record<number, Product>
+	>(() =>
+		initialProducts.reduce<Record<number, Product>>((acc, product) => {
+			acc[product.id] = product;
+			return acc;
+		}, {}),
+	);
+
+	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
+
+	const categoryTabs = useMemo(() => {
+		const categoriesSource =
+			initialCategories.length > 0
+				? initialCategories
+				: Array.from(
+						initialProducts.reduce<Map<string, number>>((acc, product) => {
+							const category = product.category?.trim();
+							if (!category) {
+								return acc;
+							}
+							acc.set(category, (acc.get(category) || 0) + 1);
+							return acc;
+						}, new Map<string, number>()),
+				  ).map(([category, count]) => ({
+						category,
+						count,
+				  }));
+
+		const allCount =
+			categoriesSource.length > 0
+				? categoriesSource.reduce((sum, category) => sum + category.count, 0)
+				: initialProductsMeta.total;
+
+		return [
+			{
+				key: ALL_PRODUCTS_CATEGORY,
+				label: "الكل",
+				count: allCount,
+				image_url: categoriesSource.find(item => item.image_url)?.image_url,
+			},
+			...categoriesSource.map(category => ({
+				key: category.category,
+				label: category.category,
+				count: category.count,
+				image_url: category.image_url,
+			})),
+		];
+	}, [initialCategories, initialProducts, initialProductsMeta.total]);
+
+	const activeProducts = productsByCategory[activeCategory] || [];
+	const activePagination =
+		paginationByCategory[activeCategory] || DEFAULT_PAGINATION_STATE;
+	const hasMoreInActiveCategory = activePagination.page < activePagination.lastPage;
+	const activeLoadMoreIndex =
+		activeProducts.length === 0
+			? -1
+			: Math.max(0, activeProducts.length - (PRELOAD_THRESHOLD_ITEMS + 1));
+
+	const fetchProductsPage = useCallback(
+		async (categoryKey: string, page: number, replace: boolean) => {
+			const currentState =
+				paginationByCategory[categoryKey] || DEFAULT_PAGINATION_STATE;
+			if (currentState.isLoading) {
+				return;
+			}
+
+			setPaginationByCategory(prev => ({
+				...prev,
+				[categoryKey]: {
+					...(prev[categoryKey] || DEFAULT_PAGINATION_STATE),
+					isLoading: true,
+					error: null,
+				},
+			}));
+
+			const response = await productsService.getPublicProducts(tenantSlug, {
+				category:
+					categoryKey === ALL_PRODUCTS_CATEGORY ? undefined : categoryKey,
+				page,
+				limit: PAGE_SIZE,
+			});
+
+			if (!response.success || !response.data) {
+				setPaginationByCategory(prev => ({
+					...prev,
+					[categoryKey]: {
+						...(prev[categoryKey] || DEFAULT_PAGINATION_STATE),
+						isLoading: false,
+						error: "تعذر تحميل المنتجات حالياً",
+					},
+				}));
+				return;
+			}
+
+			const nextProducts = response.data.data;
+			const nextMeta = response.data.meta;
+
+			setProductsByCategory(prev => ({
+				...prev,
+				[categoryKey]: replace
+					? nextProducts
+					: dedupeProducts([...(prev[categoryKey] || []), ...nextProducts]),
+			}));
+
+			setKnownProductsById(prev => {
+				const next = { ...prev };
+				for (const product of nextProducts) {
+					next[product.id] = product;
+				}
+				return next;
+			});
+
+			setPaginationByCategory(prev => ({
+				...prev,
+				[categoryKey]: {
+					page: nextMeta.page,
+					lastPage: nextMeta.last_page,
+					isLoading: false,
+					error: null,
+				},
+			}));
+		},
+		[paginationByCategory, tenantSlug],
+	);
+
+	const handleCategoryChange = useCallback(
+		(categoryKey: string) => {
+			setActiveCategory(categoryKey);
+
+			const hasData = (productsByCategory[categoryKey] || []).length > 0;
+			const categoryState =
+				paginationByCategory[categoryKey] || DEFAULT_PAGINATION_STATE;
+
+			if (!hasData && !categoryState.isLoading) {
+				void fetchProductsPage(categoryKey, 1, true);
+			}
+		},
+		[fetchProductsPage, paginationByCategory, productsByCategory],
+	);
+
+	const loadNextPage = useCallback(() => {
+		const categoryState =
+			paginationByCategory[activeCategory] || DEFAULT_PAGINATION_STATE;
+
+		if (categoryState.isLoading || categoryState.page >= categoryState.lastPage) {
+			return;
+		}
+
+		void fetchProductsPage(activeCategory, categoryState.page + 1, false);
+	}, [activeCategory, fetchProductsPage, paginationByCategory]);
+
+	const setLoadMoreTarget = useCallback(
+		(node: HTMLDivElement | null) => {
+			if (loadMoreObserver.current) {
+				loadMoreObserver.current.disconnect();
+			}
+
+			if (!node || !hasMoreInActiveCategory || activePagination.isLoading) {
+				return;
+			}
+
+			loadMoreObserver.current = new IntersectionObserver(
+				entries => {
+					if (entries[0]?.isIntersecting) {
+						loadNextPage();
+					}
+				},
+				{
+					root: null,
+					threshold: 0.5,
+					rootMargin: "0px 0px 120px 0px",
+				},
+			);
+
+			loadMoreObserver.current.observe(node);
+		},
+		[
+			activePagination.isLoading,
+			hasMoreInActiveCategory,
+			loadNextPage,
+		],
+	);
+
+	useEffect(() => {
+		return () => {
+			loadMoreObserver.current?.disconnect();
+		};
+	}, []);
 
 	const orderToken =
 		state.success &&
@@ -72,7 +325,7 @@ export default function OrderForm({
 
 	// Prepare cart items data for hidden input
 	const cartItems = Object.entries(cart).map(([pid, qty]) => {
-		const product = products.find(p => p.id === Number(pid));
+		const product = knownProductsById[Number(pid)];
 		return {
 			product_id: Number(pid),
 			name: product?.name || "منتج",
@@ -245,8 +498,8 @@ export default function OrderForm({
 					)}
 				</div>
 
-				{/* Product List (Secondary) - Limit to 5 */}
-				{products.length > 0 && (
+				{/* Product List (Secondary) */}
+				{categoryTabs.length > 0 && (
 					<div className="mt-8">
 						<div className="flex items-center justify-center mb-6">
 							<div className="h-px bg-gray-200 w-full"></div>
@@ -255,16 +508,89 @@ export default function OrderForm({
 							</span>
 							<div className="h-px bg-gray-200 w-full"></div>
 						</div>
-						<ProductList
-							products={products.slice(0, 5)}
-							onUpdateCart={handleUpdateCart}
-						/>
-						{products.length > 5 && (
-							<div className="text-center mt-4">
-								<p className="text-sm text-gray-400 italic">
-									عرض أهم 5 منتجات. استخدم &quot;ملاحظات الطلب&quot; لأي شيء
-									آخر.
-								</p>
+
+						<div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+							{categoryTabs.map(category => (
+								<button
+									key={category.key}
+									type="button"
+									onClick={() => handleCategoryChange(category.key)}
+									className={`shrink-0 rounded-full border px-3 py-1.5 ${
+										activeCategory === category.key
+											? "border-indigo-600 bg-indigo-50 text-indigo-700"
+											: "border-gray-300 bg-white text-gray-700"
+									}`}
+								>
+									<span className="flex items-center gap-2">
+										{category.image_url ? (
+											<Image
+												src={getImageUrl(category.image_url)}
+												alt={category.label}
+												width={20}
+												height={20}
+												className="h-5 w-5 rounded-full object-cover ring-1 ring-gray-200"
+												unoptimized
+											/>
+										) : (
+											<span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
+												🛒
+											</span>
+										)}
+										<span className="whitespace-nowrap text-sm font-medium">
+											{category.label}
+										</span>
+										<span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+											{category.count}
+										</span>
+									</span>
+								</button>
+							))}
+						</div>
+
+						{activeProducts.length > 0 ? (
+							<ProductList
+								products={activeProducts}
+								quantities={cart}
+								onUpdateCart={handleUpdateCart}
+								loadMoreTriggerIndex={
+									hasMoreInActiveCategory ? activeLoadMoreIndex : undefined
+								}
+								setLoadMoreTarget={setLoadMoreTarget}
+							/>
+						) : (
+							<div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+								لا توجد منتجات في هذا القسم حالياً.
+							</div>
+						)}
+
+						{activePagination.error && (
+							<div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+								{activePagination.error}
+							</div>
+						)}
+
+						{activePagination.isLoading && (
+							<div className="mt-4 flex justify-center">
+								<svg
+									className="h-6 w-6 animate-spin text-gray-400"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+								>
+									<circle
+										className="opacity-25"
+										cx="12"
+										cy="12"
+										r="10"
+										stroke="currentColor"
+										strokeWidth="4"
+									></circle>
+									<path
+										className="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+									></path>
+								</svg>
 							</div>
 						)}
 					</div>

@@ -14,6 +14,9 @@ export class Product extends TenantBaseEntity {
   @Column({ type: 'text', nullable: true })
   image_url?: string;
 
+  @Column({ type: 'varchar', length: 64, default: 'أخرى' })
+  category: string;
+
   @Column({
     type: 'enum',
     enum: ProductSource,

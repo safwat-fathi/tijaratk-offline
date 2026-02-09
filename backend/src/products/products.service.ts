@@ -14,6 +14,25 @@ import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { ImageProcessorService } from 'src/common/services/image-processor.service';
 
+const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
+
+type PublicProductsResult = {
+  data: Product[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    last_page: number;
+    has_next: boolean;
+  };
+};
+
+type PublicProductCategorySummary = {
+  category: string;
+  count: number;
+  image_url?: string;
+};
+
 /**
  * Products service handles product lifecycle for each tenant.
  */
@@ -43,6 +62,7 @@ export class ProductsService {
       tenant_id: tenantId,
       name: normalizedName,
       image_url: createProductDto.image_url,
+      category: this.normalizeCategory(createProductDto.category),
       source: ProductSource.MANUAL,
       status: ProductStatus.ACTIVE,
     });
@@ -67,10 +87,18 @@ export class ProductsService {
       );
     }
 
+    const catalogCategory = catalogItem.category?.trim();
+    if (!catalogCategory) {
+      throw new BadRequestException(
+        `Catalog item with ID ${payload.catalog_item_id} has invalid category`,
+      );
+    }
+
     const product = this.productsRepository.create({
       tenant_id: tenantId,
       name: catalogItem.name,
       image_url: catalogItem.image_url,
+      category: catalogCategory,
       source: ProductSource.CATALOG,
       status: ProductStatus.ACTIVE,
     });
@@ -96,14 +124,100 @@ export class ProductsService {
   /**
    * Returns all active products by public tenant slug.
    */
-  async findAllByTenantSlug(slug: string): Promise<Product[]> {
-    return this.productsRepository.find({
-      where: {
-        tenant: { slug },
-        status: ProductStatus.ACTIVE,
+  async findAllByTenantSlug(
+    slug: string,
+    page = 1,
+    limit = 20,
+    category?: string,
+  ): Promise<PublicProductsResult> {
+    const normalizedPage = Number.isFinite(page) ? Math.max(1, page) : 1;
+    const normalizedLimit = Number.isFinite(limit)
+      ? Math.min(50, Math.max(1, limit))
+      : 20;
+    const normalizedCategory = category?.trim();
+
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .innerJoin('product.tenant', 'tenant')
+      .where('tenant.slug = :slug', { slug })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
+
+    if (normalizedCategory) {
+      query.andWhere('product.category = :category', {
+        category: normalizedCategory,
+      });
+    }
+
+    query
+      .orderBy('product.created_at', 'DESC')
+      .addOrderBy('product.id', 'DESC')
+      .skip((normalizedPage - 1) * normalizedLimit)
+      .take(normalizedLimit);
+
+    const [data, total] = await query.getManyAndCount();
+    const lastPage = total > 0 ? Math.ceil(total / normalizedLimit) : 1;
+
+    return {
+      data,
+      meta: {
+        total,
+        page: normalizedPage,
+        limit: normalizedLimit,
+        last_page: lastPage,
+        has_next: normalizedPage < lastPage,
       },
-      order: { created_at: 'DESC' },
-    });
+    };
+  }
+
+  /**
+   * Returns category summaries for a public tenant storefront.
+   */
+  async findPublicCategoriesByTenantSlug(
+    slug: string,
+  ): Promise<PublicProductCategorySummary[]> {
+    const normalizedCategoryExpression = `COALESCE(NULLIF(TRIM(product.category), ''), '${DEFAULT_PRODUCT_CATEGORY}')`;
+
+    const categoryRows = await this.productsRepository
+      .createQueryBuilder('product')
+      .innerJoin('product.tenant', 'tenant')
+      .select(normalizedCategoryExpression, 'category')
+      .addSelect('COUNT(product.id)', 'count')
+      .where('tenant.slug = :slug', { slug })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
+      .groupBy(normalizedCategoryExpression)
+      .orderBy('category', 'ASC')
+      .getRawMany<{ category: string; count: string }>();
+
+    if (categoryRows.length === 0) {
+      return [];
+    }
+
+    const categories = categoryRows.map((row) => row.category);
+
+    const catalogRows = await this.catalogItemsRepository
+      .createQueryBuilder('catalog')
+      .select('catalog.category', 'category')
+      .addSelect('catalog.image_url', 'image_url')
+      .where('catalog.is_active = :isActive', { isActive: true })
+      .andWhere('catalog.category IN (:...categories)', { categories })
+      .andWhere('catalog.image_url IS NOT NULL')
+      .andWhere("TRIM(catalog.image_url) <> ''")
+      .orderBy('catalog.category', 'ASC')
+      .addOrderBy('catalog.name', 'ASC')
+      .getRawMany<{ category: string; image_url: string }>();
+
+    const categoryImages = new Map<string, string>();
+    for (const row of catalogRows) {
+      if (!categoryImages.has(row.category)) {
+        categoryImages.set(row.category, row.image_url);
+      }
+    }
+
+    return categoryRows.map((row) => ({
+      category: row.category,
+      count: Number(row.count),
+      image_url: categoryImages.get(row.category),
+    }));
   }
 
   /**
@@ -177,6 +291,10 @@ export class ProductsService {
       product.status = updateProductDto.status;
     }
 
+    if (typeof updateProductDto.category === 'string') {
+      product.category = this.normalizeCategory(updateProductDto.category);
+    }
+
     if (file?.path) {
       product.image_url =
         await this.imageProcessorService.processProductThumbnail(file.path);
@@ -203,5 +321,14 @@ export class ProductsService {
     const product = await this.findOne(id, tenantId);
     product.status = ProductStatus.ARCHIVED;
     await this.productsRepository.save(product);
+  }
+
+  private normalizeCategory(category?: string): string {
+    const normalizedCategory = category?.trim();
+    if (!normalizedCategory) {
+      return DEFAULT_PRODUCT_CATEGORY;
+    }
+
+    return normalizedCategory.slice(0, 64);
   }
 }

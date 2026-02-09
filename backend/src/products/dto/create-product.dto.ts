@@ -12,4 +12,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   image_url?: string;
+
+  @ApiPropertyOptional({ example: 'أخرى' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  category?: string;
 }
