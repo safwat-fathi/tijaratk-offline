@@ -11,6 +11,7 @@ import {
   createProductAction,
   searchTenantProductsAction,
 } from '@/actions/product-actions';
+import { formatCurrency } from '@/lib/utils/currency';
 import { getImageUrl } from '@/lib/utils/image';
 import { OrderStatus } from '@/types/enums';
 import { OrderItem } from '@/types/models/order';
@@ -316,19 +317,7 @@ export default function OrderItemsReplacement({
   };
 
   const formatLinePrice = (value: number | string | null | undefined) => {
-    if (value === null || value === undefined) {
-      return 'غير محدد';
-    }
-
-    const amount = Number(value);
-    if (Number.isNaN(amount)) {
-      return 'غير محدد';
-    }
-
-    return new Intl.NumberFormat('en-EG', {
-      style: 'currency',
-      currency: 'EGP',
-    }).format(amount);
+    return formatCurrency(value) || 'غير محدد';
   };
 
   return (
@@ -519,7 +508,7 @@ export default function OrderItemsReplacement({
 
                 <div className="mt-4 rounded-xl border border-gray-200 p-3">
                   <label className="mb-2 block text-sm font-medium text-gray-700">
-                    السعر النهائي للصنف (EGP)
+                    السعر النهائي للصنف (ج.م)
                   </label>
                   <input
                     type="number"

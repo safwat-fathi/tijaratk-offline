@@ -3,6 +3,7 @@
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
 import { customersService } from "@/services/api/customers.service";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface CustomerDetailsSheetProps {
   customerId: number | null;
@@ -32,10 +33,6 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
   if (!customerId) return null;
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
-  const formatPrice = (amount: number | string | undefined) => {
-    const val = Number(amount || 0);
-    return new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(val);
-  };
 
   const displayName = customer?.name || customer?.phone || "عميل";
   
@@ -101,7 +98,7 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                                             <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-gray-900 font-bold text-sm">{formatPrice(order.total)}</p>
+                                            <p className="text-gray-900 font-bold text-sm">{formatCurrency(order.total) || "غير محدد"}</p>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                                                 order.status === 'completed' ? 'bg-green-100 text-green-700' : 
                                                 order.status === 'cancelled' ? 'bg-red-100 text-red-700' :

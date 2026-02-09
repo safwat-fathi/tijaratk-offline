@@ -9,97 +9,107 @@ export async function seedCatalog(dataSource: DataSource) {
     const catalogData: Partial<CatalogItem>[] = [
       //  ألبان و بيض (Dairy & Eggs)
       {
-        name: 'بيض أبيض',
+        name: 'بيض أبيض (عدد ١ بيضة)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-egg.png',
       },
       {
-        name: 'بيض أحمر',
+        name: 'طبق بيض أبيض (عدد ٣٠ بيضة)',
+        category: 'ألبان و بيض',
+        image_url: '/catalog-items-img/white-egg.png',
+      },
+      {
+        name: 'بيض أحمر (عدد ١ بيضة)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/red-egg.png',
       },
       {
-        name: 'بيض بلدي',
+        name: 'طبق بيض أحمر (عدد ٣٠ بيضة)',
+        category: 'ألبان و بيض',
+        image_url: '/catalog-items-img/red-egg.png',
+      },
+      {
+        name: 'بيض بلدي (عدد ١ بيضة)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-egg.png',
       },
       {
-        name: 'لبن كامل الدسم',
+        name: 'لبن كامل الدسم (١ لتر)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/milk.png',
       },
       {
-        name: 'لبن خالي الدسم',
+        name: 'لبن خالي الدسم (١ لتر)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/milk.png',
       },
       {
-        name: 'لبن رايب',
+        name: 'لبن رايب (١ لتر)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/rayeb.png',
       },
       {
-        name: 'لبن بودرة',
+        name: 'لبن بودرة (١ كجم)',
         category: 'ألبان و بيض',
         // image_url: '/catalog-items-img/milk.png',
       },
       {
-        name: 'زبادي سادة',
+        name: 'زبادي سادة (١٢٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/yogurt.png',
       },
       {
-        name: 'زبادي فواكه',
+        name: 'زبادي فواكه (١٢٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/yogurt.png',
       },
       {
-        name: 'جبنة فيتا',
+        name: 'جبنة فيتا (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-cheese.png',
       },
       {
-        name: 'جبنة رومي',
+        name: 'جبنة رومي (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/cheese.png',
       },
       {
-        name: 'جبنة شيدر',
+        name: 'جبنة شيدر (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/cheese.png',
       },
       {
-        name: 'جبنة قريش',
+        name: 'جبنة قريش (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-cheese.png',
       },
       {
-        name: 'جبنة اسطنبولي',
+        name: 'جبنة اسطنبولي (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-cheese.png',
       },
       {
-        name: 'جبنة بيضاء',
+        name: 'جبنة بيضاء (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-cheese.png',
       },
       {
-        name: 'جبنة براميلي',
+        name: 'جبنة براميلي (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/white-cheese.png',
       },
       {
-        name: 'جبنة موتزاريلا',
+        name: 'جبنة موتزاريلا (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/mozzarella.png',
       },
       {
-        name: 'جبنة فلمنك',
+        name: 'جبنة فلمنك (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         image_url: '/catalog-items-img/cheese.png',
       },
       {
-        name: 'قشطة بلدي',
+        name: 'قشطة بلدي (٥٠٠ جرام)',
         category: 'ألبان و بيض',
         // image_url: '/catalog-items-img/white-cheese.png'
       },
@@ -190,7 +200,22 @@ export async function seedCatalog(dataSource: DataSource) {
         image_url: '/catalog-items-img/honey.png',
       },
       {
-        name: 'مربى',
+        name: 'مربى مشمش',
+        category: 'عسل ومربى وشوكولاتة',
+        image_url: '/catalog-items-img/jam.png',
+      },
+      {
+        name: 'مربى فراولة',
+        category: 'عسل ومربى وشوكولاتة',
+        image_url: '/catalog-items-img/jam.png',
+      },
+      {
+        name: 'مربى تين',
+        category: 'عسل ومربى وشوكولاتة',
+        image_url: '/catalog-items-img/jam.png',
+      },
+      {
+        name: 'مربى توت',
         category: 'عسل ومربى وشوكولاتة',
         image_url: '/catalog-items-img/jam.png',
       },
@@ -202,140 +227,140 @@ export async function seedCatalog(dataSource: DataSource) {
 
       // زيت وسمن (Oil & Ghee)
       {
-        name: 'زيت عباد الشمس',
+        name: 'زيت عباد الشمس (١ لتر)',
         category: 'زيت وسمن',
         image_url: '/catalog-items-img/oil.png',
       },
       {
-        name: 'زيت ذرة',
+        name: 'زيت ذرة (١ لتر)',
         category: 'زيت وسمن',
         image_url: '/catalog-items-img/oil.png',
       },
       {
-        name: 'زيت زيتون',
+        name: 'زيت زيتون (١ لتر)',
         category: 'زيت وسمن',
         image_url: '/catalog-items-img/olive-oil.png',
       },
       {
-        name: 'سمن بلدي',
+        name: 'سمن بلدي (١ كجم)',
         category: 'زيت وسمن',
         image_url: '/catalog-items-img/ghee.png',
       },
       {
-        name: 'سمن نباتي',
+        name: 'سمن نباتي (١ كجم)',
         category: 'زيت وسمن',
         image_url: '/catalog-items-img/ghee.png',
       },
 
       // بقوليات (Legumes)
       {
-        name: 'فول تدميس',
+        name: 'فول تدميس (٥٠٠ جرام)',
         category: 'بقوليات',
         image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'عدس أصفر',
+        name: 'عدس أصفر (٥٠٠ جرام)',
         category: 'بقوليات',
         // image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'عدس بجبة',
+        name: 'عدس بجبة (٥٠٠ جرام)',
         category: 'بقوليات',
         // image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'فاصوليا بيضاء',
+        name: 'فاصوليا بيضاء (٥٠٠ جرام)',
         category: 'بقوليات',
         // image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'لوبيا',
+        name: 'لوبيا (٥٠٠ جرام)',
         category: 'بقوليات',
         // image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'حمص شام',
+        name: 'حمص شام (٥٠٠ جرام)',
         category: 'بقوليات',
         // image_url: '/catalog-items-img/peas.png',
       },
 
       // أرز ومكرونة (Rice & Pasta)
       {
-        name: 'أرز أبيض',
+        name: 'أرز أبيض (١ كجم)',
         category: 'أرز ومكرونة',
         image_url: '/catalog-items-img/rice.png',
       },
       {
-        name: 'أرز بسمتي',
+        name: 'أرز بسمتي (١ كجم)',
         category: 'أرز ومكرونة',
         image_url: '/catalog-items-img/basmati.png',
       },
       {
-        name: 'مكرونة قلم',
+        name: 'مكرونة قلم (٤٠٠ جرام)',
         category: 'أرز ومكرونة',
         image_url: '/catalog-items-img/pasta.png',
       },
       {
-        name: 'مكرونة اسباجيتي',
+        name: 'مكرونة اسباجيتي (٤٠٠ جرام)',
         category: 'أرز ومكرونة',
         image_url: '/catalog-items-img/pasta.png',
       },
       {
-        name: 'مكرونة خواتم/مرمرية',
+        name: 'مكرونة خواتم/مرمرية (٤٠٠ جرام)',
         category: 'أرز ومكرونة',
         image_url: '/catalog-items-img/pasta.png',
       },
       {
-        name: 'شعرية',
+        name: 'شعرية (٤٠٠ جرام)',
         category: 'أرز ومكرونة',
         // image_url: '/catalog-items-img/rice.png'
       },
       {
-        name: 'لسان عصفور',
+        name: 'لسان عصفور (٤٠٠ جرام)',
         category: 'أرز ومكرونة',
         // image_url: '/catalog-items-img/rice.png'
       },
 
       // سكر وملح وتوابل (Sugar & Salt)
       {
-        name: 'سكر',
+        name: 'سكر (١ كجم)',
         category: 'سكر وملح وتوابل',
         image_url: '/catalog-items-img/sugar.png',
       },
       {
-        name: 'ملح',
+        name: 'ملح (١٠٠ جرام)',
         category: 'سكر وملح وتوابل',
         image_url: '/catalog-items-img/salt.png',
       },
       {
-        name: 'فلفل أسود',
+        name: 'فلفل أسود (١٠٠ جرام)',
         category: 'سكر وملح وتوابل',
         // image_url: '/catalog-items-img/salt.png'
       },
       {
-        name: 'كمون',
+        name: 'كمون (١٠٠ جرام)',
         category: 'سكر وملح وتوابل',
         // image_url: '/catalog-items-img/salt.png'
       },
       {
-        name: 'بهارات مشكلة',
+        name: 'بهارات مشكلة (١٠٠ جرام)',
         category: 'سكر وملح وتوابل',
         // image_url: '/catalog-items-img/salt.png'
       },
 
       // معلبات (Canned Foods)
       {
-        name: 'تونة قطعة واحدة',
+        name: 'تونة قطعة واحدة (١٨٥ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/tuna.png',
       },
       {
-        name: 'تونة قطع',
+        name: 'تونة قطع (١٨٥ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/tuna.png',
       },
       {
-        name: 'تونة مفتتة',
+        name: 'تونة مفتتة (١٨٥ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/tuna.png',
       },
@@ -345,17 +370,17 @@ export async function seedCatalog(dataSource: DataSource) {
         image_url: '/catalog-items-img/tomato-sauce.png',
       },
       {
-        name: 'فول مدمس معلب',
+        name: 'فول مدمس معلب (٤٠٠ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/peas.png',
       },
       {
-        name: 'مشروم مقطع معلب',
+        name: 'مشروم مقطع معلب (٤٠٠ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/mushroom.png',
       },
       {
-        name: 'ذرة حلوة معلب',
+        name: 'ذرة حلوة معلب (٣٠٠ جرام)',
         category: 'معلبات',
         image_url: '/catalog-items-img/sweet-corn.png',
       },

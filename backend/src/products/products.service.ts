@@ -84,6 +84,10 @@ export class ProductsService {
       category: this.normalizeCategory(createProductDto.category),
       source: ProductSource.MANUAL,
       status: ProductStatus.ACTIVE,
+      current_price:
+        typeof createProductDto.current_price === 'number'
+          ? this.normalizeCurrentPrice(createProductDto.current_price)
+          : undefined,
     });
 
     const saved = await this.productsRepository.save(product);
@@ -400,6 +404,12 @@ export class ProductsService {
       product.category = this.normalizeCategory(updateProductDto.category);
     }
 
+    if (typeof updateProductDto.current_price === 'number') {
+      product.current_price = this.normalizeCurrentPrice(
+        updateProductDto.current_price,
+      );
+    }
+
     if (file?.path) {
       product.image_url =
         await this.imageProcessorService.processProductThumbnail(file.path);
@@ -479,6 +489,14 @@ export class ProductsService {
 
   private normalizeSearchTerm(search: string): string {
     return search.trim().replace(/\s+/g, ' ');
+  }
+
+  private normalizeCurrentPrice(price: number): number {
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new BadRequestException('Product price must be a positive number');
+    }
+
+    return Number(price.toFixed(2));
   }
 
   private getTenantSearchCacheVersionKey(tenantId: number): string {

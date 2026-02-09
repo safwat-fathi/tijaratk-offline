@@ -1,15 +1,19 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { productsService } from '@/services/api/products.service';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
 import { Product } from '@/types/models/product';
 
-export async function createProductAction(name: string, imageUrl?: string) {
+export async function createProductAction(
+  name: string,
+  imageUrl?: string,
+  currentPrice?: number,
+) {
   try {
     const response = await productsService.createProduct({
       name,
       image_url: imageUrl,
+      current_price: currentPrice,
     });
 
     if (!response.success || !response.data) {
@@ -18,8 +22,6 @@ export async function createProductAction(name: string, imageUrl?: string) {
         message: response.message || 'تعذر إضافة المنتج',
       };
     }
-
-    revalidatePath('/merchant/products/new');
 
     return {
       success: true,
@@ -48,8 +50,6 @@ export async function addProductFromCatalogAction(catalogItemId: number) {
       };
     }
 
-    revalidatePath('/merchant/products/new');
-
     return {
       success: true,
       data: response.data,
@@ -70,12 +70,20 @@ export async function updateProductAction(productId: number, formData: FormData)
   try {
     const normalizedPayload = new FormData();
     const rawName = formData.get('name');
+    const rawCurrentPrice = formData.get('current_price');
     const file = formData.get('file');
 
     if (typeof rawName === 'string') {
       const trimmed = rawName.trim();
       if (trimmed) {
         normalizedPayload.set('name', trimmed);
+      }
+    }
+
+    if (typeof rawCurrentPrice === 'string') {
+      const trimmed = rawCurrentPrice.trim();
+      if (trimmed) {
+        normalizedPayload.set('current_price', trimmed);
       }
     }
 
@@ -94,8 +102,6 @@ export async function updateProductAction(productId: number, formData: FormData)
         message: response.message || 'تعذر تعديل المنتج',
       };
     }
-
-    revalidatePath('/merchant/products/new');
 
     return {
       success: true,
@@ -124,8 +130,6 @@ export async function removeProductAction(productId: number) {
         message: response.message || 'تعذر حذف المنتج',
       };
     }
-
-    revalidatePath('/merchant/products/new');
 
     return {
       success: true,

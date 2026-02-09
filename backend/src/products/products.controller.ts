@@ -199,6 +199,7 @@ export class ProductsController {
       properties: {
         name: { type: 'string' },
         image_url: { type: 'string' },
+        current_price: { type: 'number', format: 'float' },
         status: { type: 'string', enum: Object.values(ProductStatus) },
         file: { type: 'string', format: 'binary' },
       },

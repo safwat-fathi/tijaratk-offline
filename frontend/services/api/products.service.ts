@@ -45,7 +45,11 @@ class ProductsService extends HttpService {
     });
   }
 
-  public async createProduct(payload: { name: string; image_url?: string }) {
+  public async createProduct(payload: {
+    name: string;
+    image_url?: string;
+    current_price?: number;
+  }) {
     return this.post<Product>('', payload, undefined, { authRequired: true });
   }
 

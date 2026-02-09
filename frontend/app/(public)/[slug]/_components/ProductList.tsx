@@ -34,7 +34,7 @@ export default function ProductList({
 			return null;
 		}
 
-		return formatCurrency(parsedPrice, "EGP", "en-EG") || `EGP ${parsedPrice.toFixed(2)}`;
+		return formatCurrency(parsedPrice) || null;
 	};
 
 	const handleUpdate = (productId: number, delta: number) => {

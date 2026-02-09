@@ -6,19 +6,7 @@ import Link from "next/link";
 import { updateOrderStatus } from "@/actions/order-actions";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const formatPrice = (amount: number | string | null | undefined) => {
-  if (amount === null || amount === undefined || amount === "") {
-    return "غير محدد";
-  }
-
-  const val = Number(amount);
-  if (Number.isNaN(val)) {
-    return "غير محدد";
-  }
-
-  return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(val);
-};
+import { formatCurrency } from "@/lib/utils/currency";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -137,7 +125,7 @@ export default function OrderCard({ order, isHighlighted }: OrderCardProps) {
           </div>
           <div className="text-end">
             <span className="block font-bold text-gray-900 text-lg">
-              {formatPrice(order.total)}
+              {formatCurrency(order.total) || "غير محدد"}
             </span>
             <span className="text-xs text-gray-400 font-medium">
               {order.pricing_mode === 'manual' ? 'يدوي' : 'نقدي'}

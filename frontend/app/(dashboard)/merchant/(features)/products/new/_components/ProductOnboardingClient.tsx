@@ -8,6 +8,7 @@ import {
   removeProductAction,
   updateProductAction,
 } from '@/actions/product-actions';
+import { formatCurrency } from '@/lib/utils/currency';
 import { CatalogItem, Product } from '@/types/models/product';
 
 const ALL_CATALOG_ITEMS = '__all__';
@@ -59,6 +60,35 @@ const isServerActionBodyLimitError = (error: unknown): boolean => {
   );
 };
 
+const parseOptionalPositivePrice = (
+  value: string,
+): { value: number | null; valid: boolean } => {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) {
+    return { value: null, valid: true };
+  }
+
+  const parsedPrice = Number(normalized);
+  if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+    return { value: null, valid: false };
+  }
+
+  return { value: Number(parsedPrice.toFixed(2)), valid: true };
+};
+
+const resolveProductPriceText = (value: Product['current_price']): string | null => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsedPrice = Number(value);
+  if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+    return null;
+  }
+
+  return formatCurrency(parsedPrice) || null;
+};
+
 type ProductOnboardingClientProps = {
   initialProducts: Product[];
   catalogItems: CatalogItem[];
@@ -70,6 +100,7 @@ export default function ProductOnboardingClient({
 }: ProductOnboardingClientProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [manualName, setManualName] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState(ALL_CATALOG_ITEMS);
   const [pendingCatalogIds, setPendingCatalogIds] = useState<Record<number, boolean>>({});
@@ -79,6 +110,7 @@ export default function ProductOnboardingClient({
   );
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
   const [confirmRemoveProductId, setConfirmRemoveProductId] = useState<number | null>(null);
@@ -89,29 +121,47 @@ export default function ProductOnboardingClient({
   const [isEditPending, startEditTransition] = useTransition();
   const [, startRemoveTransition] = useTransition();
 
-  const catalogCategories = useMemo(
-    () =>
-      Array.from(new Set(catalogItems.map((item) => item.category))).sort((a, b) =>
-        a.localeCompare(b, 'ar'),
-      ),
-    [catalogItems],
-  );
-
-  const categoryImages = useMemo(() => {
-    const imagesByCategory: Record<string, string | null> = {};
+  const categoryTabs = useMemo(() => {
+    const categoryMap = new Map<string, { count: number; imageUrl: string | null }>();
 
     for (const item of catalogItems) {
-      if (imagesByCategory[item.category]) {
+      const resolvedImageUrl = resolveImageUrl(item.image_url);
+      const existing = categoryMap.get(item.category);
+
+      if (existing) {
+        existing.count += 1;
+        if (!existing.imageUrl && resolvedImageUrl) {
+          existing.imageUrl = resolvedImageUrl;
+        }
         continue;
       }
 
-      const imageUrl = resolveImageUrl(item.image_url);
-      if (imageUrl) {
-        imagesByCategory[item.category] = imageUrl;
-      }
+      categoryMap.set(item.category, {
+        count: 1,
+        imageUrl: resolvedImageUrl,
+      });
     }
 
-    return imagesByCategory;
+    const categories = Array.from(categoryMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], 'ar'))
+      .map(([category, value]) => ({
+        key: category,
+        label: category,
+        count: value.count,
+        imageUrl: value.imageUrl,
+      }));
+
+    const allTabImage = categories.find((category) => category.imageUrl)?.imageUrl || null;
+
+    return [
+      {
+        key: ALL_CATALOG_ITEMS,
+        label: 'الكل',
+        count: catalogItems.length,
+        imageUrl: allTabImage,
+      },
+      ...categories,
+    ];
   }, [catalogItems]);
 
   const filteredCatalogItems = useMemo(() => {
@@ -177,6 +227,12 @@ export default function ProductOnboardingClient({
       return;
     }
 
+    const parsedPrice = parseOptionalPositivePrice(manualPrice);
+    if (!parsedPrice.valid) {
+      setMessage('ادخل سعرًا صحيحًا أكبر من صفر');
+      return;
+    }
+
     const duplicateProduct = productsByNormalizedName.get(normalizeProductName(trimmedName));
     if (duplicateProduct) {
       highlightExistingProduct(duplicateProduct);
@@ -184,7 +240,7 @@ export default function ProductOnboardingClient({
     }
 
     startTransition(async () => {
-      const response = await createProductAction(trimmedName);
+      const response = await createProductAction(trimmedName, undefined, parsedPrice.value ?? undefined);
 
       if (!response.success || !response.data) {
         if (isDuplicateMessage(response.message)) {
@@ -203,6 +259,7 @@ export default function ProductOnboardingClient({
 
       setProducts((prev) => [response.data, ...prev]);
       setManualName('');
+      setManualPrice('');
       setConfirmRemoveProductId(null);
       setMessage('تم حفظ المنتج');
     });
@@ -223,33 +280,35 @@ export default function ProductOnboardingClient({
       [catalogItemId]: true,
     }));
 
-    startTransition(async () => {
-      const response = await addProductFromCatalogAction(catalogItemId);
+    void (async () => {
+      try {
+        const response = await addProductFromCatalogAction(catalogItemId);
 
-      setPendingCatalogIds((prev) => ({
-        ...prev,
-        [catalogItemId]: false,
-      }));
-
-      if (!response.success || !response.data) {
-        if (isDuplicateMessage(response.message)) {
-          const existingProduct = productsByNormalizedName.get(
-            normalizeProductName(item.name),
-          );
-          if (existingProduct) {
-            highlightExistingProduct(existingProduct);
-            return;
+        if (!response.success || !response.data) {
+          if (isDuplicateMessage(response.message)) {
+            const existingProduct = productsByNormalizedName.get(
+              normalizeProductName(item.name),
+            );
+            if (existingProduct) {
+              highlightExistingProduct(existingProduct);
+              return;
+            }
           }
+
+          setMessage(response.message || 'تعذر إضافة المنتج من الكتالوج');
+          return;
         }
 
-        setMessage(response.message || 'تعذر إضافة المنتج من الكتالوج');
-        return;
+        setProducts((prev) => [response.data, ...prev]);
+        setConfirmRemoveProductId(null);
+        setMessage('تمت الإضافة');
+      } finally {
+        setPendingCatalogIds((prev) => ({
+          ...prev,
+          [catalogItemId]: false,
+        }));
       }
-
-      setProducts((prev) => [response.data, ...prev]);
-      setConfirmRemoveProductId(null);
-      setMessage('تمت الإضافة');
-    });
+    })();
   };
 
   const handleStartEdit = (product: Product) => {
@@ -259,6 +318,11 @@ export default function ProductOnboardingClient({
 
     setEditingProduct(product);
     setEditName(product.name);
+    setEditPrice(
+      product.current_price === null || product.current_price === undefined || product.current_price === ''
+        ? ''
+        : String(Number(product.current_price)),
+    );
     setEditImageFile(null);
     setEditImagePreview(null);
     setConfirmRemoveProductId(null);
@@ -272,6 +336,7 @@ export default function ProductOnboardingClient({
 
     setEditingProduct(null);
     setEditName('');
+    setEditPrice('');
     setEditImageFile(null);
     setEditImagePreview(null);
   };
@@ -341,6 +406,12 @@ export default function ProductOnboardingClient({
       return;
     }
 
+    const parsedPrice = parseOptionalPositivePrice(editPrice);
+    if (!parsedPrice.valid) {
+      setMessage('ادخل سعرًا صحيحًا أكبر من صفر');
+      return;
+    }
+
     const duplicateProduct = products.find(
       (product) =>
         product.id !== editingProduct.id &&
@@ -355,6 +426,9 @@ export default function ProductOnboardingClient({
       try {
         const formData = new FormData();
         formData.set('name', trimmedName);
+        if (parsedPrice.value !== null) {
+          formData.set('current_price', String(parsedPrice.value));
+        }
         if (editImageFile) {
           formData.set('file', editImageFile);
         }
@@ -398,13 +472,22 @@ export default function ProductOnboardingClient({
     <div className="mx-auto w-full max-w-2xl space-y-6 pb-10">
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">إضافة منتج سريع</h2>
-        <p className="mt-1 text-sm text-gray-500">الاسم فقط كفاية للبداية. السعر يتم داخل الطلب لاحقاً.</p>
+        <p className="mt-1 text-sm text-gray-500">
+          اكتب الاسم بسرعة، ويمكنك إضافة سعر اختياري الآن أو لاحقاً من تعديل المنتج.
+        </p>
 
         <form onSubmit={handleManualSubmit} className="mt-4 space-y-3">
           <input
             value={manualName}
             onChange={(event) => setManualName(event.target.value)}
             placeholder="مثال: زيت عباد الشمس"
+            className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-indigo-500"
+          />
+          <input
+            value={manualPrice}
+            onChange={(event) => setManualPrice(event.target.value)}
+            placeholder="السعر (اختياري)"
+            inputMode="decimal"
             className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-indigo-500"
           />
 
@@ -435,45 +518,37 @@ export default function ProductOnboardingClient({
           اضغط إضافة ويتم حفظ المنتج فوراً. متاح الآن {catalogItems.length} منتج من قاعدة البيانات.
         </p>
 
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-          <button
-            type="button"
-            onClick={() => setActiveCategory(ALL_CATALOG_ITEMS)}
-            className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm ${
-              activeCategory === ALL_CATALOG_ITEMS
-                ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                : 'border-gray-300 text-gray-700'
-            }`}
-          >
-            الكل
-          </button>
-          {catalogCategories.map((category) => (
+        <div className="mb-4 mt-3 flex gap-2 overflow-x-auto pb-2">
+          {categoryTabs.map((category) => (
             <button
-              key={category}
+              key={category.key}
               type="button"
-              onClick={() => setActiveCategory(category)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
-                activeCategory === category
+              onClick={() => setActiveCategory(category.key)}
+              className={`shrink-0 h-14 rounded-2xl border px-3 py-1.5 ${
+                activeCategory === category.key
                   ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-300 text-gray-700'
+                  : 'border-gray-300 bg-white text-gray-700'
               }`}
             >
-              <span className="flex items-center gap-2 whitespace-nowrap">
-                {categoryImages[category] ? (
+              <span className="flex items-center gap-2">
+                {category.imageUrl ? (
                   <Image
-                    src={categoryImages[category]!}
-                    alt={category}
-                    width={18}
-                    height={18}
+                    src={category.imageUrl}
+                    alt={category.label}
+                    width={40}
+                    height={40}
                     unoptimized
-                    className="h-[18px] w-[18px] rounded-full border border-gray-200 object-cover"
+                    className="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
                   />
                 ) : (
-                  <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gray-100 text-[10px]">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
                     🛒
                   </span>
                 )}
-                <span>{category}</span>
+                <span className="whitespace-nowrap text-sm font-medium">{category.label}</span>
+                <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+                  {category.count}
+                </span>
               </span>
             </button>
           ))}
@@ -485,13 +560,16 @@ export default function ProductOnboardingClient({
           </p>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {filteredCatalogItems.map((item) => (
-              <div key={item.id} className="rounded-xl border border-gray-200 p-3">
+            {filteredCatalogItems.map((item) => {
+              const catalogItemImageUrl = resolveImageUrl(item.image_url);
+
+              return (
+                <div key={item.id} className="rounded-xl border border-gray-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    {item.image_url?.trim() && !failedImageIds[item.id] ? (
+                    {catalogItemImageUrl && !failedImageIds[item.id] ? (
                       <Image
-                        src={item.image_url}
+                        src={catalogItemImageUrl}
                         alt={item.name}
                         width={56}
                         height={56}
@@ -518,14 +596,15 @@ export default function ProductOnboardingClient({
                   <button
                     type="button"
                     onClick={() => handleAddFromCatalog(item)}
-                    disabled={pendingCatalogIds[item.id] || isPending}
+                    disabled={Boolean(pendingCatalogIds[item.id])}
                     className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {pendingCatalogIds[item.id] ? '...جاري' : 'إضافة'}
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
@@ -582,9 +661,14 @@ export default function ProductOnboardingClient({
 
                     <div>
                       <span className="block text-sm font-medium text-gray-900">{product.name}</span>
-                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                        {product.source === 'catalog' ? 'كتالوج' : 'يدوي'}
-                      </span>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                          {product.source === 'catalog' ? 'كتالوج' : 'يدوي'}
+                        </span>
+                        <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">
+                          {resolveProductPriceText(product.current_price) || 'السعر غير محدد'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -667,6 +751,17 @@ export default function ProductOnboardingClient({
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handleEditImageChange}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm text-gray-700">السعر (اختياري)</span>
+                <input
+                  value={editPrice}
+                  onChange={(event) => setEditPrice(event.target.value)}
+                  inputMode="decimal"
+                  placeholder="مثال: 45.50"
+                  className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
                 />
               </label>
 

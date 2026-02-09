@@ -1,4 +1,5 @@
 import StoreHeader from "./_components/StoreHeader";
+import WriteOrderFAB from "./_components/WriteOrderFAB";
 import OrderForm from "./_components/OrderForm";
 
 import { tenantsService } from "@/services/api/tenants.service";
@@ -96,6 +97,7 @@ export default async function StorePage({
 	return (
 		<div className="w-full max-w-md mx-auto min-h-screen bg-gray-50">
 			<StoreHeader tenant={tenant} />
+			<WriteOrderFAB />
 
 			<div>
 				{products.length === 0 && (
@@ -105,13 +107,13 @@ export default async function StorePage({
 					</div>
 				)}
 
-					<OrderForm
-						tenantSlug={tenant.slug}
-						initialProducts={products}
-						initialProductsMeta={meta}
-						initialCategories={categories}
-						initialOrder={initialOrder}
-					/>
+				<OrderForm
+					tenantSlug={tenant.slug}
+					initialProducts={products}
+					initialProductsMeta={meta}
+					initialCategories={categories}
+					initialOrder={initialOrder}
+				/>
 			</div>
 		</div>
 	);

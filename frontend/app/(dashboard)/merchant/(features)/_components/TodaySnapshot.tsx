@@ -1,5 +1,6 @@
 import React from "react";
 import { DashboardStats } from "./dashboard.types";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface TodaySnapshotProps {
   stats: DashboardStats;
@@ -20,7 +21,7 @@ export default function TodaySnapshot({ stats }: TodaySnapshotProps) {
             <div>
               <p className="text-primary-foreground/80 font-medium mb-1">إجمالي المبيعات</p>
               <h3 className="text-4xl font-bold tracking-tight">
-                {stats.totalEgp.toLocaleString()} <span className="text-2xl font-medium opacity-80">ج.م</span>
+                {formatCurrency(stats.totalEgp) || "غير محدد"}
               </h3>
             </div>
             <div className="bg-white/20 p-3 rounded-xl backdrop-blur-md">
@@ -53,7 +54,7 @@ export default function TodaySnapshot({ stats }: TodaySnapshotProps) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/70"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
                 <p className="text-xs font-medium text-white/70">توصيل</p>
               </div>
-              <p className="text-xl font-bold">{stats.deliveryFees.toLocaleString()}</p>
+              <p className="text-xl font-bold">{formatCurrency(stats.deliveryFees) || "غير محدد"}</p>
             </div>
           </div>
         </div>

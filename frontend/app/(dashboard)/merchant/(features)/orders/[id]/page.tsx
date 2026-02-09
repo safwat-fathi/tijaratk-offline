@@ -5,14 +5,7 @@ import { productsService } from "@/services/api/products.service";
 import { OrderStatus } from "@/types/enums";
 import OrderItemsReplacement from "./_components/OrderItemsReplacement";
 import { isNextRedirectError } from "@/lib/auth/navigation-errors";
-
-const formatPrice = (amount: number | string | undefined | null) => {
-	const value = Number(amount || 0);
-	return new Intl.NumberFormat("en-EG", {
-		style: "currency",
-		currency: "EGP",
-	}).format(value);
-};
+import { formatCurrency } from "@/lib/utils/currency";
 
 const statusLabelMap: Record<OrderStatus, string> = {
 	[OrderStatus.DRAFT]: "جديد",
@@ -163,21 +156,21 @@ export default async function OrderDetailsPage({
 							<span>الإجمالي الفرعي</span>
 							<span>
 								{order.subtotal !== null && order.subtotal !== undefined
-									? formatPrice(order.subtotal)
+									? formatCurrency(order.subtotal) || "غير محدد"
 									: "غير محدد"}
 							</span>
 						</div>
 
 						<div className="flex justify-between text-sm text-gray-600">
 							<span>رسوم التوصيل</span>
-							<span>{formatPrice(order.delivery_fee)}</span>
+							<span>{formatCurrency(order.delivery_fee) || "غير محدد"}</span>
 						</div>
 
 						<div className="flex items-end justify-between border-t border-gray-100 pt-3">
 							<span className="font-bold text-gray-900">الإجمالي</span>
 							<span className="text-xl font-bold text-gray-900">
 								{order.total !== null && order.total !== undefined
-									? formatPrice(order.total)
+									? formatCurrency(order.total) || "غير محدد"
 									: "غير محدد"}
 							</span>
 						</div>

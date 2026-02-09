@@ -2,6 +2,7 @@ import React from "react";
 import { ActionItem } from "./dashboard.types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface ActionCenterProps {
   items: ActionItem[];
@@ -58,7 +59,7 @@ export default function ActionCenter({ items }: ActionCenterProps) {
                         </div>
                     </div>
                     <div className="text-end">
-                       <p className="font-bold text-lg tabular-nums tracking-tight">{item.totalAmount} <span className="text-xs font-normal text-muted-foreground">EGP</span></p>
+                       <p className="font-bold text-lg tabular-nums tracking-tight">{formatCurrency(item.totalAmount) || "غير محدد"}</p>
                     </div>
                 </div>
 

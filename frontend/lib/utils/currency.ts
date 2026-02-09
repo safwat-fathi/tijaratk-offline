@@ -1,19 +1,36 @@
-export function formatCurrency(
-	amount?: number | null,
-	currency = "EGP",
-	locale = "en"
-) {
-	if (typeof amount !== "number" || Number.isNaN(amount)) {
+const CURRENCY_LOCALE = "ar-EG";
+const CURRENCY_CODE = "EGP";
+
+export function formatCurrency(amount?: number | string | null) {
+	if (amount === null || amount === undefined || amount === "") {
+		return undefined;
+	}
+
+	const normalizedAmount =
+		typeof amount === "number"
+			? amount
+			: typeof amount === "string"
+				? Number(amount.trim())
+				: NaN;
+
+	if (!Number.isFinite(normalizedAmount)) {
 		return undefined;
 	}
 
 	try {
-		return new Intl.NumberFormat(locale, {
+		return new Intl.NumberFormat(CURRENCY_LOCALE, {
 			style: "currency",
-			currency,
+			currency: CURRENCY_CODE,
 			maximumFractionDigits: 2,
-		}).format(amount);
+		}).format(normalizedAmount);
 	} catch {
-		return amount.toFixed(2);
+		return normalizedAmount.toFixed(2);
 	}
+}
+
+export function formatCurrencyOrFallback(
+	amount: number | string | null | undefined,
+	fallback = "غير محدد",
+) {
+	return formatCurrency(amount) ?? fallback;
 }

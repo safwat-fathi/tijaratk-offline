@@ -3,6 +3,7 @@ import { LatestOrder } from "./dashboard.types";
 import Link from "next/link";
 import { OrderStatus } from "@/types/enums";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface LatestOrdersProps {
   orders: LatestOrder[];
@@ -50,7 +51,7 @@ export default function LatestOrders({ orders }: LatestOrdersProps) {
                 </div>
                 
                 <div className="text-end">
-                   <p className="font-bold text-foreground tabular-nums">{order.totalPrice} <span className="text-xs font-normal text-muted-foreground">ج.م</span></p>
+                   <p className="font-bold text-foreground tabular-nums">{formatCurrency(order.totalPrice) || "غير محدد"}</p>
                 </div>
               </Link>
             </li>
