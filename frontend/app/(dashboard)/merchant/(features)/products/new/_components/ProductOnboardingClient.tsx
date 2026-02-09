@@ -2,10 +2,12 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useDebounce } from 'use-debounce';
 import {
   addProductFromCatalogAction,
   createProductAction,
   removeProductAction,
+  searchTenantProductsAction,
   updateProductAction,
 } from '@/actions/product-actions';
 import { formatCurrency } from '@/lib/utils/currency';
@@ -15,6 +17,9 @@ const ALL_CATALOG_ITEMS = '__all__';
 const MAX_PRODUCT_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_PRODUCT_IMAGE_SIZE_MB = 5;
 const DUPLICATE_PRODUCT_PREFIX = 'المنتج موجود بالفعل:';
+const MIN_SEARCH_CHARS = 2;
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_RESULTS_LIMIT = 20;
 
 const normalizeProductName = (name: string): string =>
   name.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -116,10 +121,16 @@ export default function ProductOnboardingClient({
   const [confirmRemoveProductId, setConfirmRemoveProductId] = useState<number | null>(null);
   const [removingProductId, setRemovingProductId] = useState<number | null>(null);
   const [highlightedProductId, setHighlightedProductId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchRefreshKey, setSearchRefreshKey] = useState(0);
   const productRowRefs = useRef<Record<number, HTMLLIElement | null>>({});
   const [isPending, startTransition] = useTransition();
   const [isEditPending, startEditTransition] = useTransition();
   const [, startRemoveTransition] = useTransition();
+  const [debouncedSearchQuery] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
   const categoryTabs = useMemo(() => {
     const categoryMap = new Map<string, { count: number; imageUrl: string | null }>();
@@ -171,6 +182,16 @@ export default function ProductOnboardingClient({
 
     return catalogItems.filter((item) => item.category === activeCategory);
   }, [activeCategory, catalogItems]);
+  const normalizedSearchInput = searchQuery.trim();
+  const normalizedDebouncedSearch = debouncedSearchQuery.trim();
+  const isSearchActive = normalizedDebouncedSearch.length >= MIN_SEARCH_CHARS;
+  const needsMoreSearchChars =
+    normalizedSearchInput.length > 0 && normalizedSearchInput.length < MIN_SEARCH_CHARS;
+  const displayedProducts = isSearchActive ? searchResults : products;
+  const displayedProductsCountLabel = isSearchActive
+    ? `نتائج البحث: ${displayedProducts.length}`
+    : `${products.length} منتج`;
+
   const isDuplicateWarning = message?.startsWith(DUPLICATE_PRODUCT_PREFIX);
 
   const productsByNormalizedName = useMemo(() => {
@@ -201,6 +222,53 @@ export default function ProductOnboardingClient({
       window.clearTimeout(timeoutId);
     };
   }, [highlightedProductId]);
+
+  useEffect(() => {
+    if (!isSearchActive) {
+      setSearchResults([]);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsSearching(true);
+    setSearchError(null);
+
+    void (async () => {
+      const response = await searchTenantProductsAction(
+        normalizedDebouncedSearch,
+        1,
+        SEARCH_RESULTS_LIMIT,
+      );
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (!response.success || !response.data) {
+        setSearchResults([]);
+        setSearchError(response.message || 'تعذر تحميل نتائج البحث');
+        setIsSearching(false);
+        return;
+      }
+
+      setSearchResults(response.data.data);
+      setIsSearching(false);
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isSearchActive, normalizedDebouncedSearch, searchRefreshKey]);
+
+  const refreshSearchResultsIfActive = () => {
+    if (!isSearchActive) {
+      return;
+    }
+
+    setSearchRefreshKey((prev) => prev + 1);
+  };
 
   const highlightExistingProduct = (product: Product) => {
     setHighlightedProductId(product.id);
@@ -260,6 +328,7 @@ export default function ProductOnboardingClient({
       setProducts((prev) => [response.data, ...prev]);
       setManualName('');
       setManualPrice('');
+      refreshSearchResultsIfActive();
       setConfirmRemoveProductId(null);
       setMessage('تم حفظ المنتج');
     });
@@ -300,6 +369,7 @@ export default function ProductOnboardingClient({
         }
 
         setProducts((prev) => [response.data, ...prev]);
+        refreshSearchResultsIfActive();
         setConfirmRemoveProductId(null);
         setMessage('تمت الإضافة');
       } finally {
@@ -363,6 +433,7 @@ export default function ProductOnboardingClient({
       }
 
       setProducts((prev) => prev.filter((item) => item.id !== product.id));
+      refreshSearchResultsIfActive();
       setConfirmRemoveProductId((prev) => (prev === product.id ? null : prev));
       if (editingProduct?.id === product.id) {
         handleCloseEdit();
@@ -455,6 +526,7 @@ export default function ProductOnboardingClient({
         setProducts((prev) =>
           prev.map((product) => (product.id === editingProduct.id ? response.data! : product)),
         );
+        refreshSearchResultsIfActive();
         setMessage('تم تعديل المنتج');
         handleCloseEdit();
       } catch (error) {
@@ -611,15 +683,32 @@ export default function ProductOnboardingClient({
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">منتجاتك</h2>
-        <p className="mt-1 text-sm text-gray-500">{products.length} منتج</p>
+        <p className="mt-1 text-sm text-gray-500">{displayedProductsCountLabel}</p>
 
-        {products.length === 0 ? (
+        <div className="mt-3">
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="ابحث بالاسم"
+            inputMode="search"
+            className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500"
+          />
+          {needsMoreSearchChars && (
+            <p className="mt-2 text-xs text-gray-500">اكتب حرفين أو أكثر لبدء البحث</p>
+          )}
+          {isSearching && <p className="mt-2 text-xs text-gray-500">جاري البحث...</p>}
+          {!isSearching && searchError && (
+            <p className="mt-2 text-xs text-red-600">{searchError}</p>
+          )}
+        </div>
+
+        {displayedProducts.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
-            لا توجد منتجات حتى الآن.
+            {isSearchActive ? 'لا توجد نتائج مطابقة.' : 'لا توجد منتجات حتى الآن.'}
           </p>
         ) : (
           <ul className="mt-4 space-y-2">
-            {products.map((product) => {
+            {displayedProducts.map((product) => {
               const isConfirmingRemoval = confirmRemoveProductId === product.id;
               const isRemoving = removingProductId === product.id;
               const isHighlighted = highlightedProductId === product.id;
