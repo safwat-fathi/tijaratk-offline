@@ -1,15 +1,55 @@
 'use client';
 
+import Image from 'next/image';
+import { useDebounce } from 'use-debounce';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { replaceOrderItemAction } from '@/actions/order-actions';
 import { createProductAction } from '@/actions/product-actions';
+import { productsService } from '@/services/api/products.service';
+import { getImageUrl } from '@/lib/utils/image';
 import { OrderItem } from '@/types/models/order';
 import { Product } from '@/types/models/product';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+
+const MIN_SEARCH_CHARS = 2;
+const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_RESULTS_LIMIT = 20;
 
 type OrderItemsReplacementProps = {
   orderId: number;
   initialItems: OrderItem[];
   products: Product[];
+};
+
+const ProductThumbnail = ({
+  imageUrl,
+  name,
+  size = 36,
+}: {
+  imageUrl?: string | null;
+  name: string;
+  size?: number;
+}) => {
+  if (imageUrl?.trim()) {
+    return (
+      <Image
+        src={getImageUrl(imageUrl)}
+        alt={name}
+        width={size}
+        height={size}
+        unoptimized
+        className="rounded-lg border border-gray-200 bg-gray-50 object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="flex items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-500"
+      style={{ width: size, height: size }}
+    >
+      🛒
+    </div>
+  );
 };
 
 export default function OrderItemsReplacement({
@@ -21,8 +61,13 @@ export default function OrderItemsReplacement({
   const [items, setItems] = useState<OrderItem[]>(initialItems);
   const [activeItemId, setActiveItemId] = useState<number | null>(null);
   const [newProductName, setNewProductName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [debouncedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     setItems(initialItems);
@@ -36,6 +81,65 @@ export default function OrderItemsReplacement({
     () => items.find((item) => item.id === activeItemId) || null,
     [activeItemId, items],
   );
+
+  const normalizedSearch = debouncedSearch.trim();
+  const isTextSearchActive = normalizedSearch.length >= MIN_SEARCH_CHARS;
+
+  useEffect(() => {
+    if (!activeItemId) {
+      return;
+    }
+
+    if (!isTextSearchActive) {
+      setSearchResults([]);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsSearching(true);
+    setSearchError(null);
+
+    void (async () => {
+      const response = await productsService.searchProducts({
+        search: normalizedSearch,
+        page: 1,
+        limit: SEARCH_RESULTS_LIMIT,
+      });
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (!response.success || !response.data) {
+        setSearchResults([]);
+        setSearchError('تعذر تحميل نتائج البحث');
+        setIsSearching(false);
+        return;
+      }
+
+      setSearchResults(response.data.data);
+      setIsSearching(false);
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeItemId, isTextSearchActive, normalizedSearch]);
+
+  const replacementOptions = isTextSearchActive
+    ? searchResults
+    : availableProducts;
+
+  const closeSheet = () => {
+    setActiveItemId(null);
+    setNewProductName('');
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError(null);
+    setIsSearching(false);
+  };
 
   const applyReplacement = (itemId: number, product: Product | null) => {
     setItems((prev) =>
@@ -51,6 +155,7 @@ export default function OrderItemsReplacement({
             ? {
                 id: product.id,
                 name: product.name,
+                image_url: product.image_url || null,
               }
             : null,
         };
@@ -69,8 +174,7 @@ export default function OrderItemsReplacement({
 
       applyReplacement(itemId, product);
       setFeedback(`تم الاستبدال بـ ${product.name}`);
-      setActiveItemId(null);
-      setNewProductName('');
+      closeSheet();
     });
   };
 
@@ -85,8 +189,7 @@ export default function OrderItemsReplacement({
 
       applyReplacement(itemId, null);
       setFeedback('تمت إزالة البديل');
-      setActiveItemId(null);
-      setNewProductName('');
+      closeSheet();
     });
   };
 
@@ -124,14 +227,13 @@ export default function OrderItemsReplacement({
 
       applyReplacement(activeItem.id, product);
       setFeedback(`تمت الإضافة والاستبدال بـ ${product.name}`);
-      setActiveItemId(null);
-      setNewProductName('');
+      closeSheet();
     });
   };
 
   return (
-    <section className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider">
+    <section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
         العناصر
       </h2>
 
@@ -140,7 +242,8 @@ export default function OrderItemsReplacement({
       <div className="space-y-3">
         {items.length > 0 ? (
           items.map((item) => {
-            const replacementName = item.replaced_by_product?.name;
+            const replacementProduct = item.replaced_by_product;
+            const replacementName = replacementProduct?.name;
 
             return (
               <div key={item.id} className="rounded-xl border border-gray-200 p-3">
@@ -159,9 +262,14 @@ export default function OrderItemsReplacement({
                 </div>
 
                 {replacementName && (
-                  <p className="mt-2 text-sm font-medium text-green-700">
-                    تم الاستبدال بـ: {replacementName}
-                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-sm font-medium text-green-700">
+                    <ProductThumbnail
+                      imageUrl={replacementProduct?.image_url}
+                      name={replacementName}
+                      size={28}
+                    />
+                    <p>تم الاستبدال بـ: {replacementName}</p>
+                  </div>
                 )}
 
                 {item.notes && (
@@ -171,7 +279,7 @@ export default function OrderItemsReplacement({
             );
           })
         ) : (
-          <p className="text-gray-400 italic">لا توجد عناصر</p>
+          <p className="italic text-gray-400">لا توجد عناصر</p>
         )}
       </div>
 
@@ -181,10 +289,7 @@ export default function OrderItemsReplacement({
             type="button"
             aria-label="close"
             className="absolute inset-0 h-full w-full"
-            onClick={() => {
-              setActiveItemId(null);
-              setNewProductName('');
-            }}
+            onClick={closeSheet}
           />
 
           <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white p-4 shadow-2xl">
@@ -192,19 +297,57 @@ export default function OrderItemsReplacement({
             <h3 className="text-lg font-bold text-gray-900">اختر المنتج البديل</h3>
             <p className="text-sm text-gray-500">{activeItem.name_snapshot}</p>
 
+            <div className="mt-3 rounded-xl border border-gray-200 p-3">
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="ابحث بالاسم"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
+              </p>
+            </div>
+
             <div className="mt-4 max-h-60 space-y-2 overflow-y-auto">
-              {availableProducts.map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => handleSelectReplacement(activeItem.id, product)}
-                  disabled={isPending}
-                  className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-start"
-                >
-                  <span className="font-medium text-gray-900">{product.name}</span>
-                  <span className="text-xs text-gray-500">اختيار</span>
-                </button>
-              ))}
+              {isSearching && (
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                  جاري البحث...
+                </p>
+              )}
+
+              {!isSearching && searchError && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                  {searchError}
+                </p>
+              )}
+
+              {!isSearching && !searchError && replacementOptions.length === 0 && (
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                  لا توجد نتائج مطابقة
+                </p>
+              )}
+
+              {!isSearching &&
+                !searchError &&
+                replacementOptions.map((product) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => handleSelectReplacement(activeItem.id, product)}
+                    disabled={isPending}
+                    className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-start"
+                  >
+                    <span className="flex items-center gap-3">
+                      <ProductThumbnail
+                        imageUrl={product.image_url}
+                        name={product.name}
+                      />
+                      <span className="font-medium text-gray-900">{product.name}</span>
+                    </span>
+                    <span className="text-xs text-gray-500">اختيار</span>
+                  </button>
+                ))}
             </div>
 
             <div className="mt-4 rounded-xl border border-gray-200 p-3">

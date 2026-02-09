@@ -20,7 +20,7 @@ export class OrderWhatsappService {
       to: sellerNumber,
       payload: {
         customerName,
-        orderNumber: `#${order.id}`,
+        orderNumber: String(order.id),
         area,
         totalEgp: total,
       },

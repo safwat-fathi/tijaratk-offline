@@ -33,6 +33,11 @@ export interface PublicProductsResponse {
   meta: PublicProductsMeta;
 }
 
+export interface TenantProductsSearchResponse {
+  data: Product[];
+  meta: PublicProductsMeta;
+}
+
 export interface PublicProductCategory {
   category: string;
   count: number;

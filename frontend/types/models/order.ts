@@ -20,6 +20,7 @@ export interface OrderItem {
   replaced_by_product?: {
     id: number;
     name: string;
+    image_url?: string | null;
   } | null;
 }
 

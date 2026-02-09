@@ -33,6 +33,7 @@ import { UploadFile } from 'src/common/decorators/upload-file.decorator';
 import { imageFileFilter } from 'src/common/utils/file-filters';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { GetPublicProductsDto } from './dto/get-public-products.dto';
+import { GetTenantProductsDto } from './dto/get-tenant-products.dto';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -118,10 +119,22 @@ export class ProductsController {
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get all tenant products' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return tenant products' })
-  findAll(@Req() req: AuthenticatedRequest) {
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query() query: GetTenantProductsDto,
+  ) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
+    }
+
+    if (query.search?.trim()) {
+      return this.productsService.searchTenantProducts(
+        tenantId,
+        query.search,
+        query.page,
+        query.limit,
+      );
     }
 
     return this.productsService.findAll(tenantId);

@@ -113,3 +113,33 @@ export async function updateProductAction(productId: number, formData: FormData)
     };
   }
 }
+
+export async function removeProductAction(productId: number) {
+  try {
+    const response = await productsService.removeProduct(productId);
+
+    if (!response.success) {
+      return {
+        success: false,
+        message: response.message || 'تعذر حذف المنتج',
+      };
+    }
+
+    revalidatePath('/merchant/products/new');
+
+    return {
+      success: true,
+      message: 'تم حذف المنتج',
+    };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error('Remove product failed:', error);
+    return {
+      success: false,
+      message: 'تعذر حذف المنتج',
+    };
+  }
+}

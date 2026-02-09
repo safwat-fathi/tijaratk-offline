@@ -4,6 +4,7 @@ import {
   Product,
   PublicProductCategory,
   PublicProductsResponse,
+  TenantProductsSearchResponse,
 } from '@/types/models/product';
 
 class ProductsService extends HttpService {
@@ -13,6 +14,17 @@ class ProductsService extends HttpService {
 
   public async getProducts() {
     return this.get<Product[]>('', undefined, {
+      cache: 'no-store',
+      authRequired: true,
+    });
+  }
+
+  public async searchProducts(params: {
+    search: string;
+    page?: number;
+    limit?: number;
+  }) {
+    return this.get<TenantProductsSearchResponse>('', params, {
       cache: 'no-store',
       authRequired: true,
     });
@@ -48,6 +60,12 @@ class ProductsService extends HttpService {
 
   public async updateProduct(productId: number, payload: FormData) {
     return this.patch<Product>(`${productId}`, payload, undefined, {
+      authRequired: true,
+    });
+  }
+
+  public async removeProduct(productId: number) {
+    return this.delete<void>(`${productId}`, undefined, {
       authRequired: true,
     });
   }

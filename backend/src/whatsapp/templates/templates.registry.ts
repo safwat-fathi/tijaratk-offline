@@ -7,8 +7,8 @@ export const templatesRegistry = {
   new_order_merchant: {
     contentSidEnv: 'TWILIO_CONTENT_SID_NEW_ORDER_MERCHANT',
     variables: {
-      customerName: 1,
-      orderNumber: 2,
+      orderNumber: 1,
+      customerName: 2,
       area: 3,
       totalEgp: 4,
     },

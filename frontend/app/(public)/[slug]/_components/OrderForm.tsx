@@ -123,7 +123,7 @@ export default function OrderForm({
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
 
 	const categoryTabs = useMemo(() => {
-		const categoriesSource =
+		const categoriesSource: PublicProductCategory[] =
 			initialCategories.length > 0
 				? initialCategories
 				: Array.from(
@@ -135,10 +135,11 @@ export default function OrderForm({
 							acc.set(category, (acc.get(category) || 0) + 1);
 							return acc;
 						}, new Map<string, number>()),
-				  ).map(([category, count]) => ({
+					).map(([category, count]) => ({
 						category,
 						count,
-				  }));
+						image_url: undefined,
+					}));
 
 		const allCount =
 			categoriesSource.length > 0
@@ -515,7 +516,7 @@ export default function OrderForm({
 									key={category.key}
 									type="button"
 									onClick={() => handleCategoryChange(category.key)}
-									className={`shrink-0 rounded-full border px-3 py-1.5 ${
+									className={`shrink-0 rounded h-14 border px-3 py-1.5 ${
 										activeCategory === category.key
 											? "border-indigo-600 bg-indigo-50 text-indigo-700"
 											: "border-gray-300 bg-white text-gray-700"
@@ -526,9 +527,9 @@ export default function OrderForm({
 											<Image
 												src={getImageUrl(category.image_url)}
 												alt={category.label}
-												width={20}
-												height={20}
-												className="h-5 w-5 rounded-full object-cover ring-1 ring-gray-200"
+												width={40}
+												height={40}
+												className="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
 												unoptimized
 											/>
 										) : (

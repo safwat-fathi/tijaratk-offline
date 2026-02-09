@@ -1,8 +1,11 @@
 import {
+  Inject,
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
@@ -15,6 +18,8 @@ import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { ImageProcessorService } from 'src/common/services/image-processor.service';
 
 const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
+const DUPLICATE_PRODUCT_NAME_MESSAGE = 'Product with this name already exists';
+const PRODUCT_SEARCH_CACHE_TTL_SECONDS = 60;
 
 type PublicProductsResult = {
   data: Product[];
@@ -33,6 +38,17 @@ type PublicProductCategorySummary = {
   image_url?: string;
 };
 
+type TenantProductsSearchResult = {
+  data: Product[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    last_page: number;
+    has_next: boolean;
+  };
+};
+
 /**
  * Products service handles product lifecycle for each tenant.
  */
@@ -44,6 +60,7 @@ export class ProductsService {
     @InjectRepository(CatalogItem)
     private readonly catalogItemsRepository: Repository<CatalogItem>,
     private readonly imageProcessorService: ImageProcessorService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   /**
@@ -58,6 +75,8 @@ export class ProductsService {
       throw new BadRequestException('Product name is required');
     }
 
+    await this.ensureUniqueActiveProductName(tenantId, normalizedName);
+
     const product = this.productsRepository.create({
       tenant_id: tenantId,
       name: normalizedName,
@@ -67,7 +86,9 @@ export class ProductsService {
       status: ProductStatus.ACTIVE,
     });
 
-    return this.productsRepository.save(product);
+    const saved = await this.productsRepository.save(product);
+    await this.bumpTenantSearchCacheVersion(tenantId);
+    return saved;
   }
 
   /**
@@ -94,6 +115,8 @@ export class ProductsService {
       );
     }
 
+    await this.ensureUniqueActiveProductName(tenantId, catalogItem.name);
+
     const product = this.productsRepository.create({
       tenant_id: tenantId,
       name: catalogItem.name,
@@ -103,7 +126,9 @@ export class ProductsService {
       status: ProductStatus.ACTIVE,
     });
 
-    return this.productsRepository.save(product);
+    const saved = await this.productsRepository.save(product);
+    await this.bumpTenantSearchCacheVersion(tenantId);
+    return saved;
   }
 
   /**
@@ -119,6 +144,84 @@ export class ProductsService {
         created_at: 'DESC',
       },
     });
+  }
+
+  /**
+   * Returns active products for tenant filtered by text search.
+   */
+  async searchTenantProducts(
+    tenantId: number,
+    search: string,
+    page = 1,
+    limit = 20,
+  ): Promise<TenantProductsSearchResult> {
+    const normalizedSearch = this.normalizeSearchTerm(search);
+    if (normalizedSearch.length < 2) {
+      throw new BadRequestException(
+        'Search term must be at least 2 characters',
+      );
+    }
+
+    const normalizedPage = Number.isFinite(page) ? Math.max(1, page) : 1;
+    const normalizedLimit = Number.isFinite(limit)
+      ? Math.min(50, Math.max(1, limit))
+      : 20;
+
+    const searchVersion = await this.getTenantSearchCacheVersion(tenantId);
+    const cacheKey = this.buildTenantSearchCacheKey(
+      tenantId,
+      normalizedSearch,
+      normalizedPage,
+      normalizedLimit,
+      searchVersion,
+    );
+
+    const cached = await this.cacheManager.get<TenantProductsSearchResult>(
+      cacheKey,
+    );
+    if (cached) {
+      return cached;
+    }
+
+    const searchPattern = `%${normalizedSearch.toLowerCase()}%`;
+
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .where('product.tenant_id = :tenantId', { tenantId })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
+      .andWhere('LOWER(product.name) ILIKE :searchPattern', { searchPattern })
+      .addSelect(
+        'similarity(LOWER(product.name), :normalizedSearch)',
+        'search_rank',
+      )
+      .setParameter('normalizedSearch', normalizedSearch.toLowerCase())
+      .orderBy('search_rank', 'DESC')
+      .addOrderBy('product.created_at', 'DESC')
+      .addOrderBy('product.id', 'DESC')
+      .skip((normalizedPage - 1) * normalizedLimit)
+      .take(normalizedLimit);
+
+    const [data, total] = await query.getManyAndCount();
+    const lastPage = total > 0 ? Math.ceil(total / normalizedLimit) : 1;
+
+    const result: TenantProductsSearchResult = {
+      data,
+      meta: {
+        total,
+        page: normalizedPage,
+        limit: normalizedLimit,
+        last_page: lastPage,
+        has_next: normalizedPage < lastPage,
+      },
+    };
+
+    await this.cacheManager.set(
+      cacheKey,
+      result,
+      PRODUCT_SEARCH_CACHE_TTL_SECONDS,
+    );
+
+    return result;
   }
 
   /**
@@ -284,6 +387,8 @@ export class ProductsService {
       if (!normalizedName) {
         throw new BadRequestException('Product name is required');
       }
+
+      await this.ensureUniqueActiveProductName(tenantId, normalizedName, id);
       product.name = normalizedName;
     }
 
@@ -304,6 +409,7 @@ export class ProductsService {
     }
 
     const updatedProduct = await this.productsRepository.save(product);
+    await this.bumpTenantSearchCacheVersion(tenantId);
 
     if (previousImageUrl && previousImageUrl !== updatedProduct.image_url) {
       await this.imageProcessorService.deleteManagedProductImage(
@@ -321,6 +427,7 @@ export class ProductsService {
     const product = await this.findOne(id, tenantId);
     product.status = ProductStatus.ARCHIVED;
     await this.productsRepository.save(product);
+    await this.bumpTenantSearchCacheVersion(tenantId);
   }
 
   private normalizeCategory(category?: string): string {
@@ -330,5 +437,78 @@ export class ProductsService {
     }
 
     return normalizedCategory.slice(0, 64);
+  }
+
+  /**
+   * Enforces tenant-level uniqueness for active products using normalized names.
+   */
+  private async ensureUniqueActiveProductName(
+    tenantId: number,
+    name: string,
+    excludedProductId?: number,
+  ): Promise<void> {
+    const normalizedName = this.normalizeProductName(name);
+    if (!normalizedName) {
+      return;
+    }
+
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .where('product.tenant_id = :tenantId', { tenantId })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
+      .andWhere(
+        "LOWER(REGEXP_REPLACE(TRIM(product.name), '\\s+', ' ', 'g')) = :normalizedName",
+        { normalizedName },
+      );
+
+    if (excludedProductId) {
+      query.andWhere('product.id != :excludedProductId', {
+        excludedProductId,
+      });
+    }
+
+    const duplicateCount = await query.getCount();
+    if (duplicateCount > 0) {
+      throw new ConflictException(DUPLICATE_PRODUCT_NAME_MESSAGE);
+    }
+  }
+
+  private normalizeProductName(name: string): string {
+    return name.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  private normalizeSearchTerm(search: string): string {
+    return search.trim().replace(/\s+/g, ' ');
+  }
+
+  private getTenantSearchCacheVersionKey(tenantId: number): string {
+    return `merchant:products:search:version:${tenantId}`;
+  }
+
+  private buildTenantSearchCacheKey(
+    tenantId: number,
+    normalizedSearch: string,
+    page: number,
+    limit: number,
+    version: string,
+  ): string {
+    return `merchant:products:search:${tenantId}:${version}:${normalizedSearch}:${page}:${limit}`;
+  }
+
+  private async getTenantSearchCacheVersion(tenantId: number): Promise<string> {
+    const versionKey = this.getTenantSearchCacheVersionKey(tenantId);
+    const cachedVersion = await this.cacheManager.get<string>(versionKey);
+    if (cachedVersion) {
+      return cachedVersion;
+    }
+
+    const initialVersion = Date.now().toString();
+    await this.cacheManager.set(versionKey, initialVersion);
+    return initialVersion;
+  }
+
+  private async bumpTenantSearchCacheVersion(tenantId: number): Promise<void> {
+    const versionKey = this.getTenantSearchCacheVersionKey(tenantId);
+    await this.cacheManager.set(versionKey, Date.now().toString());
   }
 }

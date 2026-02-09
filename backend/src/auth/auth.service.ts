@@ -5,7 +5,6 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { DataSource } from 'typeorm';
 import { TenantsService } from '../tenants/tenants.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { SignupDto } from './dto/signup.dto';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';
 
@@ -16,7 +15,6 @@ export class AuthService {
     private jwtService: JwtService,
     private dataSource: DataSource,
     private tenantsService: TenantsService,
-    private whatsappService: WhatsappService,
   ) {}
 
   async validateUser(phone: string, pass: string): Promise<any> {
@@ -91,10 +89,7 @@ export class AuthService {
         manager,
       );
 
-      // 3. Send Welcome Message
-      await this.whatsappService.sendWelcomeMessage(phone, storeName);
-
-      // 4. Return Login Response
+      // 3. Return Login Response
       return this.login(user);
     });
   }

@@ -145,12 +145,6 @@ export class WhatsappService {
     }
   }
 
-  async sendWelcomeMessage(phone: string, storeName: string): Promise<void> {
-    const loginUrl = `${process.env.CLIENT_URL || 'https://tijaratk.com'}/merchant/login`;
-    const message = welcomeMerchant({ storeName, loginUrl });
-    await this.sendMessage(phone, message);
-  }
-
   /**
    * Resolves the normalized Twilio message context for WhatsApp transport.
    */

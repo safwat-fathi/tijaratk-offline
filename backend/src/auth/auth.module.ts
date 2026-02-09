@@ -10,7 +10,6 @@ import CONSTANTS from 'src/common/constants';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { TenantsModule } from '../tenants/tenants.module';
-import { WhatsappModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -22,7 +21,6 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
       signOptions: { expiresIn: CONSTANTS.SESSION.EXPIRATION_TIME },
     }),
     TenantsModule,
-    WhatsappModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
