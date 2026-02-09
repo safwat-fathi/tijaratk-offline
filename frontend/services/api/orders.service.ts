@@ -21,6 +21,27 @@ class OrdersService extends HttpService {
 		return this.get<Order>(`tracking/${token}`);
 	}
 
+	public async getOrdersByPublicTokens(tokens: string[]) {
+		const normalizedTokens = Array.from(
+			new Set(
+				tokens
+					.map(token => token.trim())
+					.filter(token => token.length > 0),
+			),
+		).slice(0, 15);
+
+		if (normalizedTokens.length === 0) {
+			return { success: true, data: [] as Order[] };
+		}
+
+		const query = new URLSearchParams();
+		for (const token of normalizedTokens) {
+			query.append("token", token);
+		}
+
+		return this.get<Order[]>(`tracking?${query.toString()}`);
+	}
+
 	public async createPublicOrder(
 		tenantSlug: string,
 		payload: CreateOrderRequest,
@@ -43,6 +64,18 @@ class OrdersService extends HttpService {
 	) {
 		return this.patch<{ id: number }>(
 			`items/${itemId}/replace`,
+			payload,
+			undefined,
+			{ authRequired: true },
+		);
+	}
+
+	public async updateOrderItemPrice(
+		itemId: number,
+		payload: { total_price: number },
+	) {
+		return this.patch<{ id: number; total_price: number }>(
+			`items/${itemId}/price`,
 			payload,
 			undefined,
 			{ authRequired: true },

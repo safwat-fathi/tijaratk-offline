@@ -25,6 +25,7 @@ import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { ReplaceOrderItemDto } from './dto/replace-order-item.dto';
+import { UpdateOrderItemPriceDto } from './dto/update-order-item-price.dto';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -90,6 +91,24 @@ export class OrdersController {
     return this.ordersService.findByPublicToken(token);
   }
 
+  @Get('tracking')
+  @ApiOperation({
+    summary: 'Get orders by public tokens (Tracking)',
+    description: 'Get multiple orders by public tracking tokens',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Return orders list' })
+  findByPublicTokens(
+    @Query('token') tokenQuery?: string | string[],
+    @Query('token[]') tokenArrayQuery?: string | string[],
+  ) {
+    const tokens = [
+      ...this.toStringArray(tokenQuery),
+      ...this.toStringArray(tokenArrayQuery),
+    ];
+
+    return this.ordersService.findByPublicTokens(tokens);
+  }
+
   @Get(':id')
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
@@ -146,5 +165,38 @@ export class OrdersController {
       id,
       dto.replaced_by_product_id ?? null,
     );
+  }
+
+  @Patch('items/:id/price')
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
+  @ApiOperation({
+    summary: 'Update order item price',
+    description: 'Set merchant line price for a specific order item',
+  })
+  @ApiBody({ type: UpdateOrderItemPriceDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Order item price updated successfully',
+  })
+  updateOrderItemPrice(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderItemPriceDto,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.ordersService.updateOrderItemPrice(tenantId, id, dto.total_price);
+  }
+
+  private toStringArray(value?: string | string[]): string[] {
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    return typeof value === 'string' ? [value] : [];
   }
 }

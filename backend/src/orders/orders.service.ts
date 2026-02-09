@@ -6,7 +6,14 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, DataSource, DeepPartial, In, Repository } from 'typeorm';
+import {
+  Between,
+  DataSource,
+  DeepPartial,
+  In,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -19,10 +26,12 @@ import { TenantsService } from 'src/tenants/tenants.service';
 import { OrderWhatsappService } from './order-whatsapp.service';
 import { Product } from 'src/products/entities/product.entity';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
+import { ProductPriceHistory } from 'src/products/entities/product-price-history.entity';
 
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+  private static readonly MAX_TRACKING_TOKENS = 15;
 
   constructor(
     @InjectRepository(Order)
@@ -118,9 +127,13 @@ export class OrdersService {
             : undefined;
 
           const quantityText = String(item.quantity).trim();
+          const resolvedUnitPrice = this.resolveItemUnitPrice(
+            item.unit_price,
+            matchedProduct?.current_price,
+          );
           const lineTotal = this.resolveItemTotal(
             quantityText,
-            item.unit_price,
+            resolvedUnitPrice ?? undefined,
             item.total_price,
           );
 
@@ -130,7 +143,7 @@ export class OrdersService {
             name_snapshot:
               item.name?.trim() || matchedProduct?.name || 'منتج غير محدد',
             quantity: quantityText,
-            unit_price: item.unit_price ?? null,
+            unit_price: resolvedUnitPrice,
             total_price: lineTotal,
             notes: item.notes,
           };
@@ -286,23 +299,162 @@ export class OrdersService {
     return this.orderItemsRepository.save(orderItem);
   }
 
+  /**
+   * Sets manual line price for an order item and recalculates order totals.
+   */
+  async updateOrderItemPrice(
+    tenantId: number,
+    itemId: number,
+    totalPrice: number,
+  ): Promise<OrderItem> {
+    const normalizedTotal = this.roundCurrency(Number(totalPrice));
+    if (Number.isNaN(normalizedTotal) || normalizedTotal <= 0) {
+      throw new BadRequestException('Item price must be a positive number');
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const orderItemRepository = manager.getRepository(OrderItem);
+      const orderRepository = manager.getRepository(Order);
+      const productsRepository = manager.getRepository(Product);
+      const priceHistoryRepository = manager.getRepository(ProductPriceHistory);
+
+      const orderItem = await orderItemRepository.findOne({
+        where: { id: itemId },
+        relations: ['order'],
+      });
+
+      if (!orderItem || orderItem.order.tenant_id !== tenantId) {
+        throw new NotFoundException(`Order item with ID ${itemId} not found`);
+      }
+
+      if (
+        orderItem.order.status !== OrderStatus.DRAFT &&
+        orderItem.order.status !== OrderStatus.CONFIRMED
+      ) {
+        throw new BadRequestException(
+          'Item prices can only be updated for draft or confirmed orders',
+        );
+      }
+
+      const numericQty = this.parseNumericQuantity(orderItem.quantity);
+      const normalizedUnitPrice =
+        numericQty !== null && numericQty > 0
+          ? this.roundCurrency(normalizedTotal / numericQty)
+          : normalizedTotal;
+
+      orderItem.total_price = normalizedTotal;
+      orderItem.unit_price = normalizedUnitPrice;
+      const savedItem = await orderItemRepository.save(orderItem);
+
+      const order = await orderRepository.findOne({
+        where: { id: orderItem.order_id },
+      });
+      if (!order) {
+        throw new NotFoundException(
+          `Order with ID ${orderItem.order_id} not found`,
+        );
+      }
+
+      const orderItems = await orderItemRepository.find({
+        where: { order_id: order.id },
+        select: ['total_price'],
+      });
+
+      const pricedLines = orderItems
+        .map((item) => (item.total_price !== null ? Number(item.total_price) : null))
+        .filter((value): value is number => value !== null && !Number.isNaN(value));
+
+      const subtotal =
+        pricedLines.length > 0
+          ? this.roundCurrency(pricedLines.reduce((sum, value) => sum + value, 0))
+          : undefined;
+
+      const deliveryFee = Number(order.delivery_fee || 0);
+      const recomputedTotal =
+        subtotal !== undefined
+          ? this.roundCurrency(subtotal + deliveryFee)
+          : deliveryFee > 0
+            ? this.roundCurrency(deliveryFee)
+            : undefined;
+
+      order.pricing_mode = PricingMode.MANUAL;
+      order.subtotal = subtotal;
+      order.total = recomputedTotal;
+      await orderRepository.save(order);
+
+      const targetProductId =
+        orderItem.replaced_by_product_id ?? orderItem.product_id ?? null;
+      if (targetProductId) {
+        const targetProduct = await productsRepository.findOne({
+          where: {
+            id: targetProductId,
+            tenant_id: tenantId,
+          },
+        });
+
+        if (!targetProduct) {
+          throw new NotFoundException(
+            `Product with ID ${targetProductId} not found`,
+          );
+        }
+
+        const activeHistory = await priceHistoryRepository.findOne({
+          where: {
+            tenant_id: tenantId,
+            product_id: targetProduct.id,
+            effective_to: IsNull(),
+          },
+          order: {
+            effective_from: 'DESC',
+            id: 'DESC',
+          },
+        });
+
+        const activeHistoryPrice =
+          activeHistory?.price !== undefined && activeHistory?.price !== null
+            ? this.roundCurrency(Number(activeHistory.price))
+            : null;
+
+        if (
+          activeHistory &&
+          activeHistoryPrice !== null &&
+          activeHistoryPrice === normalizedUnitPrice
+        ) {
+          targetProduct.current_price = normalizedUnitPrice;
+          await productsRepository.save(targetProduct);
+          return savedItem;
+        }
+
+        const now = new Date();
+
+        if (activeHistory) {
+          activeHistory.effective_to = now;
+          await priceHistoryRepository.save(activeHistory);
+        }
+
+        await priceHistoryRepository.save(
+          priceHistoryRepository.create({
+            tenant_id: tenantId,
+            product_id: targetProduct.id,
+            price: normalizedUnitPrice,
+            effective_from: now,
+            reason: 'manual update from order item',
+          }),
+        );
+
+        targetProduct.current_price = normalizedUnitPrice;
+        await productsRepository.save(targetProduct);
+      }
+
+      return savedItem;
+    });
+  }
+
   async findByPublicToken(token: string): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { public_token: token },
-      relations: {
-        customer: true,
-        items: {
-          replaced_by_product: true,
-        },
-        tenant: true,
-      },
-      select: {
-        tenant: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
+      relations: this.publicTrackingRelations,
+      select: this.publicTrackingSelect,
     });
 
     if (!order) {
@@ -311,6 +463,58 @@ export class OrdersService {
 
     return order;
   }
+
+  async findByPublicTokens(tokens: string[]): Promise<Order[]> {
+    const normalizedTokens = this.normalizeTrackingTokens(tokens);
+    if (normalizedTokens.length === 0) {
+      return [];
+    }
+
+    const orders = await this.ordersRepository.find({
+      where: { public_token: In(normalizedTokens) },
+      relations: this.publicTrackingRelations,
+      select: this.publicTrackingSelect,
+    });
+
+    const ordersByToken = new Map(
+      orders.map((order) => [order.public_token, order]),
+    );
+
+    return normalizedTokens
+      .map((token) => ordersByToken.get(token))
+      .filter((order): order is Order => Boolean(order));
+  }
+
+  private normalizeTrackingTokens(tokens: string[]): string[] {
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      return [];
+    }
+
+    const normalized = tokens
+      .map((token) => (typeof token === 'string' ? token.trim() : ''))
+      .filter((token) => token.length > 0);
+
+    return Array.from(new Set(normalized)).slice(
+      0,
+      OrdersService.MAX_TRACKING_TOKENS,
+    );
+  }
+
+  private readonly publicTrackingRelations = {
+    customer: true,
+    items: {
+      replaced_by_product: true,
+    },
+    tenant: true,
+  } as const;
+
+  private readonly publicTrackingSelect = {
+    tenant: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  } as const;
 
   private validateStatusTransition(
     current: OrderStatus,
@@ -384,6 +588,27 @@ export class OrdersService {
   }
 
   /**
+   * Resolves effective unit price for snapshot storage, preferring explicit item value.
+   */
+  private resolveItemUnitPrice(
+    explicitUnitPrice?: number,
+    productCurrentPrice?: number | null,
+  ): number | null {
+    if (explicitUnitPrice !== undefined && explicitUnitPrice !== null) {
+      return this.roundCurrency(Number(explicitUnitPrice));
+    }
+
+    if (productCurrentPrice !== undefined && productCurrentPrice !== null) {
+      const parsed = Number(productCurrentPrice);
+      if (!Number.isNaN(parsed)) {
+        return this.roundCurrency(parsed);
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Rounds currency values to 2 decimal places.
    */
   private roundCurrency(value: number): number {
@@ -413,26 +638,8 @@ export class OrdersService {
 
   private async notifyCustomerStatusChange(order: Order): Promise<void> {
     try {
-      const trackingUrl = this.buildTrackingUrl(order.public_token);
-
-      if (order.status === OrderStatus.CONFIRMED) {
-        await this.orderWhatsappService.notifyCustomerConfirmed(
-          order,
-          trackingUrl,
-        );
-      }
-
-      if (order.status === OrderStatus.OUT_FOR_DELIVERY) {
-        await this.orderWhatsappService.notifyCustomerOutForDelivery(order);
-      }
-
-      if (order.status === OrderStatus.CANCELLED) {
-        await this.orderWhatsappService.notifyCustomerCancelled(order);
-      }
-
-      if (order.status === OrderStatus.COMPLETED) {
-        await this.orderWhatsappService.notifyCustomerDelivered(order);
-      }
+      if (order.status === OrderStatus.DRAFT) return;
+      await this.orderWhatsappService.notifyCustomerStatusUpdate(order);
     } catch (error) {
       this.logger.warn(
         `Failed to notify customer for order ${order.id} status ${order.status}`,

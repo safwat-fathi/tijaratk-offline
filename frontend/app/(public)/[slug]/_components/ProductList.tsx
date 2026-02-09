@@ -3,6 +3,7 @@
 import { Product } from "@/types/models/product";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
+import { formatCurrency } from "@/lib/utils/currency";
 
 type ProductListProps = {
 	products: Product[];
@@ -19,6 +20,23 @@ export default function ProductList({
 	loadMoreTriggerIndex,
 	setLoadMoreTarget,
 }: ProductListProps) {
+	const resolveProductPriceText = (product: Product): string | null => {
+		if (
+			product.current_price === null ||
+			product.current_price === undefined ||
+			product.current_price === ""
+		) {
+			return null;
+		}
+
+		const parsedPrice = Number(product.current_price);
+		if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+			return null;
+		}
+
+		return formatCurrency(parsedPrice, "EGP", "en-EG") || `EGP ${parsedPrice.toFixed(2)}`;
+	};
+
 	const handleUpdate = (productId: number, delta: number) => {
 		const current = quantities[productId] || 0;
 		const next = Math.max(0, current + delta);
@@ -30,6 +48,7 @@ export default function ProductList({
 		<div className="space-y-4">
 			{products.map((product, index) => {
 				const qty = quantities[product.id] || 0;
+				const priceText = resolveProductPriceText(product);
 				const shouldAttachLoadMoreRef =
 					typeof loadMoreTriggerIndex === "number" &&
 					loadMoreTriggerIndex >= 0 &&
@@ -65,7 +84,7 @@ export default function ProductList({
 									{product.name}
 								</h3>
 								<p className="text-xs text-gray-500">
-									السعر يتم تأكيده بعد الطلب
+									{priceText ? `السعر: ${priceText}` : "السعر يتم تأكيده بعد الطلب"}
 								</p>
 							</div>
 

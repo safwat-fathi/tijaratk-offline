@@ -1,9 +1,17 @@
 import HttpService from "@/services/base/http.service";
 import { Customer } from "@/types/models/customer";
 
+type CustomersListMeta = {
+	total: number;
+	page: number;
+	last_page: number;
+	limit?: number;
+	has_next?: boolean;
+};
+
 type CustomersListResponse = {
 	data: Customer[];
-	meta: Record<string, unknown>;
+	meta: CustomersListMeta;
 };
 
 class CustomersService extends HttpService {

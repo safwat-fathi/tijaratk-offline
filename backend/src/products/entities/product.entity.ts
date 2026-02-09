@@ -30,4 +30,7 @@ export class Product extends TenantBaseEntity {
     default: ProductStatus.ACTIVE,
   })
   status: ProductStatus;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  current_price?: number | null;
 }

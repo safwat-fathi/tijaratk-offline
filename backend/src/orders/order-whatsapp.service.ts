@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { Order } from './entities/order.entity';
-import { orderCancelled, welcomeCustomer } from 'src/whatsapp/templates';
+import { welcomeCustomer } from 'src/whatsapp/templates';
+import { OrderStatus } from 'src/common/enums/order-status.enum';
 
 @Injectable()
 export class OrderWhatsappService {
   constructor(private readonly whatsappService: WhatsappService) {}
+
+  private readonly statusLabels: Partial<Record<OrderStatus, string>> = {
+    [OrderStatus.CONFIRMED]: 'تم التأكيد',
+    [OrderStatus.OUT_FOR_DELIVERY]: 'خرج للتوصيل',
+    [OrderStatus.COMPLETED]: 'تم التوصيل',
+    [OrderStatus.CANCELLED]: 'تم الإلغاء',
+  };
 
   async notifySellerNewOrder(order: Order): Promise<void> {
     const sellerNumber = order.tenant?.phone;
@@ -50,39 +58,12 @@ export class OrderWhatsappService {
     });
   }
 
-  async notifyCustomerOutForDelivery(order: Order): Promise<void> {
+  async notifyCustomerStatusUpdate(order: Order): Promise<void> {
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber) return;
 
-    const customerName = order.customer_name || order.customer?.name || 'عميل';
-
-    await this.whatsappService.sendTemplatedMessage({
-      key: 'order_out_for_delivery',
-      to: customerNumber,
-      payload: {
-        customerName,
-        orderNumber: `#${order.id}`,
-      },
-    });
-  }
-
-  async notifyCustomerCancelled(order: Order): Promise<void> {
-    const customerNumber = order.customer_phone || order.customer?.phone;
-    if (!customerNumber) return;
-
-    const customerName = order.customer_name || order.customer?.name || 'عميل';
-
-    const message = orderCancelled({
-      customerName,
-      orderId: `#${order.id}`,
-    });
-
-    await this.whatsappService.sendMessage(customerNumber, message);
-  }
-
-  async notifyCustomerDelivered(order: Order): Promise<void> {
-    const customerNumber = order.customer_phone || order.customer?.phone;
-    if (!customerNumber) return;
+    const statusLabel = this.statusLabels[order.status];
+    if (!statusLabel) return;
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
 
@@ -92,7 +73,7 @@ export class OrderWhatsappService {
       payload: {
         customerName,
         orderNumber: `#${order.id}`,
-        statusLabel: 'تم التوصيل',
+        statusLabel,
       },
     });
   }

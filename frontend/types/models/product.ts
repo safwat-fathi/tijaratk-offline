@@ -5,6 +5,7 @@ export interface Product {
   id: number;
   name: string;
   image_url?: string | null;
+  current_price?: number | string | null;
   category?: string | null;
   source: ProductSource;
   status: ProductStatus;

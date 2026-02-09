@@ -6,6 +6,7 @@ import { CreateOrderRequest } from '@/types/services/orders';
 import { revalidatePath } from 'next/cache';
 import { createOrderSchema } from '@/lib/validations/order';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
+import { appendTrackedOrderToCookie } from '@/lib/tracking/customer-tracking-cookie';
 
 export async function updateOrderStatus(orderId: number, status: OrderStatus) {
   try {
@@ -44,6 +45,29 @@ export async function replaceOrderItemAction(
     }
     console.error('Failed to replace order item:', error);
     return { success: false, error: 'Failed to replace order item' };
+  }
+}
+
+export async function updateOrderItemPriceAction(
+  orderId: number,
+  itemId: number,
+  totalPrice: number,
+) {
+  try {
+    const response = await ordersService.updateOrderItemPrice(itemId, {
+      total_price: totalPrice,
+    });
+
+    revalidatePath(`/merchant/orders/${orderId}`);
+    revalidatePath('/merchant/orders');
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to update order item price:', error);
+    return { success: false, error: 'Failed to update order item price' };
   }
 }
 
@@ -108,6 +132,28 @@ export async function createOrderAction(
     const response = await ordersService.createPublicOrder(tenantSlug, payload);
 
     if (response.success) {
+      if (response.data) {
+        const createdOrder = response.data as {
+          public_token?: unknown;
+          created_at?: unknown;
+        };
+        const publicToken =
+          typeof createdOrder.public_token === 'string'
+            ? createdOrder.public_token.trim()
+            : '';
+
+        if (publicToken) {
+          await appendTrackedOrderToCookie({
+            token: publicToken,
+            slug: tenantSlug,
+            created_at:
+              typeof createdOrder.created_at === 'string'
+                ? createdOrder.created_at
+                : new Date().toISOString(),
+          });
+        }
+      }
+
       return {
         success: true,
         message: 'Order created successfully',

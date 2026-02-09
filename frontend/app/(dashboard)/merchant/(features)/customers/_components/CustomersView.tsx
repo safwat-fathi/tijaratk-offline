@@ -64,9 +64,15 @@ export default function CustomersView({ initialCustomers }: CustomersViewProps) 
         if (res.success && res.data) {
             const newCustomers = res.data.data;
             const meta = res.data.meta;
+            const currentPage = Number(meta.page ?? pageNum);
+            const lastPage = Number(meta.last_page ?? pageNum);
+            const hasValidMeta =
+              Number.isFinite(currentPage) &&
+              Number.isFinite(lastPage) &&
+              lastPage > 0;
 
             setCustomers(prev => isReset ? newCustomers : [...prev, ...newCustomers]);
-            setHasMore(meta.page < meta.last_page);
+            setHasMore(hasValidMeta ? currentPage < lastPage : newCustomers.length > 0);
         }
     } catch (err) {
         console.error("Failed to fetch customers", err);

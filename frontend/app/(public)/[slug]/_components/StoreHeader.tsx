@@ -3,6 +3,7 @@
 import { TENANT_CATEGORIES, type TenantCategory } from "@/constants";
 import { Tenant } from "@/types/models/tenant";
 import { JSX } from "react";
+import Link from "next/link";
 
 const CATEGORY_BY_VALUE: Record<
 	TenantCategory,
@@ -136,6 +137,28 @@ const CATEGORY_ICONS: Record<TenantCategory, JSX.Element> = {
 	),
 };
 
+const TrackingOrdersIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		className="shrink-0 opacity-90"
+		aria-hidden="true"
+	>
+		<path d="M3 7h13" />
+		<path d="M3 12h9" />
+		<path d="M3 17h6" />
+		<circle cx="17" cy="17" r="4" />
+		<path d="m19 19-2-2V15" />
+	</svg>
+);
+
 export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 	const categoryValue = CATEGORY_BY_VALUE[tenant.category]
 		? tenant.category
@@ -179,6 +202,13 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 				>
 					<span>✍️ اكتب طلبك</span>
 				</button>
+				<Link
+					href="/track-orders"
+					className="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-2.5 text-center text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
+				>
+					<TrackingOrdersIcon />
+					تتبع طلباتي
+				</Link>
 			</div>
 		</div>
 	);

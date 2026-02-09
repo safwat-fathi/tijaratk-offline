@@ -8,6 +8,28 @@ type Props = {
   params: Promise<{ token: string }>;
 };
 
+const TrackingOrdersIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		className="shrink-0 opacity-90"
+		aria-hidden="true"
+	>
+		<path d="M3 7h13" />
+		<path d="M3 12h9" />
+		<path d="M3 17h6" />
+		<circle cx="17" cy="17" r="4" />
+		<path d="m19 19-2-2V15" />
+	</svg>
+);
+
 const StatusBadge = ({ status }: { status: OrderStatus }) => {
   const statusConfig: Record<
 		string,
@@ -177,14 +199,23 @@ export default async function TrackOrder({ params }: Props) {
 						<p className="mt-1 max-w-2xl text-sm text-gray-500">
 							رقم التتبع: {order.public_token}
 						</p>
-						{order.tenant?.slug && (
+						<div className="flex items-center gap-2">
 							<Link
-								href={`/${order.tenant.slug}?reorder=${order.public_token}`}
-								className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+								href="/track-orders"
+								className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-xs font-medium rounded-full text-slate-700 bg-white hover:bg-slate-50"
 							>
-								إعادة الطلب
+								<TrackingOrdersIcon />
+								كل طلباتي
 							</Link>
-						)}
+							{order.tenant?.slug && (
+								<Link
+									href={`/${order.tenant.slug}?reorder=${order.public_token}`}
+									className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+								>
+									إعادة الطلب
+								</Link>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>

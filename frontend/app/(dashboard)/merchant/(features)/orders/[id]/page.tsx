@@ -14,6 +14,14 @@ const formatPrice = (amount: number | string | undefined | null) => {
 	}).format(value);
 };
 
+const statusLabelMap: Record<OrderStatus, string> = {
+	[OrderStatus.DRAFT]: "جديد",
+	[OrderStatus.CONFIRMED]: "مؤكد",
+	[OrderStatus.OUT_FOR_DELIVERY]: "خرج للتوصيل",
+	[OrderStatus.COMPLETED]: "اكتمل",
+	[OrderStatus.CANCELLED]: "ملغي",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function OrderDetailsPage({
@@ -29,7 +37,11 @@ export default async function OrderDetailsPage({
 	]);
 
 	if (!orderResponse.success || !orderResponse.data) {
-		return <div className="p-8 text-center text-red-500">Order not found</div>;
+		return (
+			<div className="p-8 text-center text-red-500">
+				{orderResponse.message}
+			</div>
+		);
 	}
 
 	const order = orderResponse.data;
@@ -74,10 +86,10 @@ export default async function OrderDetailsPage({
 					</svg>
 				</Link>
 
-				<h1 className="text-lg font-bold">Order #{order.id}</h1>
+				<h1 className="text-lg font-bold">الطلب #{order.id}</h1>
 
 				<span
-					className={`ml-auto rounded-full px-2 py-1 text-xs font-medium uppercase tracking-wide
+					className={`ml-auto rounded-full px-2 py-1 text-xs font-medium tracking-wide
             ${order.status === OrderStatus.DRAFT ? "bg-blue-100 text-blue-800" : ""}
             ${order.status === OrderStatus.CONFIRMED ? "bg-indigo-100 text-indigo-800" : ""}
             ${order.status === OrderStatus.OUT_FOR_DELIVERY ? "bg-amber-100 text-amber-800" : ""}
@@ -85,14 +97,14 @@ export default async function OrderDetailsPage({
             ${order.status === OrderStatus.CANCELLED ? "bg-red-100 text-red-800" : ""}
           `}
 				>
-					{order.status}
+					{statusLabelMap[order.status] || order.status}
 				</span>
 			</div>
 
 			<div className="flex-1 space-y-4 p-4 pb-24">
 				<section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
 					<h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
-						Customer
+						معلومات العميل
 					</h2>
 
 					<div className="flex items-center gap-4">
@@ -121,6 +133,7 @@ export default async function OrderDetailsPage({
 
 				<OrderItemsReplacement
 					orderId={order.id}
+					orderStatus={order.status}
 					initialItems={order.items || []}
 					products={products}
 				/>
@@ -147,25 +160,25 @@ export default async function OrderDetailsPage({
 				<section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
 					<div className="space-y-2">
 						<div className="flex justify-between text-sm text-gray-600">
-							<span>Subtotal</span>
+							<span>الإجمالي الفرعي</span>
 							<span>
 								{order.subtotal !== null && order.subtotal !== undefined
 									? formatPrice(order.subtotal)
-									: "السعر يتم تأكيده بعد الطلب"}
+									: "غير محدد"}
 							</span>
 						</div>
 
 						<div className="flex justify-between text-sm text-gray-600">
-							<span>Delivery</span>
+							<span>رسوم التوصيل</span>
 							<span>{formatPrice(order.delivery_fee)}</span>
 						</div>
 
 						<div className="flex items-end justify-between border-t border-gray-100 pt-3">
-							<span className="font-bold text-gray-900">Total</span>
+							<span className="font-bold text-gray-900">الإجمالي</span>
 							<span className="text-xl font-bold text-gray-900">
 								{order.total !== null && order.total !== undefined
 									? formatPrice(order.total)
-									: "السعر يتم تأكيده بعد الطلب"}
+									: "غير محدد"}
 							</span>
 						</div>
 					</div>
@@ -220,7 +233,7 @@ export default async function OrderDetailsPage({
 					{(order.status === OrderStatus.COMPLETED ||
 						order.status === OrderStatus.CANCELLED) && (
 						<div className="w-full py-2 text-center font-medium text-gray-500">
-							حالة الطلب: {order.status}
+							حالة الطلب: {statusLabelMap[order.status] || order.status}
 						</div>
 					)}
 				</div>

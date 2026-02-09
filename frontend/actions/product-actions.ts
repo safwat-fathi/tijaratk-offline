@@ -143,3 +143,56 @@ export async function removeProductAction(productId: number) {
     };
   }
 }
+
+export async function searchTenantProductsAction(
+  search: string,
+  page = 1,
+  limit = 20,
+) {
+  try {
+    const normalizedSearch = search.trim();
+    if (normalizedSearch.length < 2) {
+      return {
+        success: true,
+        data: {
+          data: [],
+          meta: {
+            total: 0,
+            page: 1,
+            limit,
+            last_page: 1,
+            has_next: false,
+          },
+        },
+      };
+    }
+
+    const response = await productsService.searchProducts({
+      search: normalizedSearch,
+      page,
+      limit,
+    });
+
+    if (!response.success || !response.data) {
+      return {
+        success: false,
+        message: response.message || 'تعذر تحميل نتائج البحث',
+      };
+    }
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+
+    console.error('Search tenant products failed:', error);
+    return {
+      success: false,
+      message: 'تعذر تحميل نتائج البحث',
+    };
+  }
+}

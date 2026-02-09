@@ -7,8 +7,16 @@ import { updateOrderStatus } from "@/actions/order-actions";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const formatPrice = (amount: number | string | undefined) => {
-  const val = Number(amount || 0);
+const formatPrice = (amount: number | string | null | undefined) => {
+  if (amount === null || amount === undefined || amount === "") {
+    return "غير محدد";
+  }
+
+  const val = Number(amount);
+  if (Number.isNaN(val)) {
+    return "غير محدد";
+  }
+
   return new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(val);
 };
 
