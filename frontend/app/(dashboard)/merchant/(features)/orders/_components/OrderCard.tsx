@@ -52,8 +52,11 @@ export default function OrderCard({ order, isHighlighted }: OrderCardProps) {
 
   const isCompleted = order.status === OrderStatus.COMPLETED;
   const isCancelled = order.status === OrderStatus.CANCELLED;
+  const isRejectedByCustomer =
+    order.status === OrderStatus.REJECTED_BY_CUSTOMER;
   const nextStatus = getNextStatus(order.status);
-  const isActionable = !isCompleted && !isCancelled && nextStatus !== null;
+  const isActionable =
+    !isCompleted && !isCancelled && !isRejectedByCustomer && nextStatus !== null;
   
   // Safe customer access
   const customerName = order.customer?.name || "عميل جديد";

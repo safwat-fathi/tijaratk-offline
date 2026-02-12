@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { SelectQueryBuilder, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CatalogItem } from './entities/catalog-item.entity';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -156,6 +156,7 @@ export class ProductsService {
   async searchTenantProducts(
     tenantId: number,
     search: string,
+    category?: string,
     page = 1,
     limit = 20,
   ): Promise<TenantProductsSearchResult> {
@@ -170,54 +171,35 @@ export class ProductsService {
     const normalizedLimit = Number.isFinite(limit)
       ? Math.min(50, Math.max(1, limit))
       : 20;
+    const normalizedCategory = this.normalizeOptionalCategory(category);
+    const similarityThreshold =
+      this.resolveSimilarityThreshold(normalizedSearch);
 
     const searchVersion = await this.getTenantSearchCacheVersion(tenantId);
     const cacheKey = this.buildTenantSearchCacheKey(
       tenantId,
       normalizedSearch,
+      normalizedCategory,
+      similarityThreshold,
       normalizedPage,
       normalizedLimit,
       searchVersion,
     );
 
-    const cached = await this.cacheManager.get<TenantProductsSearchResult>(
-      cacheKey,
-    );
+    const cached =
+      await this.cacheManager.get<TenantProductsSearchResult>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const searchPattern = `%${normalizedSearch.toLowerCase()}%`;
-
-    const query = this.productsRepository
-      .createQueryBuilder('product')
-      .where('product.tenant_id = :tenantId', { tenantId })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
-      .andWhere('LOWER(product.name) ILIKE :searchPattern', { searchPattern })
-      .addSelect(
-        'similarity(LOWER(product.name), :normalizedSearch)',
-        'search_rank',
-      )
-      .setParameter('normalizedSearch', normalizedSearch.toLowerCase())
-      .orderBy('search_rank', 'DESC')
-      .addOrderBy('product.created_at', 'DESC')
-      .addOrderBy('product.id', 'DESC')
-      .skip((normalizedPage - 1) * normalizedLimit)
-      .take(normalizedLimit);
-
-    const [data, total] = await query.getManyAndCount();
-    const lastPage = total > 0 ? Math.ceil(total / normalizedLimit) : 1;
-
-    const result: TenantProductsSearchResult = {
-      data,
-      meta: {
-        total,
-        page: normalizedPage,
-        limit: normalizedLimit,
-        last_page: lastPage,
-        has_next: normalizedPage < lastPage,
-      },
-    };
+    const result = await this.searchWithinTenantProducts(
+      tenantId,
+      normalizedSearch,
+      normalizedCategory,
+      similarityThreshold,
+      normalizedPage,
+      normalizedLimit,
+    );
 
     await this.cacheManager.set(
       cacheKey,
@@ -226,6 +208,41 @@ export class ProductsService {
     );
 
     return result;
+  }
+
+  /**
+   * Returns public active products for tenant slug filtered by text search.
+   */
+  async searchPublicProducts(
+    slug: string,
+    search: string,
+    category?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PublicProductsResult> {
+    const normalizedSearch = this.normalizeSearchTerm(search);
+    if (normalizedSearch.length < 2) {
+      throw new BadRequestException(
+        'Search term must be at least 2 characters',
+      );
+    }
+
+    const normalizedPage = Number.isFinite(page) ? Math.max(1, page) : 1;
+    const normalizedLimit = Number.isFinite(limit)
+      ? Math.min(50, Math.max(1, limit))
+      : 20;
+    const normalizedCategory = this.normalizeOptionalCategory(category);
+    const similarityThreshold =
+      this.resolveSimilarityThreshold(normalizedSearch);
+
+    return this.searchWithinPublicProducts(
+      slug,
+      normalizedSearch,
+      normalizedCategory,
+      similarityThreshold,
+      normalizedPage,
+      normalizedLimit,
+    );
   }
 
   /**
@@ -440,6 +457,123 @@ export class ProductsService {
     await this.bumpTenantSearchCacheVersion(tenantId);
   }
 
+  private async searchWithinTenantProducts(
+    tenantId: number,
+    normalizedSearch: string,
+    category: string | undefined,
+    similarityThreshold: number,
+    page: number,
+    limit: number,
+  ): Promise<TenantProductsSearchResult> {
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .where('product.tenant_id = :tenantId', { tenantId })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
+
+    if (category) {
+      query.andWhere('product.category = :category', { category });
+    }
+
+    this.applySimilarityRanking(query, normalizedSearch, similarityThreshold);
+
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+    return this.buildSearchResult(data, total, page, limit);
+  }
+
+  private async searchWithinPublicProducts(
+    slug: string,
+    normalizedSearch: string,
+    category: string | undefined,
+    similarityThreshold: number,
+    page: number,
+    limit: number,
+  ): Promise<PublicProductsResult> {
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .innerJoin('product.tenant', 'tenant')
+      .where('tenant.slug = :slug', { slug })
+      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
+
+    if (category) {
+      query.andWhere('product.category = :category', { category });
+    }
+
+    this.applySimilarityRanking(query, normalizedSearch, similarityThreshold);
+
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+    return this.buildSearchResult(data, total, page, limit);
+  }
+
+  private applySimilarityRanking(
+    query: SelectQueryBuilder<Product>,
+    normalizedSearch: string,
+    similarityThreshold: number,
+  ): void {
+    const comparableNameSql =
+      this.buildComparableProductNameExpression('product.name');
+    const prefixPattern = `${normalizedSearch}%`;
+    const containsPattern = `%${normalizedSearch}%`;
+
+    query
+      .setParameter('normalizedSearch', normalizedSearch)
+      .setParameter('prefixPattern', prefixPattern)
+      .setParameter('containsPattern', containsPattern)
+      .setParameter('similarityThreshold', similarityThreshold)
+      .addSelect(
+        `similarity(${comparableNameSql}, :normalizedSearch)`,
+        'name_similarity',
+      )
+      .addSelect(
+        `CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END`,
+        'prefix_score',
+      )
+      .addSelect(
+        `CASE WHEN ${comparableNameSql} LIKE :containsPattern THEN 1 ELSE 0 END`,
+        'contains_score',
+      )
+      .addSelect(
+        `(similarity(${comparableNameSql}, :normalizedSearch) * 0.85) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15`,
+        'search_rank',
+      )
+      .andWhere(
+        `(${comparableNameSql} LIKE :prefixPattern OR ${comparableNameSql} LIKE :containsPattern OR LOWER(product.name) % :normalizedSearch)`,
+      )
+      .andWhere(
+        `(${comparableNameSql} LIKE :prefixPattern OR ${comparableNameSql} LIKE :containsPattern OR similarity(${comparableNameSql}, :normalizedSearch) >= :similarityThreshold)`,
+      );
+
+    query
+      .orderBy('search_rank', 'DESC')
+      .addOrderBy('name_similarity', 'DESC')
+      .addOrderBy('contains_score', 'DESC')
+      .addOrderBy('product.created_at', 'DESC')
+      .addOrderBy('product.id', 'DESC');
+  }
+
+  private buildSearchResult(
+    data: Product[],
+    total: number,
+    page: number,
+    limit: number,
+  ): TenantProductsSearchResult {
+    const lastPage = total > 0 ? Math.ceil(total / limit) : 1;
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        last_page: lastPage,
+        has_next: page < lastPage,
+      },
+    };
+  }
+
   private normalizeCategory(category?: string): string {
     const normalizedCategory = category?.trim();
     if (!normalizedCategory) {
@@ -488,7 +622,83 @@ export class ProductsService {
   }
 
   private normalizeSearchTerm(search: string): string {
-    return search.trim().replace(/\s+/g, ' ');
+    return this.normalizeArabic(search);
+  }
+
+  private resolveSimilarityThreshold(normalizedSearch: string): number {
+    const length = normalizedSearch.length;
+    if (length <= 3) {
+      return 0.08;
+    }
+
+    if (length <= 5) {
+      return 0.14;
+    }
+
+    return 0.22;
+  }
+
+  private normalizeOptionalCategory(category?: string): string | undefined {
+    const normalizedCategory = category?.trim();
+    if (!normalizedCategory) {
+      return undefined;
+    }
+
+    return normalizedCategory.slice(0, 64);
+  }
+
+  private normalizeArabic(input: string): string {
+    return input
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
+      .replace(/\(([^)]*)\)/g, ' ')
+      .replace(
+        /(?:\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)|(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+)/gi,
+        ' ',
+      )
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private buildComparableProductNameExpression(columnName: string): string {
+    return `
+      BTRIM(
+        REGEXP_REPLACE(
+          REGEXP_REPLACE(
+            REGEXP_REPLACE(
+              REGEXP_REPLACE(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(
+                    LOWER(${columnName}),
+                    '[أإآ]',
+                    'ا',
+                    'g'
+                  ),
+                  'ى',
+                  'ي',
+                  'g'
+                ),
+                'ة',
+                'ه',
+                'g'
+              ),
+              '\\\\([^\\\\)]*\\\\)',
+              ' ',
+              'g'
+            ),
+            '(\\\\m\\\\d+\\\\s*(جم|جرام|كجم|كيلو|ك|g|kg)\\\\M)|(\\\\m(جم|جرام|كجم|كيلو|ك|g|kg)\\\\s*\\\\d+\\\\M)',
+            ' ',
+            'gi'
+          ),
+          '\\\\s+',
+          ' ',
+          'g'
+        )
+      )
+    `;
   }
 
   private normalizeCurrentPrice(price: number): number {
@@ -506,11 +716,14 @@ export class ProductsService {
   private buildTenantSearchCacheKey(
     tenantId: number,
     normalizedSearch: string,
+    category: string | undefined,
+    similarityThreshold: number,
     page: number,
     limit: number,
     version: string,
   ): string {
-    return `merchant:products:search:${tenantId}:${version}:${normalizedSearch}:${page}:${limit}`;
+    const normalizedCategory = category || 'all';
+    return `merchant:products:search:${tenantId}:${version}:${normalizedCategory}:${normalizedSearch}:${similarityThreshold}:${page}:${limit}`;
   }
 
   private async getTenantSearchCacheVersion(tenantId: number): Promise<string> {

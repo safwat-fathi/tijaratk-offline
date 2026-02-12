@@ -48,6 +48,26 @@ export async function replaceOrderItemAction(
   }
 }
 
+export async function resetOrderItemReplacementAction(
+  orderId: number,
+  itemId: number,
+) {
+  try {
+    const response = await ordersService.resetOrderItemReplacement(itemId);
+
+    revalidatePath(`/merchant/orders/${orderId}`);
+    revalidatePath('/merchant/orders');
+
+    return { success: true, data: response.data };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to reset order item replacement:', error);
+    return { success: false, error: 'Failed to reset order item replacement' };
+  }
+}
+
 export async function updateOrderItemPriceAction(
   orderId: number,
   itemId: number,

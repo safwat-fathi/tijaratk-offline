@@ -16,6 +16,21 @@ import { CatalogItem, Product } from '@/types/models/product';
 const ALL_CATALOG_ITEMS = '__all__';
 const MAX_PRODUCT_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_PRODUCT_IMAGE_SIZE_MB = 5;
+const ALLOWED_PRODUCT_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+const ALLOWED_PRODUCT_IMAGE_EXTENSIONS = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.heic',
+  '.heif',
+]);
 const DUPLICATE_PRODUCT_PREFIX = 'المنتج موجود بالفعل:';
 const MIN_SEARCH_CHARS = 2;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -92,6 +107,20 @@ const resolveProductPriceText = (value: Product['current_price']): string | null
   }
 
   return formatCurrency(parsedPrice) || null;
+};
+
+const hasAllowedProductImageFormat = (file: File): boolean => {
+  const mimeType = file.type.trim().toLowerCase();
+  if (ALLOWED_PRODUCT_IMAGE_MIME_TYPES.has(mimeType)) {
+    return true;
+  }
+
+  const extensionMatch = /\.[^.]+$/.exec(file.name);
+  const extension = extensionMatch?.[0].toLowerCase() || '';
+  const hasAllowedExtension = ALLOWED_PRODUCT_IMAGE_EXTENSIONS.has(extension);
+  const hasGenericMimeType = !mimeType || mimeType === 'application/octet-stream';
+
+  return hasGenericMimeType && hasAllowedExtension;
 };
 
 type ProductOnboardingClientProps = {
@@ -457,6 +486,14 @@ export default function ProductOnboardingClient({
       setEditImagePreview(null);
       event.target.value = '';
       setMessage(`حجم الصورة يجب ألا يتجاوز ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت`);
+      return;
+    }
+
+    if (selectedFile && !hasAllowedProductImageFormat(selectedFile)) {
+      setEditImageFile(null);
+      setEditImagePreview(null);
+      event.target.value = '';
+      setMessage('صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP أو HEIC أو HEIF.');
       return;
     }
 
@@ -837,7 +874,7 @@ export default function ProductOnboardingClient({
                 <span className="mb-1 block text-sm text-gray-700">صورة المنتج</span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                   onChange={handleEditImageChange}
                   className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
                 />

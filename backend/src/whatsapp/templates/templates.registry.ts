@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { newOrderSeller } from './new-order-seller';
 import { orderStatusUpdate } from './order-status';
 import { outForDelivery } from './out-for-delivery';
+import { orderProductReplacement } from './order-product-replacement';
+import { merchantReplacementAccepted } from './merchant-replacement-accepted';
+import { merchantReplacementRejected } from './merchant-replacement-rejected';
 
 export const templatesRegistry = {
   new_order_merchant: {
@@ -95,6 +98,81 @@ export const templatesRegistry = {
         orderId: data.orderNumber,
         status: data.statusLabel,
       }),
+  },
+
+  order_product_replacement: {
+    contentSidEnv: 'TWILIO_CONTENT_SID_ORDER_PRODUCT_REPLACEMENT',
+    variables: {
+      orderNumber: 1,
+      storeName: 2,
+      originalProductName: 3,
+      replacementProductName: 4,
+      orderTotal: 5,
+    },
+    schema: z.object({
+      orderNumber: z.string().trim().min(1),
+      storeName: z.string().trim().min(1),
+      originalProductName: z.string().trim().min(1),
+      replacementProductName: z.string().trim().min(1),
+      orderTotal: z.number().nonnegative(),
+    }),
+    fallbackText: (data: {
+      orderNumber: string;
+      storeName: string;
+      originalProductName: string;
+      replacementProductName: string;
+      orderTotal: number;
+    }) =>
+      orderProductReplacement(data),
+  },
+
+  merchant_replacement_accepted: {
+    contentSidEnv: 'TWILIO_CONTENT_SID_MERCHANT_REPLACEMENT_ACCEPTED',
+    variables: {
+      orderNumber: 1,
+      customerName: 2,
+      originalProductName: 3,
+      replacementProductName: 4,
+    },
+    schema: z.object({
+      orderNumber: z.string().trim().min(1),
+      customerName: z.string().trim().min(1),
+      originalProductName: z.string().trim().min(1),
+      replacementProductName: z.string().trim().min(1),
+    }),
+    fallbackText: (data: {
+      orderNumber: string;
+      customerName: string;
+      originalProductName: string;
+      replacementProductName: string;
+    }) =>
+      merchantReplacementAccepted(data),
+  },
+
+  merchant_replacement_rejected: {
+    contentSidEnv: 'TWILIO_CONTENT_SID_MERCHANT_REPLACEMENT_REJECTED',
+    variables: {
+      orderNumber: 1,
+      customerName: 2,
+      originalProductName: 3,
+      replacementProductName: 4,
+      reason: 5,
+    },
+    schema: z.object({
+      orderNumber: z.string().trim().min(1),
+      customerName: z.string().trim().min(1),
+      originalProductName: z.string().trim().min(1),
+      replacementProductName: z.string().trim().min(1),
+      reason: z.string().trim().min(1),
+    }),
+    fallbackText: (data: {
+      orderNumber: string;
+      customerName: string;
+      originalProductName: string;
+      replacementProductName: string;
+      reason: string;
+    }) =>
+      merchantReplacementRejected(data),
   },
 } as const;
 

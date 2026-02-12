@@ -152,6 +152,7 @@ export async function searchTenantProductsAction(
   search: string,
   page = 1,
   limit = 20,
+  category?: string,
 ) {
   try {
     const normalizedSearch = search.trim();
@@ -173,6 +174,7 @@ export async function searchTenantProductsAction(
 
     const response = await productsService.searchProducts({
       search: normalizedSearch,
+      category: category?.trim() || undefined,
       page,
       limit,
     });

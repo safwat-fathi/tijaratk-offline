@@ -8,4 +8,7 @@ export * from './new-order-seller';
 export * from './daily-summary';
 export * from './welcome-merchant';
 export * from './low-stock';
+export * from './order-product-replacement';
+export * from './merchant-replacement-accepted';
+export * from './merchant-replacement-rejected';
 export * from './templates.registry';

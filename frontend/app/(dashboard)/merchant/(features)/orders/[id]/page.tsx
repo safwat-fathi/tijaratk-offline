@@ -13,6 +13,7 @@ const statusLabelMap: Record<OrderStatus, string> = {
 	[OrderStatus.OUT_FOR_DELIVERY]: "خرج للتوصيل",
 	[OrderStatus.COMPLETED]: "اكتمل",
 	[OrderStatus.CANCELLED]: "ملغي",
+	[OrderStatus.REJECTED_BY_CUSTOMER]: "مرفوض من العميل",
 };
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,7 @@ export default async function OrderDetailsPage({
             ${order.status === OrderStatus.OUT_FOR_DELIVERY ? "bg-amber-100 text-amber-800" : ""}
             ${order.status === OrderStatus.COMPLETED ? "bg-green-100 text-green-800" : ""}
             ${order.status === OrderStatus.CANCELLED ? "bg-red-100 text-red-800" : ""}
+            ${order.status === OrderStatus.REJECTED_BY_CUSTOMER ? "bg-rose-100 text-rose-800" : ""}
           `}
 				>
 					{statusLabelMap[order.status] || order.status}
@@ -224,7 +226,8 @@ export default async function OrderDetailsPage({
 					)}
 
 					{(order.status === OrderStatus.COMPLETED ||
-						order.status === OrderStatus.CANCELLED) && (
+						order.status === OrderStatus.CANCELLED ||
+						order.status === OrderStatus.REJECTED_BY_CUSTOMER) && (
 						<div className="w-full py-2 text-center font-medium text-gray-500">
 							حالة الطلب: {statusLabelMap[order.status] || order.status}
 						</div>

@@ -78,6 +78,12 @@ export class Order extends TenantBaseEntity {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
+  @Column({ type: 'text', nullable: true })
+  customer_rejection_reason?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  customer_rejected_at?: Date | null;
+
   @BeforeInsert()
   generatePublicToken() {
     if (!this.public_token) {

@@ -44,6 +44,11 @@ const statusConfig: Record<
 		className: "bg-rose-100 text-rose-700",
 		hint: "تم إلغاء الطلب.",
 	},
+	[OrderStatus.REJECTED_BY_CUSTOMER]: {
+		label: "مرفوض من العميل",
+		className: "bg-red-100 text-red-700",
+		hint: "تم رفض الطلب من العميل.",
+	},
 };
 
 function formatOrderDate(value?: string) {

@@ -21,6 +21,7 @@ class ProductsService extends HttpService {
 
   public async searchProducts(params: {
     search: string;
+    category?: string;
     page?: number;
     limit?: number;
   }) {
@@ -32,7 +33,7 @@ class ProductsService extends HttpService {
 
   public async getPublicProducts(
     slug: string,
-    params?: { category?: string; page?: number; limit?: number },
+    params?: { search?: string; category?: string; page?: number; limit?: number },
   ) {
     return this.get<PublicProductsResponse>(`public/${slug}`, params, {
       cache: 'no-store',

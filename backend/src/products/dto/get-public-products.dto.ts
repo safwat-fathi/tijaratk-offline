@@ -11,6 +11,15 @@ import {
 
 export class GetPublicProductsDto {
   @ApiPropertyOptional({
+    description: 'Search products by name (min 2 chars)',
+    example: 'لبن',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+
+  @ApiPropertyOptional({
     description: 'Filter products by category',
     example: 'أرز ومكرونة',
   })

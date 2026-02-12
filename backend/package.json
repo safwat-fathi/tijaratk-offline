@@ -18,6 +18,7 @@
     "typeorm:dev": "NODE_ENV=development dotenv_config_path=.env.development ts-node -r tsconfig-paths/register -r dotenv/config ./node_modules/typeorm/cli.js",
     "typeorm:prod": "NODE_ENV=production dotenv_config_path=.env.production ts-node -r tsconfig-paths/register -r dotenv/config ./node_modules/typeorm/cli.js",
     "migration:create": "pnpm typeorm:dev migration:create",
+    "migration:fresh:dev": "pnpm schema:drop:dev && pnpm migration:run:dev",
     "migration:generate:dev": "pnpm typeorm:dev migration:generate -d src/config/orm.config.ts",
     "migration:run:dev": "pnpm typeorm:dev migration:run -d src/config/orm.config.ts",
     "migration:revert:dev": "pnpm typeorm:dev migration:revert -d src/config/orm.config.ts",

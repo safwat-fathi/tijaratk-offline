@@ -27,6 +27,8 @@ import { OrderWhatsappService } from './order-whatsapp.service';
 import { Product } from 'src/products/entities/product.entity';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { ProductPriceHistory } from 'src/products/entities/product-price-history.entity';
+import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
+import { ReplacementDecisionAction } from './dto/decide-replacement.dto';
 
 @Injectable()
 export class OrdersService {
@@ -218,7 +220,12 @@ export class OrdersService {
 
     return this.ordersRepository.find({
       where,
-      relations: ['customer', 'items', 'items.replaced_by_product'],
+      relations: [
+        'customer',
+        'items',
+        'items.replaced_by_product',
+        'items.pending_replacement_product',
+      ],
       order: { created_at: 'DESC' },
     });
   }
@@ -226,7 +233,13 @@ export class OrdersService {
   async findOne(id: number): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { id },
-      relations: ['customer', 'items', 'items.replaced_by_product', 'tenant'],
+      relations: [
+        'customer',
+        'items',
+        'items.replaced_by_product',
+        'items.pending_replacement_product',
+        'tenant',
+      ],
     });
 
     if (!order) {
@@ -260,12 +273,12 @@ export class OrdersService {
   }
 
   /**
-   * Sets or clears replacement product for a specific order item.
+   * Sets or clears pending replacement product for a specific order item.
    */
   async replaceOrderItem(
     tenantId: number,
     itemId: number,
-    replacedByProductId: number | null,
+    replacementProductId: number | null,
   ): Promise<OrderItem> {
     const orderItem = await this.orderItemsRepository.findOne({
       where: { id: itemId },
@@ -276,14 +289,30 @@ export class OrdersService {
       throw new NotFoundException(`Order item with ID ${itemId} not found`);
     }
 
-    if (replacedByProductId === null) {
+    this.ensureCustomerDecisionWindow(orderItem.order.status);
+
+    if (
+      orderItem.replacement_decision_status === ReplacementDecisionStatus.APPROVED ||
+      orderItem.replacement_decision_status === ReplacementDecisionStatus.REJECTED
+    ) {
+      throw new BadRequestException(
+        'Replacement decision is locked. Reset replacement decision before changing it.',
+      );
+    }
+
+    if (replacementProductId === null) {
+      orderItem.pending_replacement_product_id = null;
       orderItem.replaced_by_product_id = null;
+      orderItem.replacement_decision_status = ReplacementDecisionStatus.NONE;
+      orderItem.replacement_decision_reason = null;
+      orderItem.replacement_decided_at = null;
+
       return this.orderItemsRepository.save(orderItem);
     }
 
     const replacement = await this.productsRepository.findOne({
       where: {
-        id: replacedByProductId,
+        id: replacementProductId,
         tenant_id: tenantId,
         status: ProductStatus.ACTIVE,
       },
@@ -291,12 +320,134 @@ export class OrdersService {
 
     if (!replacement) {
       throw new NotFoundException(
-        `Replacement product with ID ${replacedByProductId} not found`,
+        `Replacement product with ID ${replacementProductId} not found`,
       );
     }
 
-    orderItem.replaced_by_product_id = replacement.id;
+    orderItem.pending_replacement_product_id = replacement.id;
+    orderItem.replaced_by_product_id = null;
+    orderItem.replacement_decision_status = ReplacementDecisionStatus.PENDING;
+    orderItem.replacement_decision_reason = null;
+    orderItem.replacement_decided_at = null;
+
+    const savedItem = await this.orderItemsRepository.save(orderItem);
+
+    await this.notifyCustomerReplacementRequested(savedItem.order_id, savedItem.id);
+
+    return savedItem;
+  }
+
+  /**
+   * Clears replacement decision state so merchant can request another customer decision.
+   */
+  async resetOrderItemReplacement(
+    tenantId: number,
+    itemId: number,
+  ): Promise<OrderItem> {
+    const orderItem = await this.orderItemsRepository.findOne({
+      where: { id: itemId },
+      relations: ['order'],
+    });
+
+    if (!orderItem || orderItem.order.tenant_id !== tenantId) {
+      throw new NotFoundException(`Order item with ID ${itemId} not found`);
+    }
+
+    this.ensureCustomerDecisionWindow(orderItem.order.status);
+
+    orderItem.pending_replacement_product_id = null;
+    orderItem.replaced_by_product_id = null;
+    orderItem.replacement_decision_status = ReplacementDecisionStatus.NONE;
+    orderItem.replacement_decision_reason = null;
+    orderItem.replacement_decided_at = null;
+
     return this.orderItemsRepository.save(orderItem);
+  }
+
+  /**
+   * Applies customer approval/rejection decision on a pending item replacement.
+   */
+  async decideReplacementByPublicToken(
+    token: string,
+    itemId: number,
+    decision: ReplacementDecisionAction,
+    reason?: string,
+  ): Promise<OrderItem> {
+    const orderItem = await this.orderItemsRepository.findOne({
+      where: {
+        id: itemId,
+        order: {
+          public_token: token,
+        },
+      },
+      relations: ['order'],
+    });
+
+    if (!orderItem) {
+      throw new NotFoundException(
+        `Order item with ID ${itemId} for token ${token} not found`,
+      );
+    }
+
+    this.ensureCustomerDecisionWindow(orderItem.order.status);
+
+    if (
+      orderItem.replacement_decision_status !== ReplacementDecisionStatus.PENDING ||
+      !orderItem.pending_replacement_product_id
+    ) {
+      throw new BadRequestException(
+        'No pending replacement available for customer decision',
+      );
+    }
+
+    const normalizedReason = this.normalizeOptionalReason(reason);
+
+    if (decision === ReplacementDecisionAction.APPROVE) {
+      orderItem.replaced_by_product_id = orderItem.pending_replacement_product_id;
+      orderItem.pending_replacement_product_id = null;
+      orderItem.replacement_decision_status = ReplacementDecisionStatus.APPROVED;
+    } else if (decision === ReplacementDecisionAction.REJECT) {
+      orderItem.replaced_by_product_id = null;
+      orderItem.pending_replacement_product_id = null;
+      orderItem.replacement_decision_status = ReplacementDecisionStatus.REJECTED;
+    } else {
+      throw new BadRequestException('Invalid replacement decision');
+    }
+
+    orderItem.replacement_decision_reason = normalizedReason;
+    orderItem.replacement_decided_at = new Date();
+
+    const savedItem = await this.orderItemsRepository.save(orderItem);
+
+    await this.notifyMerchantReplacementDecision(
+      savedItem.order_id,
+      savedItem.id,
+      decision,
+      normalizedReason,
+    );
+
+    return savedItem;
+  }
+
+  /**
+   * Sets order as rejected by customer through public tracking token.
+   */
+  async rejectOrderByPublicToken(token: string, reason?: string): Promise<Order> {
+    const order = await this.ordersRepository.findOne({
+      where: { public_token: token },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with token ${token} not found`);
+    }
+
+    this.ensureCustomerDecisionWindow(order.status);
+
+    order.status = OrderStatus.REJECTED_BY_CUSTOMER;
+    order.customer_rejection_reason = this.normalizeOptionalReason(reason);
+    order.customer_rejected_at = new Date();
+
+    return this.ordersRepository.save(order);
   }
 
   /**
@@ -504,6 +655,7 @@ export class OrdersService {
     customer: true,
     items: {
       replaced_by_product: true,
+      pending_replacement_product: true,
     },
     tenant: true,
   } as const;
@@ -525,10 +677,15 @@ export class OrdersService {
     }
 
     const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-      [OrderStatus.DRAFT]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+      [OrderStatus.DRAFT]: [
+        OrderStatus.CONFIRMED,
+        OrderStatus.CANCELLED,
+        OrderStatus.REJECTED_BY_CUSTOMER,
+      ],
       [OrderStatus.CONFIRMED]: [
         OrderStatus.OUT_FOR_DELIVERY,
         OrderStatus.CANCELLED,
+        OrderStatus.REJECTED_BY_CUSTOMER,
       ],
       [OrderStatus.OUT_FOR_DELIVERY]: [
         OrderStatus.COMPLETED,
@@ -536,6 +693,7 @@ export class OrdersService {
       ],
       [OrderStatus.COMPLETED]: [],
       [OrderStatus.CANCELLED]: [],
+      [OrderStatus.REJECTED_BY_CUSTOMER]: [],
     };
 
     const allowedNext = allowedTransitions[current] || [];
@@ -615,6 +773,91 @@ export class OrdersService {
     return Math.round(value * 100) / 100;
   }
 
+  /**
+   * Ensures replacement decisions are only accepted while the order is still editable.
+   */
+  private ensureCustomerDecisionWindow(status: OrderStatus): void {
+    if (status === OrderStatus.DRAFT || status === OrderStatus.CONFIRMED) {
+      return;
+    }
+
+    throw new BadRequestException(
+      'Customer replacement decision is allowed only for draft or confirmed orders',
+    );
+  }
+
+  /**
+   * Converts optional free-text reason to nullable clean value.
+   */
+  private normalizeOptionalReason(reason?: string): string | null {
+    if (typeof reason !== 'string') {
+      return null;
+    }
+
+    const trimmed = reason.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  /**
+   * Sends customer notification after merchant requests replacement decision.
+   */
+  private async notifyCustomerReplacementRequested(
+    orderId: number,
+    itemId: number,
+  ): Promise<void> {
+    try {
+      const order = await this.findOne(orderId);
+      const item = order.items.find((line) => line.id === itemId);
+      if (!item || !item.pending_replacement_product) {
+        return;
+      }
+
+      await this.orderWhatsappService.notifyCustomerReplacementRequested(order, item);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify customer for replacement request on order ${orderId}, item ${itemId}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Sends merchant notification after customer accepts or rejects replacement.
+   */
+  private async notifyMerchantReplacementDecision(
+    orderId: number,
+    itemId: number,
+    decision: ReplacementDecisionAction,
+    reason?: string | null,
+  ): Promise<void> {
+    try {
+      const order = await this.findOne(orderId);
+      const item = order.items.find((line) => line.id === itemId);
+      if (!item) {
+        return;
+      }
+
+      if (decision === ReplacementDecisionAction.APPROVE) {
+        await this.orderWhatsappService.notifyMerchantReplacementAccepted(
+          order,
+          item,
+        );
+        return;
+      }
+
+      await this.orderWhatsappService.notifyMerchantReplacementRejected(
+        order,
+        item,
+        reason || undefined,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to notify merchant for replacement decision on order ${orderId}, item ${itemId}`,
+        error,
+      );
+    }
+  }
+
   private async notifyOrderCreated(
     order: Order,
     isFirstOrder: boolean,
@@ -643,6 +886,7 @@ export class OrdersService {
     } catch (error) {
       this.logger.warn(
         `Failed to notify customer for order ${order.id} status ${order.status}`,
+        error,
       );
     }
   }

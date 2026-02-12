@@ -33,6 +33,7 @@ export default function OrdersView({ initialOrders, selectedDate, tenantId }: Or
       [OrderStatus.OUT_FOR_DELIVERY]: 0,
       [OrderStatus.COMPLETED]: 0,
       [OrderStatus.CANCELLED]: 0,
+      [OrderStatus.REJECTED_BY_CUSTOMER]: 0,
     };
 
     const filtered: Order[] = [];

@@ -4,6 +4,14 @@ export enum OrderStatus {
   OUT_FOR_DELIVERY = 'out_for_delivery',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  REJECTED_BY_CUSTOMER = 'rejected_by_customer',
+}
+
+export enum ReplacementDecisionStatus {
+  NONE = 'none',
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 export enum OrderType {

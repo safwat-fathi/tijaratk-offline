@@ -8,11 +8,16 @@ interface StatusTabsProps {
 
 export default function StatusTabs({ currentStatus, counts, onTabChange }: StatusTabsProps) {
   const tabs = [
-    { id: OrderStatus.DRAFT, label: "جديد", color: "text-blue-600 bg-blue-50" }, // Draft maps to New in UX
+    { id: OrderStatus.DRAFT, label: "جديد", color: "text-blue-600 bg-blue-50" },
     { id: OrderStatus.CONFIRMED, label: "مؤكد", color: "text-indigo-600 bg-indigo-50" },
     { id: OrderStatus.OUT_FOR_DELIVERY, label: "التوصيل", color: "text-amber-600 bg-amber-50" },
     { id: OrderStatus.COMPLETED, label: "اكتمل", color: "text-green-600 bg-green-50" },
     { id: OrderStatus.CANCELLED, label: "ملغي", color: "text-gray-600 bg-gray-50" },
+    {
+      id: OrderStatus.REJECTED_BY_CUSTOMER,
+      label: "رفض العميل",
+      color: "text-rose-700 bg-rose-50",
+    },
   ];
 
   return (
@@ -21,7 +26,7 @@ export default function StatusTabs({ currentStatus, counts, onTabChange }: Statu
         {tabs.map((tab) => {
           const isActive = currentStatus === tab.id;
           const count = counts[tab.id] || 0;
-          
+
           return (
             <button
               key={tab.id}
@@ -29,8 +34,8 @@ export default function StatusTabs({ currentStatus, counts, onTabChange }: Statu
               className={`
                 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all
                 flex items-center gap-2 border
-                ${isActive 
-                  ? `${tab.color} border-current ring-1 ring-current` 
+                ${isActive
+                  ? `${tab.color} border-current ring-1 ring-current`
                   : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}
               `}
             >

@@ -20,6 +20,15 @@ export class GetTenantProductsDto {
   search?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter products by category',
+    example: 'أرز ومكرونة',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  category?: string;
+
+  @ApiPropertyOptional({
     description: 'Page number for search results',
     example: 1,
     default: 1,

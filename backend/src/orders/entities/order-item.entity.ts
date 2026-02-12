@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Order } from './order.entity';
 import { Product } from 'src/products/entities/product.entity';
+import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
 
 @Entity('order_items')
 export class OrderItem {
@@ -49,4 +50,24 @@ export class OrderItem {
   @ManyToOne(() => Product, { nullable: true })
   @JoinColumn({ name: 'replaced_by_product_id' })
   replaced_by_product?: Relation<Product>;
+
+  @Column({ nullable: true })
+  pending_replacement_product_id?: number | null;
+
+  @ManyToOne(() => Product, { nullable: true })
+  @JoinColumn({ name: 'pending_replacement_product_id' })
+  pending_replacement_product?: Relation<Product>;
+
+  @Column({
+    type: 'enum',
+    enum: ReplacementDecisionStatus,
+    default: ReplacementDecisionStatus.NONE,
+  })
+  replacement_decision_status: ReplacementDecisionStatus;
+
+  @Column({ type: 'text', nullable: true })
+  replacement_decision_reason?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  replacement_decided_at?: Date | null;
 }

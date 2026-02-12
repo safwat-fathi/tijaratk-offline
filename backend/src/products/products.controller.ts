@@ -132,6 +132,7 @@ export class ProductsController {
       return this.productsService.searchTenantProducts(
         tenantId,
         query.search,
+        query.category,
         query.page,
         query.limit,
       );
@@ -150,6 +151,16 @@ export class ProductsController {
     @Param('slug') slug: string,
     @Query() query: GetPublicProductsDto,
   ) {
+    if (query.search?.trim()) {
+      return this.productsService.searchPublicProducts(
+        slug,
+        query.search,
+        query.category,
+        query.page,
+        query.limit,
+      );
+    }
+
     return this.productsService.findAllByTenantSlug(
       slug,
       query.page,

@@ -102,10 +102,12 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                                                 order.status === 'completed' ? 'bg-green-100 text-green-700' : 
                                                 order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                order.status === 'rejected_by_customer' ? 'bg-rose-100 text-rose-700' :
                                                 'bg-blue-50 text-blue-700'
                                             }`}>
                                                 {order.status === 'completed' ? 'اكتمل' : 
                                                  order.status === 'cancelled' ? 'ملغي' :
+                                                 order.status === 'rejected_by_customer' ? 'مرفوض من العميل' :
                                                  order.status === 'draft' ? 'مسودة' :
                                                  order.status === 'confirmed' ? 'مؤكد' :
                                                  order.status === 'out_for_delivery' ? 'التوصيل' :

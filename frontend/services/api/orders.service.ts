@@ -70,6 +70,30 @@ class OrdersService extends HttpService {
 		);
 	}
 
+	public async resetOrderItemReplacement(itemId: number) {
+		return this.patch<{ id: number }>(
+			`items/${itemId}/replacement-reset`,
+			{},
+			undefined,
+			{ authRequired: true },
+		);
+	}
+
+	public async decideReplacementByToken(
+		token: string,
+		itemId: number,
+		payload: { decision: "approve" | "reject"; reason?: string },
+	) {
+		return this.patch<{ id: number }>(
+			`tracking/${token}/items/${itemId}/replacement-decision`,
+			payload,
+		);
+	}
+
+	public async rejectOrderByToken(token: string, payload: { reason?: string }) {
+		return this.patch<Order>(`tracking/${token}/reject`, payload);
+	}
+
 	public async updateOrderItemPrice(
 		itemId: number,
 		payload: { total_price: number },

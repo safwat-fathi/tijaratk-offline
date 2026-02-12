@@ -3,6 +3,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import Image from "next/image";
 import Link from "next/link";
 import { OrderStatus } from "@/types/enums";
+import TrackingOrderItemsCard from "./_components/TrackingOrderItemsCard";
 
 type Props = {
   params: Promise<{ token: string }>;
@@ -79,7 +80,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 			),
 		},
 		[OrderStatus.OUT_FOR_DELIVERY]: {
-			label: "خارح للتوصيل",
+			label: "خرج للتوصيل",
 			color: "bg-orange-100 text-orange-700",
 			icon: (
 				<svg
@@ -98,7 +99,6 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 					<path d="M13 15h.01" />
 					<path d="M17 15h.01" />
 				</svg>
-				// Truck icon alternative or generic package
 			),
 		},
 		[OrderStatus.COMPLETED]: {
@@ -139,6 +139,27 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 					<circle cx="12" cy="12" r="10" />
 					<line x1="15" x2="9" y1="9" y2="15" />
 					<line x1="9" x2="15" y1="9" y2="15" />
+				</svg>
+			),
+		},
+		[OrderStatus.REJECTED_BY_CUSTOMER]: {
+			label: "مرفوض من العميل",
+			color: "bg-rose-100 text-rose-700",
+			icon: (
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<circle cx="12" cy="12" r="10" />
+					<path d="m15 9-6 6" />
+					<path d="m9 9 6 6" />
 				</svg>
 			),
 		},
@@ -266,34 +287,20 @@ export default async function TrackOrder({ params }: Props) {
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
 						<dt className="text-sm font-medium text-gray-500">العناصر</dt>
 						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-							<ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
-								{order.items && order.items.length > 0 ? (
-									order.items.map(item => (
-										<li
-											key={item.id}
-											className="pl-3 pr-4 py-3 flex items-center justify-between text-sm"
-										>
-											<div className="w-0 flex-1 flex items-center">
-												<span className="ml-2 flex-1 w-0 truncate">
-													{item.replaced_by_product?.name || item.name_snapshot}{" "}
-													x {item.quantity}
-												</span>
-											</div>
-											<div className="ml-4 shrink-0">
-												{item.total_price !== null &&
-												item.total_price !== undefined
-													? formatCurrency(Number(item.total_price) || 0)
-													: "يُحدد لاحقاً"}
-											</div>
-										</li>
-									))
-								) : (
-									<li className="pl-3 pr-4 py-3 text-sm text-gray-700 italic">
-										{order.free_text_payload?.text ||
-											"لا يوجد عناصر أو ملاحظات"}
-									</li>
-								)}
-							</ul>
+              {order.items && order.items.length > 0 ? (
+                <TrackingOrderItemsCard
+                  token={order.public_token}
+                  initialOrderStatus={order.status as OrderStatus}
+                  initialItems={order.items}
+                />
+              ) : (
+                <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
+								<li className="pl-3 pr-4 py-3 text-sm text-gray-700 italic">
+									{order.free_text_payload?.text ||
+										"لا يوجد عناصر أو ملاحظات"}
+								</li>
+                </ul>
+              )}
 						</dd>
 					</div>
 				</dl>

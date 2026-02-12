@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -13,6 +14,8 @@ import sharp from 'sharp';
 @Injectable()
 export class ImageProcessorService {
   private readonly logger = new Logger(ImageProcessorService.name);
+  private readonly unsupportedImageFormatMessage =
+    'Unsupported image format. Use JPG, PNG, WEBP, HEIC, or HEIF.';
 
   /**
    * Processes an uploaded product image into a normalized 256x256 WebP thumbnail.
@@ -53,6 +56,10 @@ export class ImageProcessorService {
         error instanceof Error ? error.stack : undefined,
       );
 
+      if (this.isUnsupportedImageError(error)) {
+        throw new BadRequestException(this.unsupportedImageFormatMessage);
+      }
+
       throw new InternalServerErrorException('Failed to process product image');
     }
   }
@@ -88,5 +95,23 @@ export class ImageProcessorService {
     } catch {
       // Best effort cleanup only.
     }
+  }
+
+  /**
+   * Detects decode/parsing errors caused by unsupported or invalid image inputs.
+   */
+  private isUnsupportedImageError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('unsupported image format') ||
+      message.includes('unsupported codec') ||
+      message.includes('input file is missing') ||
+      message.includes('input buffer has corrupt header') ||
+      message.includes('vips_foreign_load')
+    );
   }
 }
