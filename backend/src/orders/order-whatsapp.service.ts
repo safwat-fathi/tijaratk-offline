@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { Order } from './entities/order.entity';
-import { welcomeCustomer } from 'src/whatsapp/templates';
+import { dailySummary, welcomeCustomer } from 'src/whatsapp/templates';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 import { OrderItem } from './entities/order-item.entity';
 
@@ -110,25 +110,19 @@ export class OrderWhatsappService {
    */
   async notifyMerchantReplacementAccepted(
     order: Order,
-    item: OrderItem,
+    _item: OrderItem,
   ): Promise<void> {
     const sellerNumber = order.tenant?.phone;
     if (!sellerNumber) return;
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
-    const replacementName =
-      item.replaced_by_product?.name || item.pending_replacement_product?.name;
-
-    if (!replacementName) return;
 
     await this.whatsappService.sendTemplatedMessage({
       key: 'merchant_replacement_accepted',
       to: sellerNumber,
       payload: {
-        orderNumber: `#${order.id}`,
+        orderNumber: String(order.id),
         customerName,
-        originalProductName: item.name_snapshot,
-        replacementProductName: replacementName,
       },
     });
   }
@@ -171,5 +165,36 @@ export class OrderWhatsappService {
     });
 
     await this.whatsappService.sendMessage(customerNumber, message);
+  }
+
+  /**
+   * Sends merchant a close-day WhatsApp summary.
+   */
+  async notifyMerchantDailySummary({
+    phone,
+    date,
+    orders,
+    cancelled,
+    totalCash,
+  }: {
+    phone: string;
+    date: string;
+    orders: number;
+    cancelled: number;
+    totalCash: number;
+  }): Promise<boolean> {
+    if (!phone) {
+      return false;
+    }
+
+    const message = dailySummary({
+      date,
+      orders,
+      cancelled,
+      totalCash,
+    });
+
+    await this.whatsappService.sendMessage(phone, message);
+    return true;
   }
 }

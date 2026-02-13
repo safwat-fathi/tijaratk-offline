@@ -1,18 +1,13 @@
 export const merchantReplacementAccepted = ({
   orderNumber,
   customerName,
-  originalProductName,
-  replacementProductName,
 }: {
   orderNumber: string;
   customerName: string;
-  originalProductName: string;
-  replacementProductName: string;
 }) => `
-تمت الموافقة على استبدال منتج.
+قام العميل بالموافقة على استبدال منتج في الطلب رقم ${orderNumber}.
 
-رقم الطلب: ${orderNumber}
-العميل: ${customerName}
-المنتج الأصلي: ${originalProductName}
-البديل المقبول: ${replacementProductName}
+اسم العميل: ${customerName}
+
+يمكنك استكمال تجهيز الطلب.
 `;

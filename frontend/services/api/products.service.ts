@@ -50,6 +50,7 @@ class ProductsService extends HttpService {
     name: string;
     image_url?: string;
     current_price?: number;
+    category?: string;
   }) {
     return this.post<Product>('', payload, undefined, { authRequired: true });
   }

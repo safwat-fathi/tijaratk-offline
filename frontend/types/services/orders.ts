@@ -26,3 +26,27 @@ export interface OrderListResponse {
   page: number;
   last_page: number;
 }
+
+export interface DayCloseSummary {
+  orders_count: number;
+  cancelled_count: number;
+  completed_sales_total: number;
+}
+
+export interface DayClosePayload extends DayCloseSummary {
+  id: number;
+  closure_date: string;
+  closed_at: string;
+}
+
+export interface DayCloseTodayStatusResponse {
+  is_closed: boolean;
+  closure: DayClosePayload | null;
+  preview: DayCloseSummary;
+}
+
+export interface CloseDayResponse {
+  is_already_closed: boolean;
+  closure: DayClosePayload;
+  whatsapp_sent: boolean;
+}

@@ -41,8 +41,28 @@ async function getCatalogItems(): Promise<CatalogItem[]> {
   }
 }
 
+async function getCatalogCategories(): Promise<string[]> {
+  try {
+    const response = await productsService.getCatalogCategories();
+    if (response.success && response.data) {
+      return response.data;
+    }
+    return [];
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to fetch catalog categories', error);
+    return [];
+  }
+}
+
 export default async function NewProductPage() {
-  const [products, catalogItems] = await Promise.all([getProducts(), getCatalogItems()]);
+  const [products, catalogItems, catalogCategories] = await Promise.all([
+    getProducts(),
+    getCatalogItems(),
+    getCatalogCategories(),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -54,6 +74,7 @@ export default async function NewProductPage() {
       <ProductOnboardingClient
         initialProducts={products}
         catalogItems={catalogItems}
+        catalogCategories={catalogCategories}
       />
     </div>
   );

@@ -8,12 +8,16 @@ export async function createProductAction(
   name: string,
   imageUrl?: string,
   currentPrice?: number,
+  category?: string,
 ) {
   try {
+    const normalizedCategory = category?.trim() || undefined;
+
     const response = await productsService.createProduct({
       name,
       image_url: imageUrl,
       current_price: currentPrice,
+      category: normalizedCategory,
     });
 
     if (!response.success || !response.data) {
@@ -71,6 +75,7 @@ export async function updateProductAction(productId: number, formData: FormData)
     const normalizedPayload = new FormData();
     const rawName = formData.get('name');
     const rawCurrentPrice = formData.get('current_price');
+    const rawCategory = formData.get('category');
     const file = formData.get('file');
 
     if (typeof rawName === 'string') {
@@ -84,6 +89,13 @@ export async function updateProductAction(productId: number, formData: FormData)
       const trimmed = rawCurrentPrice.trim();
       if (trimmed) {
         normalizedPayload.set('current_price', trimmed);
+      }
+    }
+
+    if (typeof rawCategory === 'string') {
+      const trimmed = rawCategory.trim();
+      if (trimmed) {
+        normalizedPayload.set('category', trimmed);
       }
     }
 

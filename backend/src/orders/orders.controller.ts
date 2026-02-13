@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -36,6 +37,11 @@ import { ResetOrderItemReplacementDto } from './dto/reset-order-item-replacement
 @ApiTags('Orders')
 @Controller('orders')
 export class OrdersController {
+  private static readonly RESERVED_PUBLIC_ORDER_PATHS = new Set([
+    'day-close',
+    'tracking',
+  ]);
+
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
@@ -55,20 +61,6 @@ export class OrdersController {
     return this.ordersService.createForTenantId(tenantId, createOrderDto);
   }
 
-  @Post(':tenant_slug')
-  @ApiOperation({ summary: 'Create a new order (Public)' })
-  @ApiBody({ type: CreateOrderDto })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'Order created successfully',
-  })
-  createPublic(
-    @Param('tenant_slug') tenantSlug: string,
-    @Body() createOrderDto: CreateOrderDto,
-  ) {
-    return this.ordersService.createForTenantSlug(tenantSlug, createOrderDto);
-  }
-
   @Get()
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
@@ -84,6 +76,66 @@ export class OrdersController {
     }
 
     return this.ordersService.findAll(tenantId, date);
+  }
+
+  @Get('day-close/today')
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
+  @ApiOperation({
+    summary: 'Get today close-day status',
+    description:
+      'Returns whether current Cairo day is closed and preview summary for authenticated tenant',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Day-close status and summary preview',
+  })
+  getTodayDayCloseStatus(@Req() req: any) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.ordersService.getTodayDayCloseStatus(tenantId);
+  }
+
+  @Post('day-close')
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
+  @ApiOperation({
+    summary: 'Close current day',
+    description:
+      'Creates a day closure snapshot for current Cairo date with idempotent behavior',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Day closed successfully',
+  })
+  closeDay(@Req() req: any) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.ordersService.closeDay(tenantId);
+  }
+
+  @Post(':tenant_slug')
+  @ApiOperation({ summary: 'Create a new order (Public)' })
+  @ApiBody({ type: CreateOrderDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Order created successfully',
+  })
+  createPublic(
+    @Param('tenant_slug') tenantSlug: string,
+    @Body() createOrderDto: CreateOrderDto,
+  ) {
+    if (OrdersController.RESERVED_PUBLIC_ORDER_PATHS.has(tenantSlug.trim())) {
+      throw new BadRequestException('Invalid tenant slug');
+    }
+
+    return this.ordersService.createForTenantSlug(tenantSlug, createOrderDto);
   }
 
   @Get('tracking/:token')
@@ -140,8 +192,11 @@ export class OrdersController {
     status: HttpStatus.OK,
     description: 'Order updated successfully',
   })
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.ordersService.update(+id, updateOrderDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ) {
+    return this.ordersService.update(id, updateOrderDto);
   }
 
   @Patch('items/:id/replace')

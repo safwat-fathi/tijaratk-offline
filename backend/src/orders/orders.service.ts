@@ -29,11 +29,41 @@ import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { ProductPriceHistory } from 'src/products/entities/product-price-history.entity';
 import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
 import { ReplacementDecisionAction } from './dto/decide-replacement.dto';
+import { DayClosure } from './entities/day-closure.entity';
+
+type DayCloseSummary = {
+  orders_count: number;
+  cancelled_count: number;
+  completed_sales_total: number;
+};
+
+type DayClosePayload = DayCloseSummary & {
+  id: number;
+  closure_date: string;
+  closed_at: Date;
+};
+
+type DayCloseTodayStatusPayload = {
+  is_closed: boolean;
+  closure: DayClosePayload | null;
+  preview: DayCloseSummary;
+};
+
+type CloseDayResultPayload = {
+  is_already_closed: boolean;
+  closure: DayClosePayload;
+  whatsapp_sent: boolean;
+};
 
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
   private static readonly MAX_TRACKING_TOKENS = 15;
+  private static readonly CAIRO_TIME_ZONE = 'Africa/Cairo';
+  private static readonly CANCELLED_STATUSES = [
+    OrderStatus.CANCELLED,
+    OrderStatus.REJECTED_BY_CUSTOMER,
+  ] as const;
 
   constructor(
     @InjectRepository(Order)
@@ -42,6 +72,8 @@ export class OrdersService {
     private readonly orderItemsRepository: Repository<OrderItem>,
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
+    @InjectRepository(DayClosure)
+    private readonly dayClosuresRepository: Repository<DayClosure>,
     private readonly customersService: CustomersService,
     private readonly tenantsService: TenantsService,
     private readonly orderWhatsappService: OrderWhatsappService,
@@ -228,6 +260,116 @@ export class OrdersService {
       ],
       order: { created_at: 'DESC' },
     });
+  }
+
+  /**
+   * Returns today's close-day status and preview using Cairo day boundaries.
+   */
+  async getTodayDayCloseStatus(
+    tenantId: number,
+  ): Promise<DayCloseTodayStatusPayload> {
+    const closureDate = this.getCairoDateKey();
+
+    const [closure, preview] = await Promise.all([
+      this.dayClosuresRepository.findOne({
+        where: {
+          tenant_id: tenantId,
+          closure_date: closureDate,
+        },
+      }),
+      this.computeDayCloseSummary(tenantId, closureDate),
+    ]);
+
+    return {
+      is_closed: Boolean(closure),
+      closure: closure ? this.mapDayClosure(closure) : null,
+      preview,
+    };
+  }
+
+  /**
+   * Closes current Cairo day for tenant with idempotent behavior.
+   */
+  async closeDay(tenantId: number): Promise<CloseDayResultPayload> {
+    const closureDate = this.getCairoDateKey();
+
+    const existingClosure = await this.dayClosuresRepository.findOne({
+      where: {
+        tenant_id: tenantId,
+        closure_date: closureDate,
+      },
+    });
+
+    if (existingClosure) {
+      return {
+        is_already_closed: true,
+        closure: this.mapDayClosure(existingClosure),
+        whatsapp_sent: false,
+      };
+    }
+
+    const summary = await this.computeDayCloseSummary(tenantId, closureDate);
+
+    const closure = this.dayClosuresRepository.create({
+      tenant_id: tenantId,
+      closure_date: closureDate,
+      orders_count: summary.orders_count,
+      cancelled_count: summary.cancelled_count,
+      completed_sales_total: summary.completed_sales_total,
+      closed_at: new Date(),
+    });
+
+    let savedClosure: DayClosure;
+    try {
+      savedClosure = await this.dayClosuresRepository.save(closure);
+    } catch (error) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
+
+      const duplicateClosure = await this.dayClosuresRepository.findOne({
+        where: {
+          tenant_id: tenantId,
+          closure_date: closureDate,
+        },
+      });
+
+      if (!duplicateClosure) {
+        throw error;
+      }
+
+      return {
+        is_already_closed: true,
+        closure: this.mapDayClosure(duplicateClosure),
+        whatsapp_sent: false,
+      };
+    }
+
+    const tenant = await this.tenantsService.findOneById(tenantId);
+    let whatsappSent = false;
+
+    if (tenant?.phone) {
+      try {
+        whatsappSent = await this.orderWhatsappService.notifyMerchantDailySummary({
+          phone: tenant.phone,
+          date: this.formatCairoDateForMessage(closureDate),
+          orders: summary.orders_count,
+          cancelled: summary.cancelled_count,
+          totalCash: summary.completed_sales_total,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to send close-day summary to tenant ${tenantId}`,
+          error,
+        );
+      }
+    }
+
+    return {
+      is_already_closed: false,
+      closure: this.mapDayClosure(savedClosure),
+      whatsapp_sent: whatsappSent,
+    };
   }
 
   async findOne(id: number): Promise<Order> {
@@ -667,6 +809,161 @@ export class OrdersService {
       slug: true,
     },
   } as const;
+
+  /**
+   * Aggregates close-day metrics for a specific tenant and Cairo date.
+   */
+  private async computeDayCloseSummary(
+    tenantId: number,
+    closureDate: string,
+  ): Promise<DayCloseSummary> {
+    const dayAggregate = await this.ordersRepository
+      .createQueryBuilder('order')
+      .select('COUNT(order.id)', 'orders_count')
+      .addSelect(
+        `SUM(
+          CASE
+            WHEN order.status IN (:...cancelledStatuses) THEN 1
+            ELSE 0
+          END
+        )`,
+        'cancelled_count',
+      )
+      .addSelect(
+        `COALESCE(
+          SUM(
+            CASE
+              WHEN order.status = :completedStatus THEN COALESCE(order.total, 0)
+              ELSE 0
+            END
+          ),
+          0
+        )`,
+        'completed_sales_total',
+      )
+      .where('order.tenant_id = :tenantId', { tenantId })
+      .andWhere(
+        `DATE(order.created_at AT TIME ZONE '${OrdersService.CAIRO_TIME_ZONE}') = :closureDate`,
+        { closureDate },
+      )
+      .setParameters({
+        cancelledStatuses: OrdersService.CANCELLED_STATUSES,
+        completedStatus: OrderStatus.COMPLETED,
+      })
+      .getRawOne<{
+        orders_count?: string | number | null;
+        cancelled_count?: string | number | null;
+        completed_sales_total?: string | number | null;
+      }>();
+
+    return {
+      orders_count: this.toSafeInt(dayAggregate?.orders_count),
+      cancelled_count: this.toSafeInt(dayAggregate?.cancelled_count),
+      completed_sales_total: this.toSafeCurrency(
+        dayAggregate?.completed_sales_total,
+      ),
+    };
+  }
+
+  /**
+   * Maps persisted closure entity to API payload.
+   */
+  private mapDayClosure(closure: DayClosure): DayClosePayload {
+    return {
+      id: closure.id,
+      closure_date: closure.closure_date,
+      closed_at: closure.closed_at,
+      orders_count: this.toSafeInt(closure.orders_count),
+      cancelled_count: this.toSafeInt(closure.cancelled_count),
+      completed_sales_total: this.toSafeCurrency(closure.completed_sales_total),
+    };
+  }
+
+  /**
+   * Gets current date key (YYYY-MM-DD) in Cairo timezone.
+   */
+  private getCairoDateKey(date = new Date()): string {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: OrdersService.CAIRO_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    if (!year || !month || !day) {
+      throw new Error('Failed to resolve Cairo date key');
+    }
+
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Formats closure date for merchant-facing WhatsApp message.
+   */
+  private formatCairoDateForMessage(closureDate: string): string {
+    const [year, month, day] = closureDate.split('-').map(Number);
+
+    if (
+      !year ||
+      !month ||
+      !day ||
+      Number.isNaN(year) ||
+      Number.isNaN(month) ||
+      Number.isNaN(day)
+    ) {
+      return closureDate;
+    }
+
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return new Intl.DateTimeFormat('ar-EG', {
+      timeZone: OrdersService.CAIRO_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  }
+
+  /**
+   * Returns true when DB error indicates unique constraint violation.
+   */
+  private isUniqueViolation(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const errorCode =
+      'code' in error && typeof error.code === 'string' ? error.code : null;
+
+    return errorCode === '23505';
+  }
+
+  /**
+   * Converts any numeric-like value into an integer fallback.
+   */
+  private toSafeInt(value: unknown): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.trunc(parsed));
+  }
+
+  /**
+   * Converts any numeric-like value into rounded currency fallback.
+   */
+  private toSafeCurrency(value: unknown): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+
+    return this.roundCurrency(parsed);
+  }
 
   private validateStatusTransition(
     current: OrderStatus,

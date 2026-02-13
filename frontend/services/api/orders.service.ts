@@ -1,6 +1,10 @@
 import HttpService from "@/services/base/http.service";
 import { Order } from "@/types/models/order";
-import { CreateOrderRequest } from "@/types/services/orders";
+import {
+	CloseDayResponse,
+	CreateOrderRequest,
+	DayCloseTodayStatusResponse,
+} from "@/types/services/orders";
 
 class OrdersService extends HttpService {
 	constructor() {
@@ -10,6 +14,18 @@ class OrdersService extends HttpService {
 	public async getOrders(date?: string) {
 		const query = date ? `?date=${date}` : "";
 		return this.get<Order[]>(`${query}`, undefined, { authRequired: true });
+	}
+
+	public async getTodayDayCloseStatus() {
+		return this.get<DayCloseTodayStatusResponse>("day-close/today", undefined, {
+			authRequired: true,
+		});
+	}
+
+	public async closeDay() {
+		return this.post<CloseDayResponse>("day-close", {}, undefined, {
+			authRequired: true,
+		});
 	}
 
 	public async getOrder(id: number) {

@@ -3,6 +3,7 @@ import { STORAGE_KEYS } from "@/constants";
 import { ordersService } from "@/services/api/orders.service";
 import { tenantsService } from "@/services/api/tenants.service";
 import { OrderStatus } from "@/types/enums";
+import { DayCloseTodayStatusResponse } from "@/types/services/orders";
 import TodaySnapshot from "./_components/TodaySnapshot";
 import EndOfDayTeaser from "./_components/EndOfDayTeaser";
 import StorefrontLinkCard from "./_components/StorefrontLinkCard";
@@ -27,9 +28,10 @@ export default async function Dashboard() {
 	const user = userCookie ? JSON.parse(userCookie) : null;
 	const name = user?.name || "تاجر";
 
-	const [ordersResponse, tenantResponse] = await Promise.all([
+	const [ordersResponse, tenantResponse, dayCloseStatusResponse] = await Promise.all([
 		ordersService.getOrders(),
 		tenantsService.getMyTenant(),
+		ordersService.getTodayDayCloseStatus(),
 	]);
 
 	const allOrders =
@@ -54,6 +56,27 @@ export default async function Dashboard() {
 		),
 	};
 
+	const dayCloseStatusFallback: DayCloseTodayStatusResponse = {
+		is_closed: false,
+		closure: null,
+		preview: {
+			orders_count: stats.ordersCount,
+			cancelled_count: todayOrders.filter(
+				o =>
+					o.status === OrderStatus.CANCELLED ||
+					o.status === OrderStatus.REJECTED_BY_CUSTOMER,
+			).length,
+			completed_sales_total: todayOrders
+				.filter(o => o.status === OrderStatus.COMPLETED)
+				.reduce((sum, o) => sum + Number(o.total || 0), 0),
+		},
+	};
+
+	const dayCloseStatus =
+		dayCloseStatusResponse.success && dayCloseStatusResponse.data
+			? dayCloseStatusResponse.data
+			: dayCloseStatusFallback;
+
 	return (
 		<div className="flex flex-col gap-6 pb-20">
 			{/* Header / Welcome - Minimal */}
@@ -77,10 +100,7 @@ export default async function Dashboard() {
 			{/* <LatestOrders orders={latestOrdersData} /> */}
 
 			{/* 6. End-of-Day Teaser */}
-			{/* Show only if it's evening? Design says "After 6-7 PM". 
-          Let's just show it always or condition it. 
-          Condition: Hour > 18. */}
-			{new Date().getHours() >= 18 && <EndOfDayTeaser />}
+			<EndOfDayTeaser initialStatus={dayCloseStatus} />
 		</div>
 	);
 }

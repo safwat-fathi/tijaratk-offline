@@ -131,20 +131,14 @@ export const templatesRegistry = {
     variables: {
       orderNumber: 1,
       customerName: 2,
-      originalProductName: 3,
-      replacementProductName: 4,
     },
     schema: z.object({
       orderNumber: z.string().trim().min(1),
       customerName: z.string().trim().min(1),
-      originalProductName: z.string().trim().min(1),
-      replacementProductName: z.string().trim().min(1),
     }),
     fallbackText: (data: {
       orderNumber: string;
       customerName: string;
-      originalProductName: string;
-      replacementProductName: string;
     }) =>
       merchantReplacementAccepted(data),
   },

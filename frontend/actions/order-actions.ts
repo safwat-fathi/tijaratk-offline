@@ -2,7 +2,7 @@
 
 import { ordersService } from '@/services/api/orders.service';
 import { OrderStatus, OrderType } from '@/types/enums';
-import { CreateOrderRequest } from '@/types/services/orders';
+import { CloseDayResponse, CreateOrderRequest } from '@/types/services/orders';
 import { revalidatePath } from 'next/cache';
 import { createOrderSchema } from '@/lib/validations/order';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
@@ -88,6 +88,40 @@ export async function updateOrderItemPriceAction(
     }
     console.error('Failed to update order item price:', error);
     return { success: false, error: 'Failed to update order item price' };
+  }
+}
+
+export async function closeDayAction(): Promise<{
+  success: boolean;
+  message?: string;
+  data?: CloseDayResponse;
+}> {
+  try {
+    const response = await ordersService.closeDay();
+
+    if (!response.success || !response.data) {
+      return {
+        success: false,
+        message: response.message || 'Failed to close day',
+      };
+    }
+
+    revalidatePath('/merchant');
+
+    return {
+      success: true,
+      message: response.message,
+      data: response.data,
+    };
+  } catch (error) {
+    if (isNextRedirectError(error)) {
+      throw error;
+    }
+    console.error('Failed to close day:', error);
+    return {
+      success: false,
+      message: 'Failed to close day',
+    };
   }
 }
 
