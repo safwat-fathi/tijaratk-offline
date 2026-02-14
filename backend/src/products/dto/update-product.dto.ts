@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsObject,
@@ -14,6 +15,7 @@ import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { parseJsonIfString } from './parse-json.transform';
 import { ProductOrderConfigDto } from './product-order-config.dto';
+import { parseBooleanLike } from '../utils/parse-boolean-like';
 
 export class UpdateProductDto {
   @ApiPropertyOptional({ example: 'زيت عباد الشمس' })
@@ -70,4 +72,25 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @Transform(
+    ({ obj, value }: { obj?: Record<string, unknown>; value: unknown }) => {
+      const fromRawObject = parseBooleanLike(obj?.is_available);
+      if (fromRawObject !== undefined) {
+        return fromRawObject;
+      }
+
+      const fromValue = parseBooleanLike(value);
+      if (fromValue !== undefined) {
+        return fromValue;
+      }
+
+      return value;
+    },
+    { toClassOnly: true },
+  )
+  @IsBoolean()
+  is_available?: boolean;
 }

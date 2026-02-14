@@ -128,6 +128,11 @@ export default function MyProductsSection({
                           <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                             {normalizeModeBadge(product.order_mode)}
                           </span>
+                          {!product.is_available && (
+                            <span className="rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
+                              غير متاح
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

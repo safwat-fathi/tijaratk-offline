@@ -233,9 +233,9 @@ export const buildOrderConfigPayload = ({
   };
 };
 
-export const buildAvailableCatalogCategories = (catalogCategories: string[]): string[] => {
+export const buildAvailableProductCategories = (categories: string[]): string[] => {
   const uniqueCategories = new Set<string>();
-  for (const category of catalogCategories) {
+  for (const category of categories) {
     const normalizedCategory = category.trim();
     if (!normalizedCategory) {
       continue;
@@ -338,7 +338,7 @@ export const buildProductsByNormalizedNameMap = (products: Product[]): Map<strin
 
 export const deriveEditFormState = (
   product: Product,
-  availableCatalogCategorySet: Set<string>,
+  availableCategorySet: Set<string>,
 ): EditFormState => {
   const normalizedCategory = product.category?.trim() || '';
   const productMode = product.order_mode || ORDER_MODE_QUANTITY;
@@ -353,7 +353,7 @@ export const deriveEditFormState = (
   const pricePresetList = product.order_config?.price?.preset_amounts_egp;
 
   const categoryMode = normalizedCategory
-    ? availableCatalogCategorySet.has(normalizedCategory)
+    ? availableCategorySet.has(normalizedCategory)
       ? CATEGORY_MODE_SELECT
       : CATEGORY_MODE_CUSTOM
     : CATEGORY_MODE_SELECT;
@@ -366,6 +366,7 @@ export const deriveEditFormState = (
       product.current_price === ''
         ? ''
         : String(Number(product.current_price)),
+    isAvailable: product.is_available !== false,
     orderMode: productMode,
     unitLabel: quantityUnitLabel,
     secondaryUnitLabel: quantityAltOption?.label || '',

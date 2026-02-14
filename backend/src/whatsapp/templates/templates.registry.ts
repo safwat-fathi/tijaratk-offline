@@ -5,6 +5,7 @@ import { outForDelivery } from './out-for-delivery';
 import { orderProductReplacement } from './order-product-replacement';
 import { merchantReplacementAccepted } from './merchant-replacement-accepted';
 import { merchantReplacementRejected } from './merchant-replacement-rejected';
+import { merchantDayClosureSummary } from './merchant-day-closure-summary';
 
 export const templatesRegistry = {
   new_order_merchant: {
@@ -122,8 +123,7 @@ export const templatesRegistry = {
       originalProductName: string;
       replacementProductName: string;
       orderTotal: number;
-    }) =>
-      orderProductReplacement(data),
+    }) => orderProductReplacement(data),
   },
 
   merchant_replacement_accepted: {
@@ -136,10 +136,7 @@ export const templatesRegistry = {
       orderNumber: z.string().trim().min(1),
       customerName: z.string().trim().min(1),
     }),
-    fallbackText: (data: {
-      orderNumber: string;
-      customerName: string;
-    }) =>
+    fallbackText: (data: { orderNumber: string; customerName: string }) =>
       merchantReplacementAccepted(data),
   },
 
@@ -165,8 +162,35 @@ export const templatesRegistry = {
       originalProductName: string;
       replacementProductName: string;
       reason: string;
-    }) =>
-      merchantReplacementRejected(data),
+    }) => merchantReplacementRejected(data),
+  },
+
+  merchant_day_closure_summary: {
+    contentSidEnv: 'TWILIO_CONTENT_SID_MERCHANT_DAY_CLOSURE_SUMMARY',
+    variables: {
+      date: 1,
+      totalOrders: 2,
+      completedOrders: 3,
+      cancelledOrders: 4,
+      totalSalesEgp: 5,
+      totalCollectedEgp: 6,
+    },
+    schema: z.object({
+      date: z.string().trim().min(1),
+      totalOrders: z.number().nonnegative(),
+      completedOrders: z.number().nonnegative(),
+      cancelledOrders: z.number().nonnegative(),
+      totalSalesEgp: z.number().nonnegative(),
+      totalCollectedEgp: z.number().nonnegative(),
+    }),
+    fallbackText: (data: {
+      date: string;
+      totalOrders: number;
+      completedOrders: number;
+      cancelledOrders: number;
+      totalSalesEgp: number;
+      totalCollectedEgp: number;
+    }) => merchantDayClosureSummary(data),
   },
 } as const;
 

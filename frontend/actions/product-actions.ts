@@ -86,6 +86,7 @@ export async function updateProductAction(productId: number, formData: FormData)
     const rawCategory = formData.get('category');
     const rawOrderMode = formData.get('order_mode');
     const rawOrderConfig = formData.get('order_config');
+    const rawIsAvailable = formData.get('is_available');
     const file = formData.get('file');
 
     if (typeof rawName === 'string') {
@@ -120,6 +121,15 @@ export async function updateProductAction(productId: number, formData: FormData)
       const trimmed = rawOrderConfig.trim();
       if (trimmed) {
         normalizedPayload.set('order_config', trimmed);
+      }
+    }
+
+    if (typeof rawIsAvailable === 'string') {
+      const normalized = rawIsAvailable.trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1') {
+        normalizedPayload.set('is_available', 'true');
+      } else if (normalized === 'false' || normalized === '0') {
+        normalizedPayload.set('is_available', 'false');
       }
     }
 

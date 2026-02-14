@@ -15,6 +15,8 @@ type EditProductModalProps = {
   onEditNameChange: (value: string) => void;
   editPrice: string;
   onEditPriceChange: (value: string) => void;
+  editIsAvailable: boolean;
+  onEditIsAvailableChange: (value: boolean) => void;
   editOrderMode: ProductOrderMode;
   onEditOrderModeChange: (mode: ProductOrderMode) => void;
   editUnitLabel: string;
@@ -33,7 +35,7 @@ type EditProductModalProps = {
   onEditCategorySelectChange: (value: string) => void;
   editCategoryCustom: string;
   onEditCategoryCustomChange: (value: string) => void;
-  availableCatalogCategories: string[];
+  availableProductCategories: string[];
   editImagePreview: string | null;
   onEditImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
 };
@@ -47,6 +49,8 @@ export default function EditProductModal({
   onEditNameChange,
   editPrice,
   onEditPriceChange,
+  editIsAvailable,
+  onEditIsAvailableChange,
   editOrderMode,
   onEditOrderModeChange,
   editUnitLabel,
@@ -65,7 +69,7 @@ export default function EditProductModal({
   onEditCategorySelectChange,
   editCategoryCustom,
   onEditCategoryCustomChange,
-  availableCatalogCategories,
+  availableProductCategories,
   editImagePreview,
   onEditImageChange,
 }: EditProductModalProps) {
@@ -74,8 +78,14 @@ export default function EditProductModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-bold text-gray-900">تعديل المنتج</h3>
           <button
@@ -118,6 +128,21 @@ export default function EditProductModal({
             />
           </label>
 
+          <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2">
+            <div>
+              <span className="block text-sm font-semibold text-gray-800">متاح للبيع</span>
+              <span className="block text-xs text-gray-500">
+                المنتج غير المتاح سيبقى ظاهرًا لك للإدارة.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={editIsAvailable}
+              onChange={(event) => onEditIsAvailableChange(event.target.checked)}
+              className="h-5 w-5 accent-indigo-600"
+            />
+          </label>
+
           <OrderModeFields
             orderMode={editOrderMode}
             onOrderModeChange={onEditOrderModeChange}
@@ -140,7 +165,7 @@ export default function EditProductModal({
             onCategorySelectChange={onEditCategorySelectChange}
             categoryCustom={editCategoryCustom}
             onCategoryCustomChange={onEditCategoryCustomChange}
-            availableCategories={availableCatalogCategories}
+            availableCategories={availableProductCategories}
           />
 
           <div className="rounded-xl border border-dashed border-gray-300 p-3">

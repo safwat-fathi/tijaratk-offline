@@ -7,11 +7,9 @@ import {
 import { randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
-  Between,
   DataSource,
   DeepPartial,
   EntityManager,
-  FindOptionsWhere,
   In,
   IsNull,
   Repository,
@@ -40,6 +38,11 @@ type DayCloseSummary = {
   orders_count: number;
   cancelled_count: number;
   completed_sales_total: number;
+};
+
+type DayCloseComputationSummary = DayCloseSummary & {
+  completed_count: number;
+  non_cancelled_sales_total: number;
 };
 
 type DayClosePayload = DayCloseSummary & {
@@ -308,28 +311,26 @@ export class OrdersService {
   }
 
   async findAll(tenantId: number, date?: string): Promise<Order[]> {
-    const where: FindOptionsWhere<Order> = { tenant_id: tenantId };
+    const query = this.getOrdersRepository()
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.customer', 'customer')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.replaced_by_product', 'replacedByProduct')
+      .leftJoinAndSelect(
+        'items.pending_replacement_product',
+        'pendingReplacementProduct',
+      )
+      .where('order.tenant_id = :tenantId', { tenantId })
+      .orderBy('order.created_at', 'DESC');
 
     if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-
-      where.created_at = Between(start, end);
+      query.andWhere(
+        `DATE(order.created_at AT TIME ZONE '${OrdersService.CAIRO_TIME_ZONE}') = :date`,
+        { date },
+      );
     }
 
-    return this.getOrdersRepository().find({
-      where,
-      relations: [
-        'customer',
-        'items',
-        'items.replaced_by_product',
-        'items.pending_replacement_product',
-      ],
-      order: { created_at: 'DESC' },
-    });
+    return query.getMany();
   }
 
   /**
@@ -353,7 +354,11 @@ export class OrdersService {
     return {
       is_closed: Boolean(closure),
       closure: closure ? this.mapDayClosure(closure) : null,
-      preview,
+      preview: {
+        orders_count: preview.orders_count,
+        cancelled_count: preview.cancelled_count,
+        completed_sales_total: preview.completed_sales_total,
+      },
     };
   }
 
@@ -424,9 +429,11 @@ export class OrdersService {
           await this.orderWhatsappService.notifyMerchantDailySummary({
             phone: tenant.phone,
             date: this.formatCairoDateForMessage(closureDate),
-            orders: summary.orders_count,
-            cancelled: summary.cancelled_count,
-            totalCash: summary.completed_sales_total,
+            totalOrders: summary.orders_count,
+            completedOrders: summary.completed_count,
+            cancelledOrders: summary.cancelled_count,
+            totalSalesEgp: summary.non_cancelled_sales_total,
+            totalCollectedEgp: summary.completed_sales_total,
           });
       } catch (error) {
         this.logger.warn(
@@ -905,7 +912,7 @@ export class OrdersService {
   private async computeDayCloseSummary(
     tenantId: number,
     closureDate: string,
-  ): Promise<DayCloseSummary> {
+  ): Promise<DayCloseComputationSummary> {
     const dayAggregate = await this.getOrdersRepository()
       .createQueryBuilder('order')
       .select('COUNT(order.id)', 'orders_count')
@@ -917,6 +924,27 @@ export class OrdersService {
           END
         )`,
         'cancelled_count',
+      )
+      .addSelect(
+        `SUM(
+          CASE
+            WHEN order.status = :completedStatus THEN 1
+            ELSE 0
+          END
+        )`,
+        'completed_count',
+      )
+      .addSelect(
+        `COALESCE(
+          SUM(
+            CASE
+              WHEN order.status NOT IN (:...cancelledStatuses) THEN COALESCE(order.total, 0)
+              ELSE 0
+            END
+          ),
+          0
+        )`,
+        'non_cancelled_sales_total',
       )
       .addSelect(
         `COALESCE(
@@ -942,12 +970,18 @@ export class OrdersService {
       .getRawOne<{
         orders_count?: string | number | null;
         cancelled_count?: string | number | null;
+        completed_count?: string | number | null;
+        non_cancelled_sales_total?: string | number | null;
         completed_sales_total?: string | number | null;
       }>();
 
     return {
       orders_count: this.toSafeInt(dayAggregate?.orders_count),
       cancelled_count: this.toSafeInt(dayAggregate?.cancelled_count),
+      completed_count: this.toSafeInt(dayAggregate?.completed_count),
+      non_cancelled_sales_total: this.toSafeCurrency(
+        dayAggregate?.non_cancelled_sales_total,
+      ),
       completed_sales_total: this.toSafeCurrency(
         dayAggregate?.completed_sales_total,
       ),

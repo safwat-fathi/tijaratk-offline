@@ -52,6 +52,7 @@ class ProductsService extends HttpService {
     image_url?: string;
     current_price?: number;
     category?: string;
+    is_available?: boolean;
     order_mode?: 'quantity' | 'weight' | 'price';
     order_config?: ProductOrderConfig;
   }) {
@@ -81,6 +82,13 @@ class ProductsService extends HttpService {
 
   public async getCatalogCategories() {
     return this.get<string[]>('catalog/categories', undefined, {
+      cache: 'no-store',
+      authRequired: true,
+    });
+  }
+
+  public async getProductCategories() {
+    return this.get<string[]>('categories', undefined, {
       cache: 'no-store',
       authRequired: true,
     });

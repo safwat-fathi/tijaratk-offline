@@ -31,11 +31,15 @@ export default function OrderNotesSection({
 						<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
 					</svg>
 				</div>
-				<h2 className="text-xl font-bold text-gray-900">ملاحظات الطلب</h2>
+				<div className="flex flex-col">
+					{/* <h2 className="text-xl font-bold text-gray-900">ملاحظات الطلب</h2> */}
+					<h2 className="text-xl font-bold text-gray-900">طلب يدوي</h2>
+					<p className="text-gray-900">
+						مش لاقي اللي انت عايزه؟ اكتبه هنا وإحنا هنوفره لو متاح
+					</p>
+				</div>
 			</div>
-			<p className="text-gray-500 text-sm mb-4 leading-relaxed">
-				اكتب ما تحتاجه، وسيؤكد المتجر السعر والتوافر معك.
-			</p>
+
 			<textarea
 				name="order_request"
 				placeholder="مثال: 1 كجم طماطم، 2 باكو سكر...&#10;عيش، لبن، زيت&#10;أي نوع مكرونة ينفع"
@@ -43,7 +47,12 @@ export default function OrderNotesSection({
 				value={orderRequest}
 				onChange={e => onOrderRequestChange(e.target.value)}
 			/>
-			{error && <p className="text-sm text-red-600 mt-2 font-medium">{error}</p>}
+			<p className="text-gray-500 text-sm mb-4 leading-relaxed">
+				ملاحظات: المتجر هيتواصل معاك لتأكيد السعر والتوفر قبل التنفيذ
+			</p>
+			{error && (
+				<p className="text-sm text-red-600 mt-2 font-medium">{error}</p>
+			)}
 		</div>
 	);
 }

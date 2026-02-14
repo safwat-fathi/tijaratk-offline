@@ -1,5 +1,5 @@
 import StoreHeader, { CATEGORY_BY_VALUE } from "./_components/StoreHeader";
-import WriteOrderFAB from "./_components/WriteOrderFAB";
+
 import OrderForm from "./_components/OrderForm";
 
 import { tenantsService } from "@/services/api/tenants.service";
@@ -15,7 +15,7 @@ import {
 } from "@/types/models/product";
 import { Order } from "@/types/models/order";
 import { notFound } from "next/navigation";
-import { Metadata, ResolvingMetadata } from "next";
+import { Metadata } from "next";
 import { TENANT_CATEGORIES } from "@/constants";
 
 type Props = {
@@ -124,7 +124,7 @@ export default async function StorePage({ params, searchParams }: Props) {
 	return (
 		<div className="w-full max-w-md mx-auto min-h-screen bg-gray-50">
 			<StoreHeader tenant={tenant} />
-			<WriteOrderFAB />
+			{/* <WriteOrderFAB /> */}
 
 			<div>
 				{products.length === 0 && (

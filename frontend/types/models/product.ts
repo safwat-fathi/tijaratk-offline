@@ -29,6 +29,7 @@ export interface Product {
   image_url?: string | null;
   current_price?: number | string | null;
   category?: string | null;
+  is_available: boolean;
   order_mode: ProductOrderMode;
   order_config?: ProductOrderConfig | null;
   source: ProductSource;

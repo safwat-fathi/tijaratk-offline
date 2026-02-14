@@ -35,6 +35,7 @@ import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { GetPublicProductsDto } from './dto/get-public-products.dto';
 import { GetTenantProductsDto } from './dto/get-tenant-products.dto';
 import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
+import { parseBooleanLike } from './utils/parse-boolean-like';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -60,6 +61,11 @@ export class ProductsController {
     @Req() req: AuthenticatedRequest,
     @Body() createProductDto: CreateProductDto,
   ) {
+    const parsedAvailability = this.parseAvailabilityFromRequestBody(req);
+    if (parsedAvailability !== undefined) {
+      createProductDto.is_available = parsedAvailability;
+    }
+
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -99,6 +105,23 @@ export class ProductsController {
   })
   findCatalogCategories() {
     return this.productsService.findCatalogCategories();
+  }
+
+  @Get('categories')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiOperation({ summary: 'Get product categories for tenant onboarding' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Return merged catalog and tenant categories',
+  })
+  findTenantProductCategories(@Req() req: AuthenticatedRequest) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.productsService.findTenantProductCategories(tenantId);
   }
 
   @Get('catalog')
@@ -215,6 +238,7 @@ export class ProductsController {
         order_mode: { type: 'string', enum: Object.values(ProductOrderMode) },
         order_config: { type: 'object' },
         status: { type: 'string', enum: Object.values(ProductStatus) },
+        is_available: { type: 'boolean' },
         file: { type: 'string', format: 'binary' },
       },
     },
@@ -233,6 +257,11 @@ export class ProductsController {
     @Body() updateProductDto: UpdateProductDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
+    const parsedAvailability = this.parseAvailabilityFromRequestBody(req);
+    if (parsedAvailability !== undefined) {
+      updateProductDto.is_available = parsedAvailability;
+    }
+
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -256,5 +285,12 @@ export class ProductsController {
     }
 
     return this.productsService.remove(+id, tenantId);
+  }
+
+  private parseAvailabilityFromRequestBody(
+    req: AuthenticatedRequest,
+  ): boolean | undefined {
+    const body = req.body as Record<string, unknown> | undefined;
+    return parseBooleanLike(body?.is_available);
   }
 }

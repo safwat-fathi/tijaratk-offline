@@ -44,4 +44,7 @@ export class Product extends TenantBaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   order_config?: Record<string, unknown> | null;
+
+  @Column({ type: 'boolean', default: true })
+  is_available: boolean;
 }

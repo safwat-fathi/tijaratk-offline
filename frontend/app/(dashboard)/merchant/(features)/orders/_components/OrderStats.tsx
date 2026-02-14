@@ -16,7 +16,7 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
   // Helper to format label
   const getLabel = () => {
     if (!selectedDate) return "اليوم";
-    
+
     const date = new Date(selectedDate);
     const today = new Date();
     const yesterday = new Date();
@@ -24,7 +24,7 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
 
     if (date.toDateString() === today.toDateString()) return "اليوم";
     if (date.toDateString() === yesterday.toDateString()) return "أمس";
-    
+
     return date.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
   };
 

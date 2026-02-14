@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { Order } from './entities/order.entity';
-import { dailySummary, welcomeCustomer } from 'src/whatsapp/templates';
+import { welcomeCustomer } from 'src/whatsapp/templates';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 import { OrderItem } from './entities/order-item.entity';
 
@@ -112,6 +112,8 @@ export class OrderWhatsappService {
     order: Order,
     _item: OrderItem,
   ): Promise<void> {
+    void _item;
+
     const sellerNumber = order.tenant?.phone;
     if (!sellerNumber) return;
 
@@ -173,28 +175,37 @@ export class OrderWhatsappService {
   async notifyMerchantDailySummary({
     phone,
     date,
-    orders,
-    cancelled,
-    totalCash,
+    totalOrders,
+    completedOrders,
+    cancelledOrders,
+    totalSalesEgp,
+    totalCollectedEgp,
   }: {
     phone: string;
     date: string;
-    orders: number;
-    cancelled: number;
-    totalCash: number;
+    totalOrders: number;
+    completedOrders: number;
+    cancelledOrders: number;
+    totalSalesEgp: number;
+    totalCollectedEgp: number;
   }): Promise<boolean> {
     if (!phone) {
       return false;
     }
 
-    const message = dailySummary({
-      date,
-      orders,
-      cancelled,
-      totalCash,
+    await this.whatsappService.sendTemplatedMessage({
+      key: 'merchant_day_closure_summary',
+      to: phone,
+      payload: {
+        date,
+        totalOrders,
+        completedOrders,
+        cancelledOrders,
+        totalSalesEgp,
+        totalCollectedEgp,
+      },
     });
 
-    await this.whatsappService.sendMessage(phone, message);
     return true;
   }
 }

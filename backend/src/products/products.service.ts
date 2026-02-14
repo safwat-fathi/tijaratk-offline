@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { SelectQueryBuilder, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CatalogItem } from './entities/catalog-item.entity';
+import { TenantProductCategory } from './entities/tenant-product-category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSource } from 'src/common/enums/product-source.enum';
@@ -86,6 +87,8 @@ export class ProductsService {
     private readonly productsRepository: Repository<Product>,
     @InjectRepository(CatalogItem)
     private readonly catalogItemsRepository: Repository<CatalogItem>,
+    @InjectRepository(TenantProductCategory)
+    private readonly tenantProductCategoriesRepository: Repository<TenantProductCategory>,
     private readonly imageProcessorService: ImageProcessorService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
@@ -123,9 +126,11 @@ export class ProductsService {
           : undefined,
       order_mode: orderMode,
       order_config: orderConfig,
+      is_available: createProductDto.is_available ?? true,
     });
 
     const saved = await this.getProductsRepository().save(product);
+    await this.storeTenantProductCategory(tenantId, saved.category);
     await this.bumpTenantSearchCacheVersion(tenantId);
     return saved;
   }
@@ -168,9 +173,11 @@ export class ProductsService {
         ProductOrderMode.QUANTITY,
         undefined,
       ),
+      is_available: true,
     });
 
     const saved = await this.getProductsRepository().save(product);
+    await this.storeTenantProductCategory(tenantId, saved.category);
     await this.bumpTenantSearchCacheVersion(tenantId);
     return saved;
   }
@@ -399,6 +406,38 @@ export class ProductsService {
   }
 
   /**
+   * Returns merged catalog + tenant categories for merchant onboarding.
+   */
+  async findTenantProductCategories(tenantId: number): Promise<string[]> {
+    const [catalogRows, tenantRows] = await Promise.all([
+      this.getCatalogItemsRepository()
+        .createQueryBuilder('catalog')
+        .select('DISTINCT catalog.category', 'category')
+        .where('catalog.is_active = :isActive', { isActive: true })
+        .getRawMany<{ category: string }>(),
+      this.getTenantProductCategoriesRepository()
+        .createQueryBuilder('tenantCategory')
+        .select('tenantCategory.name', 'category')
+        .where('tenantCategory.tenant_id = :tenantId', { tenantId })
+        .getRawMany<{ category: string }>(),
+    ]);
+
+    const uniqueCategories = new Set<string>();
+    for (const row of [...catalogRows, ...tenantRows]) {
+      const normalizedCategory = this.normalizeOptionalCategory(row.category);
+      if (!normalizedCategory) {
+        continue;
+      }
+
+      uniqueCategories.add(normalizedCategory);
+    }
+
+    return Array.from(uniqueCategories).sort((left, right) =>
+      left.localeCompare(right, 'ar'),
+    );
+  }
+
+  /**
    * Returns active catalog items, optionally filtered by category.
    */
   async findCatalogItems(category?: string): Promise<CatalogItem[]> {
@@ -457,6 +496,10 @@ export class ProductsService {
       product.status = updateProductDto.status;
     }
 
+    if (updateProductDto.is_available !== undefined) {
+      product.is_available = updateProductDto.is_available;
+    }
+
     if (typeof updateProductDto.category === 'string') {
       product.category = this.normalizeCategory(updateProductDto.category);
     }
@@ -490,6 +533,9 @@ export class ProductsService {
     }
 
     const updatedProduct = await this.getProductsRepository().save(product);
+    if (typeof updateProductDto.category === 'string') {
+      await this.storeTenantProductCategory(tenantId, updatedProduct.category);
+    }
     await this.bumpTenantSearchCacheVersion(tenantId);
 
     if (previousImageUrl && previousImageUrl !== updatedProduct.image_url) {
@@ -941,6 +987,27 @@ export class ProductsService {
     return normalized.slice(0, maxLength);
   }
 
+  private async storeTenantProductCategory(
+    tenantId: number,
+    category: string | undefined,
+  ): Promise<void> {
+    const normalizedCategory = this.normalizeOptionalCategory(category);
+    if (!normalizedCategory) {
+      return;
+    }
+
+    await this.getTenantProductCategoriesRepository()
+      .createQueryBuilder()
+      .insert()
+      .into(TenantProductCategory)
+      .values({
+        tenant_id: tenantId,
+        name: normalizedCategory,
+      })
+      .orIgnore()
+      .execute();
+  }
+
   private getTenantSearchCacheVersionKey(tenantId: number): string {
     return `merchant:products:search:version:${tenantId}`;
   }
@@ -991,5 +1058,15 @@ export class ProductsService {
     return manager
       ? manager.getRepository(CatalogItem)
       : this.catalogItemsRepository;
+  }
+
+  /**
+   * Returns tenant category repository bound to request manager when present.
+   */
+  private getTenantProductCategoriesRepository(): Repository<TenantProductCategory> {
+    const manager = DbTenantContext.getManager();
+    return manager
+      ? manager.getRepository(TenantProductCategory)
+      : this.tenantProductCategoriesRepository;
   }
 }

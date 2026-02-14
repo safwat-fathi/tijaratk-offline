@@ -11,4 +11,5 @@ export * from './low-stock';
 export * from './order-product-replacement';
 export * from './merchant-replacement-accepted';
 export * from './merchant-replacement-rejected';
+export * from './merchant-day-closure-summary';
 export * from './templates.registry';

@@ -25,6 +25,7 @@ export type ParsedOptionalPrice = {
 export type EditFormState = {
   name: string;
   price: string;
+  isAvailable: boolean;
   orderMode: ProductOrderMode;
   unitLabel: string;
   secondaryUnitLabel: string;

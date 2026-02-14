@@ -41,9 +41,9 @@ async function getCatalogItems(): Promise<CatalogItem[]> {
   }
 }
 
-async function getCatalogCategories(): Promise<string[]> {
+async function getProductCategories(): Promise<string[]> {
   try {
-    const response = await productsService.getCatalogCategories();
+    const response = await productsService.getProductCategories();
     if (response.success && response.data) {
       return response.data;
     }
@@ -58,10 +58,10 @@ async function getCatalogCategories(): Promise<string[]> {
 }
 
 export default async function NewProductPage() {
-  const [products, catalogItems, catalogCategories] = await Promise.all([
+  const [products, catalogItems, productCategories] = await Promise.all([
     getProducts(),
     getCatalogItems(),
-    getCatalogCategories(),
+    getProductCategories(),
   ]);
 
   return (
@@ -74,7 +74,7 @@ export default async function NewProductPage() {
       <ProductOnboardingClient
         initialProducts={products}
         catalogItems={catalogItems}
-        catalogCategories={catalogCategories}
+        productCategories={productCategories}
       />
     </div>
   );
