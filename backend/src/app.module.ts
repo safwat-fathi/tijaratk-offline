@@ -13,6 +13,7 @@ import { ProductsModule } from './products/products.module';
 import { CustomersModule } from './customers/customers.module';
 import { OrdersModule } from './orders/orders.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
 
 const ENV = process.env.NODE_ENV;
 
@@ -43,5 +44,6 @@ const ENV = process.env.NODE_ENV;
     WebhooksModule,
   ],
   controllers: [HealthController],
+  providers: [TenantRlsInterceptor],
 })
 export class AppModule {}

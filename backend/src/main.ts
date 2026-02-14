@@ -10,6 +10,7 @@ import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
 import { TypeOrmExceptionFilter } from './common/filters/db-exception.filter';
+import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -124,7 +125,11 @@ async function bootstrap() {
   );
 
   // Global Interceptor for success responses
-  const interceptors: NestInterceptor[] = [new ResponseTransformInterceptor()];
+  const tenantRlsInterceptor = app.get(TenantRlsInterceptor);
+  const interceptors: NestInterceptor[] = [
+    tenantRlsInterceptor,
+    new ResponseTransformInterceptor(),
+  ];
   app.useGlobalInterceptors(...interceptors);
 
   await app.listen(process.env.HTTP_SERVER_PORT, '127.0.0.1');

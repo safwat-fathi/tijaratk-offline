@@ -10,6 +10,7 @@ import {
   Between,
   DataSource,
   DeepPartial,
+  EntityManager,
   In,
   IsNull,
   Repository,
@@ -30,6 +31,7 @@ import { ProductPriceHistory } from 'src/products/entities/product-price-history
 import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
 import { ReplacementDecisionAction } from './dto/decide-replacement.dto';
 import { DayClosure } from './entities/day-closure.entity';
+import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
 
 type DayCloseSummary = {
   orders_count: number;
@@ -101,7 +103,7 @@ export class OrdersService {
   ): Promise<Order> {
     let isFirstOrder = false;
 
-    const savedOrder = await this.dataSource.transaction(async (manager) => {
+    const savedOrder = await this.withTenantManager(tenantId, async (manager) => {
       const customer = await this.customersService.findOrCreate(
         createOrderDto.customer.phone,
         tenantId,
@@ -250,7 +252,7 @@ export class OrdersService {
       where.created_at = Between(start, end);
     }
 
-    return this.ordersRepository.find({
+    return this.getOrdersRepository().find({
       where,
       relations: [
         'customer',
@@ -271,7 +273,7 @@ export class OrdersService {
     const closureDate = this.getCairoDateKey();
 
     const [closure, preview] = await Promise.all([
-      this.dayClosuresRepository.findOne({
+      this.getDayClosuresRepository().findOne({
         where: {
           tenant_id: tenantId,
           closure_date: closureDate,
@@ -293,7 +295,7 @@ export class OrdersService {
   async closeDay(tenantId: number): Promise<CloseDayResultPayload> {
     const closureDate = this.getCairoDateKey();
 
-    const existingClosure = await this.dayClosuresRepository.findOne({
+    const existingClosure = await this.getDayClosuresRepository().findOne({
       where: {
         tenant_id: tenantId,
         closure_date: closureDate,
@@ -310,7 +312,7 @@ export class OrdersService {
 
     const summary = await this.computeDayCloseSummary(tenantId, closureDate);
 
-    const closure = this.dayClosuresRepository.create({
+    const closure = this.getDayClosuresRepository().create({
       tenant_id: tenantId,
       closure_date: closureDate,
       orders_count: summary.orders_count,
@@ -321,13 +323,13 @@ export class OrdersService {
 
     let savedClosure: DayClosure;
     try {
-      savedClosure = await this.dayClosuresRepository.save(closure);
+      savedClosure = await this.getDayClosuresRepository().save(closure);
     } catch (error) {
       if (!this.isUniqueViolation(error)) {
         throw error;
       }
 
-      const duplicateClosure = await this.dayClosuresRepository.findOne({
+      const duplicateClosure = await this.getDayClosuresRepository().findOne({
         where: {
           tenant_id: tenantId,
           closure_date: closureDate,
@@ -373,7 +375,7 @@ export class OrdersService {
   }
 
   async findOne(id: number): Promise<Order> {
-    const order = await this.ordersRepository.findOne({
+    const order = await this.getOrdersRepository().findOne({
       where: { id },
       relations: [
         'customer',
@@ -405,7 +407,7 @@ export class OrdersService {
       order.pricing_mode = PricingMode.MANUAL;
     }
 
-    const savedOrder = await this.ordersRepository.save(order);
+    const savedOrder = await this.getOrdersRepository().save(order);
 
     if (updateOrderDto.status && updateOrderDto.status !== previousStatus) {
       await this.notifyCustomerStatusChange(savedOrder);
@@ -422,7 +424,7 @@ export class OrdersService {
     itemId: number,
     replacementProductId: number | null,
   ): Promise<OrderItem> {
-    const orderItem = await this.orderItemsRepository.findOne({
+    const orderItem = await this.getOrderItemsRepository().findOne({
       where: { id: itemId },
       relations: ['order'],
     });
@@ -449,10 +451,10 @@ export class OrdersService {
       orderItem.replacement_decision_reason = null;
       orderItem.replacement_decided_at = null;
 
-      return this.orderItemsRepository.save(orderItem);
+      return this.getOrderItemsRepository().save(orderItem);
     }
 
-    const replacement = await this.productsRepository.findOne({
+    const replacement = await this.getProductsRepository().findOne({
       where: {
         id: replacementProductId,
         tenant_id: tenantId,
@@ -472,7 +474,7 @@ export class OrdersService {
     orderItem.replacement_decision_reason = null;
     orderItem.replacement_decided_at = null;
 
-    const savedItem = await this.orderItemsRepository.save(orderItem);
+    const savedItem = await this.getOrderItemsRepository().save(orderItem);
 
     await this.notifyCustomerReplacementRequested(savedItem.order_id, savedItem.id);
 
@@ -486,7 +488,7 @@ export class OrdersService {
     tenantId: number,
     itemId: number,
   ): Promise<OrderItem> {
-    const orderItem = await this.orderItemsRepository.findOne({
+    const orderItem = await this.getOrderItemsRepository().findOne({
       where: { id: itemId },
       relations: ['order'],
     });
@@ -503,7 +505,7 @@ export class OrdersService {
     orderItem.replacement_decision_reason = null;
     orderItem.replacement_decided_at = null;
 
-    return this.orderItemsRepository.save(orderItem);
+    return this.getOrderItemsRepository().save(orderItem);
   }
 
   /**
@@ -515,7 +517,7 @@ export class OrdersService {
     decision: ReplacementDecisionAction,
     reason?: string,
   ): Promise<OrderItem> {
-    const orderItem = await this.orderItemsRepository.findOne({
+    const orderItem = await this.getOrderItemsRepository().findOne({
       where: {
         id: itemId,
         order: {
@@ -559,7 +561,7 @@ export class OrdersService {
     orderItem.replacement_decision_reason = normalizedReason;
     orderItem.replacement_decided_at = new Date();
 
-    const savedItem = await this.orderItemsRepository.save(orderItem);
+    const savedItem = await this.getOrderItemsRepository().save(orderItem);
 
     await this.notifyMerchantReplacementDecision(
       savedItem.order_id,
@@ -575,7 +577,7 @@ export class OrdersService {
    * Sets order as rejected by customer through public tracking token.
    */
   async rejectOrderByPublicToken(token: string, reason?: string): Promise<Order> {
-    const order = await this.ordersRepository.findOne({
+    const order = await this.getOrdersRepository().findOne({
       where: { public_token: token },
     });
 
@@ -589,7 +591,7 @@ export class OrdersService {
     order.customer_rejection_reason = this.normalizeOptionalReason(reason);
     order.customer_rejected_at = new Date();
 
-    return this.ordersRepository.save(order);
+    return this.getOrdersRepository().save(order);
   }
 
   /**
@@ -605,7 +607,7 @@ export class OrdersService {
       throw new BadRequestException('Item price must be a positive number');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    return this.withTenantManager(tenantId, async (manager) => {
       const orderItemRepository = manager.getRepository(OrderItem);
       const orderRepository = manager.getRepository(Order);
       const productsRepository = manager.getRepository(Product);
@@ -744,7 +746,7 @@ export class OrdersService {
   }
 
   async findByPublicToken(token: string): Promise<Order> {
-    const order = await this.ordersRepository.findOne({
+    const order = await this.getOrdersRepository().findOne({
       where: { public_token: token },
       relations: this.publicTrackingRelations,
       select: this.publicTrackingSelect,
@@ -763,7 +765,7 @@ export class OrdersService {
       return [];
     }
 
-    const orders = await this.ordersRepository.find({
+    const orders = await this.getOrdersRepository().find({
       where: { public_token: In(normalizedTokens) },
       relations: this.publicTrackingRelations,
       select: this.publicTrackingSelect,
@@ -817,7 +819,7 @@ export class OrdersService {
     tenantId: number,
     closureDate: string,
   ): Promise<DayCloseSummary> {
-    const dayAggregate = await this.ordersRepository
+    const dayAggregate = await this.getOrdersRepository()
       .createQueryBuilder('order')
       .select('COUNT(order.id)', 'orders_count')
       .addSelect(
@@ -1192,5 +1194,61 @@ export class OrdersService {
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
     return `${normalizedBaseUrl}/track-order/${publicToken}`;
+  }
+
+  /**
+   * Runs work with request-scoped manager when available, otherwise creates a
+   * tenant-configured transaction for non-request callers.
+   */
+  private async withTenantManager<T>(
+    tenantId: number,
+    callback: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    const manager = DbTenantContext.getManager();
+    if (manager) {
+      return callback(manager);
+    }
+
+    return this.dataSource.transaction(async (transactionManager) => {
+      await transactionManager.query(
+        `SELECT set_config('app.tenant_id', $1, true)`,
+        [String(tenantId)],
+      );
+      return callback(transactionManager);
+    });
+  }
+
+  /**
+   * Returns orders repository bound to request manager when present.
+   */
+  private getOrdersRepository(): Repository<Order> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(Order) : this.ordersRepository;
+  }
+
+  /**
+   * Returns order items repository bound to request manager when present.
+   */
+  private getOrderItemsRepository(): Repository<OrderItem> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(OrderItem) : this.orderItemsRepository;
+  }
+
+  /**
+   * Returns products repository bound to request manager when present.
+   */
+  private getProductsRepository(): Repository<Product> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(Product) : this.productsRepository;
+  }
+
+  /**
+   * Returns day closure repository bound to request manager when present.
+   */
+  private getDayClosuresRepository(): Repository<DayClosure> {
+    const manager = DbTenantContext.getManager();
+    return manager
+      ? manager.getRepository(DayClosure)
+      : this.dayClosuresRepository;
   }
 }

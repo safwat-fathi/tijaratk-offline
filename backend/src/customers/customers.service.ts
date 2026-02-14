@@ -4,8 +4,8 @@ import { EntityManager, Repository } from 'typeorm';
 import { Customer } from './entities/customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';
-
 import { Order } from 'src/orders/entities/order.entity';
+import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
 
 @Injectable()
 export class CustomersService {
@@ -20,11 +20,11 @@ export class CustomersService {
     createCustomerDto: CreateCustomerDto,
     tenantId: number,
   ): Promise<Customer> {
-    const customer = this.customersRepository.create({
+    const customer = this.getCustomersRepository().create({
       ...createCustomerDto,
       tenant_id: tenantId,
     });
-    return this.customersRepository.save(customer);
+    return this.getCustomersRepository().save(customer);
   }
 
   async findAll(
@@ -33,7 +33,7 @@ export class CustomersService {
     page = 1,
     limit = 20,
   ): Promise<{ data: Customer[]; meta: any }> {
-    const query = this.customersRepository
+    const query = this.getCustomersRepository()
       .createQueryBuilder('customer')
       .where('customer.tenant_id = :tenantId', { tenantId });
 
@@ -72,12 +72,12 @@ export class CustomersService {
   }
 
   async findOne(id: number, tenantId: number): Promise<any | null> {
-    const customer = await this.customersRepository.findOne({
+    const customer = await this.getCustomersRepository().findOne({
       where: { id, tenant_id: tenantId },
     });
     if (!customer) return null;
 
-    const [orders, totalOrders] = await this.ordersRepository.findAndCount({
+    const [orders, totalOrders] = await this.getOrdersRepository().findAndCount({
       where: { customer_id: id },
       order: { created_at: 'DESC' },
       take: 5,
@@ -89,7 +89,7 @@ export class CustomersService {
       if (orders.length > 0) {
         customer.last_order_at = orders[0].created_at;
       }
-      await this.customersRepository.save(customer);
+      await this.getCustomersRepository().save(customer);
     }
 
     return { ...customer, orders };
@@ -103,9 +103,10 @@ export class CustomersService {
     manager?: EntityManager,
   ): Promise<Customer> {
     const phone = formatPhoneNumber(rawPhone);
-    const repo = manager
-      ? manager.getRepository(Customer)
-      : this.customersRepository;
+    const scopedManager = manager ?? DbTenantContext.getManager();
+    const repo = scopedManager
+      ? scopedManager.getRepository(Customer)
+      : this.getCustomersRepository();
 
     let customer = await repo.findOne({
       where: { phone, tenant_id: tenantId },
@@ -113,10 +114,14 @@ export class CustomersService {
 
     if (!customer) {
       // New Customer Creation Logic
-      if (!manager) {
+      if (!scopedManager) {
         // If no manager provided, we MUST start a transaction to ensure counter safety
-        return this.customersRepository.manager.transaction(
+        return this.getCustomersRepository().manager.transaction(
           async (txManager) => {
+            await txManager.query(
+              `SELECT set_config('app.tenant_id', $1, true)`,
+              [String(tenantId)],
+            );
             return this.createCustomerWithCode(
               txManager,
               phone,
@@ -129,7 +134,7 @@ export class CustomersService {
       } else {
         // Already in a transaction
         return this.createCustomerWithCode(
-          manager,
+          scopedManager,
           phone,
           tenantId,
           name,
@@ -206,13 +211,29 @@ export class CustomersService {
       throw new Error('Customer not found');
     }
 
-    await this.customersRepository.update(id, { merchant_label: label });
+    await this.getCustomersRepository().update(id, { merchant_label: label });
     // Use findOne to return the updated entity, assuming standard findOne logic is fine
     // Or just use findOneBy if we just want the entity
-    const updated = await this.customersRepository.findOneBy({ id });
+    const updated = await this.getCustomersRepository().findOneBy({ id });
     if (!updated) {
       throw new Error('Customer not found after update');
     }
     return updated;
+  }
+
+  /**
+   * Returns customers repository bound to request manager when present.
+   */
+  private getCustomersRepository(): Repository<Customer> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(Customer) : this.customersRepository;
+  }
+
+  /**
+   * Returns orders repository bound to request manager when present.
+   */
+  private getOrdersRepository(): Repository<Order> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(Order) : this.ordersRepository;
   }
 }

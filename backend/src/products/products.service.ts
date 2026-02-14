@@ -16,6 +16,7 @@ import { ProductSource } from 'src/common/enums/product-source.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { ImageProcessorService } from 'src/common/services/image-processor.service';
+import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
 
 const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
 const DUPLICATE_PRODUCT_NAME_MESSAGE = 'Product with this name already exists';
@@ -77,7 +78,7 @@ export class ProductsService {
 
     await this.ensureUniqueActiveProductName(tenantId, normalizedName);
 
-    const product = this.productsRepository.create({
+    const product = this.getProductsRepository().create({
       tenant_id: tenantId,
       name: normalizedName,
       image_url: createProductDto.image_url,
@@ -90,7 +91,7 @@ export class ProductsService {
           : undefined,
     });
 
-    const saved = await this.productsRepository.save(product);
+    const saved = await this.getProductsRepository().save(product);
     await this.bumpTenantSearchCacheVersion(tenantId);
     return saved;
   }
@@ -102,7 +103,7 @@ export class ProductsService {
     tenantId: number,
     payload: AddProductFromCatalogDto,
   ): Promise<Product> {
-    const catalogItem = await this.catalogItemsRepository.findOne({
+    const catalogItem = await this.getCatalogItemsRepository().findOne({
       where: { id: payload.catalog_item_id, is_active: true },
     });
 
@@ -121,7 +122,7 @@ export class ProductsService {
 
     await this.ensureUniqueActiveProductName(tenantId, catalogItem.name);
 
-    const product = this.productsRepository.create({
+    const product = this.getProductsRepository().create({
       tenant_id: tenantId,
       name: catalogItem.name,
       image_url: catalogItem.image_url,
@@ -130,7 +131,7 @@ export class ProductsService {
       status: ProductStatus.ACTIVE,
     });
 
-    const saved = await this.productsRepository.save(product);
+    const saved = await this.getProductsRepository().save(product);
     await this.bumpTenantSearchCacheVersion(tenantId);
     return saved;
   }
@@ -139,7 +140,7 @@ export class ProductsService {
    * Returns all active products for the authenticated tenant.
    */
   async findAll(tenantId: number): Promise<Product[]> {
-    return this.productsRepository.find({
+    return this.getProductsRepository().find({
       where: {
         tenant_id: tenantId,
         status: ProductStatus.ACTIVE,
@@ -260,7 +261,7 @@ export class ProductsService {
       : 20;
     const normalizedCategory = category?.trim();
 
-    const query = this.productsRepository
+    const query = this.getProductsRepository()
       .createQueryBuilder('product')
       .innerJoin('product.tenant', 'tenant')
       .where('tenant.slug = :slug', { slug })
@@ -301,7 +302,7 @@ export class ProductsService {
   ): Promise<PublicProductCategorySummary[]> {
     const normalizedCategoryExpression = `COALESCE(NULLIF(TRIM(product.category), ''), '${DEFAULT_PRODUCT_CATEGORY}')`;
 
-    const categoryRows = await this.productsRepository
+    const categoryRows = await this.getProductsRepository()
       .createQueryBuilder('product')
       .innerJoin('product.tenant', 'tenant')
       .select(normalizedCategoryExpression, 'category')
@@ -318,7 +319,7 @@ export class ProductsService {
 
     const categories = categoryRows.map((row) => row.category);
 
-    const catalogRows = await this.catalogItemsRepository
+    const catalogRows = await this.getCatalogItemsRepository()
       .createQueryBuilder('catalog')
       .select('catalog.category', 'category')
       .addSelect('catalog.image_url', 'image_url')
@@ -348,7 +349,7 @@ export class ProductsService {
    * Returns active catalog categories for product onboarding.
    */
   async findCatalogCategories(): Promise<string[]> {
-    const rows = await this.catalogItemsRepository
+    const rows = await this.getCatalogItemsRepository()
       .createQueryBuilder('catalog')
       .select('DISTINCT catalog.category', 'category')
       .where('catalog.is_active = :isActive', { isActive: true })
@@ -366,7 +367,7 @@ export class ProductsService {
       ? { is_active: true, category }
       : { is_active: true };
 
-    return this.catalogItemsRepository.find({
+    return this.getCatalogItemsRepository().find({
       where,
       order: {
         category: 'ASC',
@@ -379,7 +380,7 @@ export class ProductsService {
    * Returns a single product owned by tenant.
    */
   async findOne(id: number, tenantId: number): Promise<Product> {
-    const product = await this.productsRepository.findOne({
+    const product = await this.getProductsRepository().findOne({
       where: { id, tenant_id: tenantId },
     });
 
@@ -435,7 +436,7 @@ export class ProductsService {
       product.image_url = normalizedImageUrl || undefined;
     }
 
-    const updatedProduct = await this.productsRepository.save(product);
+    const updatedProduct = await this.getProductsRepository().save(product);
     await this.bumpTenantSearchCacheVersion(tenantId);
 
     if (previousImageUrl && previousImageUrl !== updatedProduct.image_url) {
@@ -453,7 +454,7 @@ export class ProductsService {
   async remove(id: number, tenantId: number): Promise<void> {
     const product = await this.findOne(id, tenantId);
     product.status = ProductStatus.ARCHIVED;
-    await this.productsRepository.save(product);
+    await this.getProductsRepository().save(product);
     await this.bumpTenantSearchCacheVersion(tenantId);
   }
 
@@ -465,7 +466,7 @@ export class ProductsService {
     page: number,
     limit: number,
   ): Promise<TenantProductsSearchResult> {
-    const query = this.productsRepository
+    const query = this.getProductsRepository()
       .createQueryBuilder('product')
       .where('product.tenant_id = :tenantId', { tenantId })
       .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
@@ -490,7 +491,7 @@ export class ProductsService {
     page: number,
     limit: number,
   ): Promise<PublicProductsResult> {
-    const query = this.productsRepository
+    const query = this.getProductsRepository()
       .createQueryBuilder('product')
       .innerJoin('product.tenant', 'tenant')
       .where('tenant.slug = :slug', { slug })
@@ -596,7 +597,7 @@ export class ProductsService {
       return;
     }
 
-    const query = this.productsRepository
+    const query = this.getProductsRepository()
       .createQueryBuilder('product')
       .where('product.tenant_id = :tenantId', { tenantId })
       .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
@@ -741,5 +742,23 @@ export class ProductsService {
   private async bumpTenantSearchCacheVersion(tenantId: number): Promise<void> {
     const versionKey = this.getTenantSearchCacheVersionKey(tenantId);
     await this.cacheManager.set(versionKey, Date.now().toString());
+  }
+
+  /**
+   * Returns product repository bound to request manager when present.
+   */
+  private getProductsRepository(): Repository<Product> {
+    const manager = DbTenantContext.getManager();
+    return manager ? manager.getRepository(Product) : this.productsRepository;
+  }
+
+  /**
+   * Returns catalog repository bound to request manager when present.
+   */
+  private getCatalogItemsRepository(): Repository<CatalogItem> {
+    const manager = DbTenantContext.getManager();
+    return manager
+      ? manager.getRepository(CatalogItem)
+      : this.catalogItemsRepository;
   }
 }
