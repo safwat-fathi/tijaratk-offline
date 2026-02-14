@@ -71,6 +71,7 @@ class ProductsService extends HttpService {
   public async updateProduct(productId: number, payload: FormData) {
     return this.patch<Product>(`${productId}`, payload, undefined, {
       authRequired: true,
+      timeoutMs: 30000,
     });
   }
 

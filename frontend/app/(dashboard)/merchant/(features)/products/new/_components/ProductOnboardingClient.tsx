@@ -44,6 +44,7 @@ import {
 	hasAllowedProductImageFormat,
 	isDuplicateMessage,
 	isServerActionBodyLimitError,
+	normalizeImageUploadErrorMessage,
 	normalizeOptionalCategory,
 	normalizeProductName,
 	parseOptionalPositivePrice,
@@ -121,6 +122,7 @@ export default function ProductOnboardingClient({
 	const [editCategoryCustom, setEditCategoryCustom] = useState("");
 	const [editImageFile, setEditImageFile] = useState<File | null>(null);
 	const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+	const [editImageError, setEditImageError] = useState<string | null>(null);
 
 	const [confirmRemoveProductId, setConfirmRemoveProductId] = useState<
 		number | null
@@ -478,6 +480,7 @@ export default function ProductOnboardingClient({
 		setEditCategoryCustom(editState.categoryCustom);
 		setEditImageFile(null);
 		setEditImagePreview(null);
+		setEditImageError(null);
 		setConfirmRemoveProductId(null);
 		setMessage(null);
 	};
@@ -502,6 +505,7 @@ export default function ProductOnboardingClient({
 		setEditCategoryCustom("");
 		setEditImageFile(null);
 		setEditImagePreview(null);
+		setEditImageError(null);
 	};
 
 	const handleRequestRemove = (productId: number) => {
@@ -542,6 +546,7 @@ export default function ProductOnboardingClient({
 		event: React.ChangeEvent<HTMLInputElement>,
 	) => {
 		const selectedFile = event.target.files?.[0] ?? null;
+		setEditImageError(null);
 
 		if (editImagePreview?.startsWith("blob:")) {
 			URL.revokeObjectURL(editImagePreview);
@@ -551,8 +556,9 @@ export default function ProductOnboardingClient({
 			setEditImageFile(null);
 			setEditImagePreview(null);
 			event.target.value = "";
-			setMessage(
-				`حجم الصورة يجب ألا يتجاوز ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت`,
+			setMessage(null);
+			setEditImageError(
+				`حجم الصورة كبير. الحد الأقصى ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت.`,
 			);
 			return;
 		}
@@ -561,7 +567,8 @@ export default function ProductOnboardingClient({
 			setEditImageFile(null);
 			setEditImagePreview(null);
 			event.target.value = "";
-			setMessage(
+			setMessage(null);
+			setEditImageError(
 				"صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP أو HEIC أو HEIF.",
 			);
 			return;
@@ -575,6 +582,7 @@ export default function ProductOnboardingClient({
 
 	const handleEditSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
+		setEditImageError(null);
 
 		if (!editingProduct) {
 			return;
@@ -639,7 +647,6 @@ export default function ProductOnboardingClient({
 				}
 
 				const response = await updateProductAction(editingProduct.id, formData);
-				console.log("🚀 ~ :642 ~ handleEditSubmit ~ response:", response);
 
 				if (!response.success || !response.data) {
 					if (isDuplicateMessage(response.message)) {
@@ -655,7 +662,16 @@ export default function ProductOnboardingClient({
 						}
 					}
 
-					setMessage(response.message || "تعذر تعديل المنتج");
+					const imageErrorMessage = normalizeImageUploadErrorMessage(
+						response.message,
+					);
+					if (imageErrorMessage) {
+						setMessage(null);
+						setEditImageError(imageErrorMessage);
+						return;
+					}
+
+					setMessage(response.message || "تعذر تعديل المنتج، حاول مرة أخرى.");
 					return;
 				}
 
@@ -666,17 +682,28 @@ export default function ProductOnboardingClient({
 				);
 				addCategoryOption(response.data.category);
 				refreshSearchResultsIfActive();
+				setEditImageError(null);
 				setMessage("تم تعديل المنتج");
 				handleCloseEdit();
 			} catch (error) {
 				if (isServerActionBodyLimitError(error)) {
-					setMessage(
+					setMessage(null);
+					setEditImageError(
 						`حجم الصورة كبير. الحد الأقصى ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت.`,
 					);
 					return;
 				}
 
-				setMessage("تعذر تعديل المنتج");
+				const imageErrorMessage = normalizeImageUploadErrorMessage(
+					error instanceof Error ? error.message : undefined,
+				);
+				if (imageErrorMessage) {
+					setMessage(null);
+					setEditImageError(imageErrorMessage);
+					return;
+				}
+
+				setMessage("تعذر تعديل المنتج، حاول مرة أخرى.");
 			}
 		});
 	};
@@ -810,6 +837,7 @@ export default function ProductOnboardingClient({
 				onEditCategoryCustomChange={setEditCategoryCustom}
 				availableProductCategories={availableProductCategories}
 				editImagePreview={editImagePreview}
+				editImageError={editImageError}
 				onEditImageChange={handleEditImageChange}
 			/>
 		</div>

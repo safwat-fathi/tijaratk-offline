@@ -20,6 +20,7 @@ export interface IParams {
 export type TMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type HttpRequestOptions = RequestInit & {
 	authRequired?: boolean;
+	timeoutMs?: number;
 };
 
 // Updated abstract class

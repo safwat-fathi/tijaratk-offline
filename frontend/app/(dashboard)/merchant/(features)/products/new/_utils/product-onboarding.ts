@@ -84,11 +84,51 @@ export const isServerActionBodyLimitError = (error: unknown): boolean => {
     return false;
   }
 
+  const normalizedMessage = error.message.toLowerCase();
   return (
-    error.message.includes('Body exceeded') ||
-    error.message.includes('body size limit') ||
-    error.message.includes('body limit')
+    normalizedMessage.includes('body exceeded') ||
+    normalizedMessage.includes('body size limit') ||
+    normalizedMessage.includes('body limit') ||
+    (normalizedMessage.includes('request body') &&
+      normalizedMessage.includes('exceed')) ||
+    (normalizedMessage.includes('payload') &&
+      normalizedMessage.includes('too large'))
   );
+};
+
+export const normalizeImageUploadErrorMessage = (
+  message?: string,
+): string | null => {
+  const normalized = message?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    /(unsupported image format|unsupported codec|صيغة الصورة غير مدعومة)/i.test(
+      normalized,
+    )
+  ) {
+    return 'صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP أو HEIC أو HEIF.';
+  }
+
+  if (
+    /(limit_file_size|payload too large|entity too large|file too large|حجم الصورة|ميجابايت|exceed.*(?:size|limit))/i.test(
+      normalized,
+    )
+  ) {
+    return 'حجم الصورة كبير. الحد الأقصى 5 ميجابايت.';
+  }
+
+  if (
+    /(timeout|timed out|aborterror|operation was aborted|signal is aborted|استغرق رفع\/معالجة الصورة)/i.test(
+      normalized,
+    )
+  ) {
+    return 'استغرق رفع/معالجة الصورة وقتًا أطول من المتوقع. حاول مرة أخرى.';
+  }
+
+  return null;
 };
 
 export const parseOptionalPositivePrice = (value: string): ParsedOptionalPrice => {
@@ -128,8 +168,10 @@ export const hasAllowedProductImageFormat = (file: File): boolean => {
   const extension = extensionMatch?.[0].toLowerCase() || '';
   const hasAllowedExtension = ALLOWED_PRODUCT_IMAGE_EXTENSIONS.has(extension);
   const hasGenericMimeType = !mimeType || mimeType === 'application/octet-stream';
+  const hasImageMimeType = mimeType.startsWith('image/');
+  const canTrustExtension = hasGenericMimeType || hasImageMimeType;
 
-  return hasGenericMimeType && hasAllowedExtension;
+  return canTrustExtension && hasAllowedExtension;
 };
 
 export const parsePresetNumbers = (value: string, fallback: number[]): number[] => {

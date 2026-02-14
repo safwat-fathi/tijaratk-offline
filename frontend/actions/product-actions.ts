@@ -8,6 +8,49 @@ import {
   ProductOrderMode,
 } from '@/types/models/product';
 
+const UPDATE_PRODUCT_FALLBACK_MESSAGE = 'تعذر تعديل المنتج، حاول مرة أخرى.';
+const UPDATE_PRODUCT_IMAGE_SIZE_MESSAGE =
+  'حجم الصورة كبير. الحد الأقصى 5 ميجابايت.';
+const UPDATE_PRODUCT_IMAGE_FORMAT_MESSAGE =
+  'صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WEBP أو HEIC أو HEIF.';
+const UPDATE_PRODUCT_TIMEOUT_MESSAGE =
+  'استغرق رفع/معالجة الصورة وقتًا أطول من المتوقع. حاول مرة أخرى.';
+
+const normalizeUpdateProductErrorMessage = (
+  message?: string,
+): string => {
+  const normalized = message?.trim();
+  if (!normalized) {
+    return UPDATE_PRODUCT_FALLBACK_MESSAGE;
+  }
+
+  if (
+    /(unsupported image format|unsupported codec|صيغة الصورة غير مدعومة)/i.test(
+      normalized,
+    )
+  ) {
+    return UPDATE_PRODUCT_IMAGE_FORMAT_MESSAGE;
+  }
+
+  if (
+    /(limit_file_size|payload too large|entity too large|file too large|حجم الصورة|exceed.*(?:size|limit))/i.test(
+      normalized,
+    )
+  ) {
+    return UPDATE_PRODUCT_IMAGE_SIZE_MESSAGE;
+  }
+
+  if (
+    /(timeout|timed out|aborterror|operation was aborted|signal is aborted)/i.test(
+      normalized,
+    )
+  ) {
+    return UPDATE_PRODUCT_TIMEOUT_MESSAGE;
+  }
+
+  return normalized;
+};
+
 export async function createProductAction(
   name: string,
   imageUrl?: string,
@@ -145,7 +188,7 @@ export async function updateProductAction(productId: number, formData: FormData)
     if (!response.success || !response.data) {
       return {
         success: false,
-        message: response.message || 'تعذر تعديل المنتج',
+        message: normalizeUpdateProductErrorMessage(response.message),
       };
     }
 
@@ -159,9 +202,11 @@ export async function updateProductAction(productId: number, formData: FormData)
     }
 
     console.error('Update product failed:', error);
+    const message =
+      error instanceof Error ? error.message : undefined;
     return {
       success: false,
-      message: 'تعذر تعديل المنتج',
+      message: normalizeUpdateProductErrorMessage(message),
     };
   }
 }

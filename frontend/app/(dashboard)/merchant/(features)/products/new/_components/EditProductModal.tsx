@@ -37,6 +37,7 @@ type EditProductModalProps = {
   onEditCategoryCustomChange: (value: string) => void;
   availableProductCategories: string[];
   editImagePreview: string | null;
+  editImageError?: string | null;
   onEditImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
 };
 
@@ -71,6 +72,7 @@ export default function EditProductModal({
   onEditCategoryCustomChange,
   availableProductCategories,
   editImagePreview,
+  editImageError,
   onEditImageChange,
 }: EditProductModalProps) {
   if (!editingProduct) {
@@ -111,10 +113,13 @@ export default function EditProductModal({
             <span className="mb-1 block text-sm text-gray-700">صورة المنتج</span>
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
               onChange={onEditImageChange}
               className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
             />
+            {editImageError && (
+              <span className="mt-1 block text-xs text-red-600">{editImageError}</span>
+            )}
           </label>
 
           <label className="block">

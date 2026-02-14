@@ -7,6 +7,8 @@ export const MAX_PRODUCT_IMAGE_SIZE_MB = 5;
 
 export const ALLOWED_PRODUCT_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
   'image/png',
   'image/webp',
   'image/heic',

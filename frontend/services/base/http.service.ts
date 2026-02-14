@@ -200,12 +200,16 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 			const fullURL = searchParams
 				? `${this._baseUrl}/${route}?${searchParams}`
 				: `${this._baseUrl}/${route}`;
-			const { authRequired = false, ...requestOverrides } = options;
+			const {
+				authRequired = false,
+				timeoutMs = this._timeout,
+				...requestOverrides
+			} = options;
 
 			// Create a new AbortSignal for each request
 			const requestOptions: RequestInit = {
 				...requestOverrides,
-				signal: requestOverrides.signal || AbortSignal.timeout(this._timeout),
+				signal: requestOverrides.signal || AbortSignal.timeout(timeoutMs),
 				method,
 				headers: {
 					...this._defaultHeaders,
