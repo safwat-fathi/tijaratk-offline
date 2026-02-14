@@ -9,6 +9,7 @@ import {
 import { Order } from './order.entity';
 import { Product } from 'src/products/entities/product.entity';
 import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
+import { OrderItemSelectionMode } from 'src/common/enums/order-item-selection-mode.enum';
 
 @Entity('order_items')
 export class OrderItem {
@@ -43,6 +44,25 @@ export class OrderItem {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
+
+  @Column({
+    type: 'enum',
+    enum: OrderItemSelectionMode,
+    nullable: true,
+  })
+  selection_mode?: OrderItemSelectionMode | null;
+
+  @Column('decimal', { precision: 10, scale: 3, nullable: true })
+  selection_quantity?: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  selection_grams?: number | null;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  selection_amount_egp?: number | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  unit_option_id?: string | null;
 
   @Column({ nullable: true })
   replaced_by_product_id?: number | null;

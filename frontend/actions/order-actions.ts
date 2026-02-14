@@ -151,13 +151,29 @@ export async function createOrderAction(
 
   const { cart, order_request, ...customerData } = validatedFields.data;
 
-  let items: Array<{ product_id: number; quantity: string; name?: string }> = [];
+  let items: Array<{
+    product_id: number;
+    quantity: string;
+    name?: string;
+    total_price?: number;
+    selection_mode?: 'quantity' | 'weight' | 'price';
+    selection_quantity?: number;
+    selection_grams?: number;
+    selection_amount_egp?: number;
+    unit_option_id?: string;
+  }> = [];
   if (cart) {
     try {
       const parsed = JSON.parse(cart) as Array<{
         product_id: number;
         quantity: string;
         name?: string;
+        total_price?: number;
+        selection_mode?: 'quantity' | 'weight' | 'price';
+        selection_quantity?: number;
+        selection_grams?: number;
+        selection_amount_egp?: number;
+        unit_option_id?: string;
       }>;
 
       items = parsed.filter(

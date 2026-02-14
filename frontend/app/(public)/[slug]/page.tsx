@@ -1,4 +1,4 @@
-import StoreHeader from "./_components/StoreHeader";
+import StoreHeader, { CATEGORY_BY_VALUE } from "./_components/StoreHeader";
 import WriteOrderFAB from "./_components/WriteOrderFAB";
 import OrderForm from "./_components/OrderForm";
 
@@ -15,6 +15,13 @@ import {
 } from "@/types/models/product";
 import { Order } from "@/types/models/order";
 import { notFound } from "next/navigation";
+import { Metadata, ResolvingMetadata } from "next";
+import { TENANT_CATEGORIES } from "@/constants";
+
+type Props = {
+	params: Promise<{ slug: string }>;
+	searchParams: Promise<{ reorder?: string }>;
+};
 
 // Fetch data
 async function getTenant(slug: string): Promise<Tenant | null> {
@@ -54,7 +61,9 @@ async function getInitialProducts(slug: string): Promise<{
 	};
 }
 
-async function getPublicCategories(slug: string): Promise<PublicProductCategory[]> {
+async function getPublicCategories(
+	slug: string,
+): Promise<PublicProductCategory[]> {
 	const response = await productsService.getPublicProductCategories(slug);
 	if (!response.success || !response.data) return [];
 	return response.data;
@@ -73,13 +82,31 @@ async function getOrder(token?: string): Promise<Order | null> {
 	}
 }
 
-export default async function StorePage({
-	params,
-	searchParams,
-}: {
-	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ reorder?: string }>;
-}) {
+export async function generateMetadata(
+	{ params }: Props,
+	// parent: ResolvingMetadata,
+): Promise<Metadata> {
+	const { slug } = await params;
+
+	const tenant = await getTenant(slug);
+
+	if (!tenant) return { title: "" };
+
+	const categoryValue = CATEGORY_BY_VALUE[tenant.category]
+		? tenant.category
+		: TENANT_CATEGORIES.OTHER.value;
+	const categoryLabel = CATEGORY_BY_VALUE[categoryValue].labels.ar;
+	return {
+		title: tenant.name || "",
+		description: categoryLabel,
+		openGraph: {
+			title: tenant.name || "",
+			description: `متجر ${categoryLabel}`,
+		},
+	};
+}
+
+export default async function StorePage({ params, searchParams }: Props) {
 	const { slug } = await params;
 	const { reorder } = await searchParams;
 

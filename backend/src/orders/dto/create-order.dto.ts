@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { OrderType } from 'src/common/enums/order-type.enum';
 import { CreateCustomerDto } from 'src/customers/dto/create-customer.dto';
+import { OrderItemSelectionMode } from 'src/common/enums/order-item-selection-mode.enum';
 
 export class CreateOrderItemDto {
   @ApiPropertyOptional()
@@ -49,6 +50,38 @@ export class CreateOrderItemDto {
   @IsString()
   @MaxLength(255)
   notes?: string;
+
+  @ApiPropertyOptional({ enum: OrderItemSelectionMode })
+  @IsOptional()
+  @IsEnum(OrderItemSelectionMode)
+  selection_mode?: OrderItemSelectionMode;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0.001)
+  selection_quantity?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  selection_grams?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  selection_amount_egp?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  unit_option_id?: string;
 }
 
 export class CreateOrderDto {

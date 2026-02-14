@@ -17,10 +17,36 @@ import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { ImageProcessorService } from 'src/common/services/image-processor.service';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
+import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 
 const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
 const DUPLICATE_PRODUCT_NAME_MESSAGE = 'Product with this name already exists';
 const PRODUCT_SEARCH_CACHE_TTL_SECONDS = 60;
+const DEFAULT_WEIGHT_PRESET_GRAMS = [250, 500, 1000] as const;
+const DEFAULT_PRICE_PRESET_AMOUNTS = [100, 200, 300] as const;
+const DEFAULT_QUANTITY_UNIT_LABEL = 'قطعة';
+const MAX_ORDER_PRESETS = 6;
+
+type QuantityUnitOptionConfig = {
+  id: string;
+  label: string;
+  multiplier: number;
+};
+
+type ProductOrderConfig = {
+  quantity?: {
+    unit_label?: string;
+    unit_options?: QuantityUnitOptionConfig[];
+  };
+  weight?: {
+    preset_grams: number[];
+    allow_custom_grams: boolean;
+  };
+  price?: {
+    preset_amounts_egp: number[];
+    allow_custom_amount: boolean;
+  };
+};
 
 type PublicProductsResult = {
   data: Product[];
@@ -78,6 +104,12 @@ export class ProductsService {
 
     await this.ensureUniqueActiveProductName(tenantId, normalizedName);
 
+    const orderMode = this.resolveProductOrderMode(createProductDto.order_mode);
+    const orderConfig = this.normalizeProductOrderConfig(
+      orderMode,
+      createProductDto.order_config,
+    );
+
     const product = this.getProductsRepository().create({
       tenant_id: tenantId,
       name: normalizedName,
@@ -89,6 +121,8 @@ export class ProductsService {
         typeof createProductDto.current_price === 'number'
           ? this.normalizeCurrentPrice(createProductDto.current_price)
           : undefined,
+      order_mode: orderMode,
+      order_config: orderConfig,
     });
 
     const saved = await this.getProductsRepository().save(product);
@@ -129,6 +163,11 @@ export class ProductsService {
       category: catalogCategory,
       source: ProductSource.CATALOG,
       status: ProductStatus.ACTIVE,
+      order_mode: ProductOrderMode.QUANTITY,
+      order_config: this.normalizeProductOrderConfig(
+        ProductOrderMode.QUANTITY,
+        undefined,
+      ),
     });
 
     const saved = await this.getProductsRepository().save(product);
@@ -428,6 +467,20 @@ export class ProductsService {
       );
     }
 
+    if (
+      updateProductDto.order_mode !== undefined ||
+      updateProductDto.order_config !== undefined
+    ) {
+      const nextOrderMode = this.resolveProductOrderMode(
+        updateProductDto.order_mode ?? product.order_mode,
+      );
+      product.order_mode = nextOrderMode;
+      product.order_config = this.normalizeProductOrderConfig(
+        nextOrderMode,
+        updateProductDto.order_config ?? product.order_config ?? undefined,
+      );
+    }
+
     if (file?.path) {
       product.image_url =
         await this.imageProcessorService.processProductThumbnail(file.path);
@@ -708,6 +761,184 @@ export class ProductsService {
     }
 
     return Number(price.toFixed(2));
+  }
+
+  private resolveProductOrderMode(mode?: ProductOrderMode): ProductOrderMode {
+    if (!mode) {
+      return ProductOrderMode.QUANTITY;
+    }
+
+    return mode;
+  }
+
+  private normalizeProductOrderConfig(
+    mode: ProductOrderMode,
+    rawConfig?: unknown,
+  ): ProductOrderConfig {
+    const config =
+      rawConfig && typeof rawConfig === 'object'
+        ? (rawConfig as Record<string, unknown>)
+        : {};
+
+    switch (mode) {
+      case ProductOrderMode.WEIGHT:
+        return this.normalizeWeightOrderConfig(config.weight);
+      case ProductOrderMode.PRICE:
+        return this.normalizePriceOrderConfig(config.price);
+      case ProductOrderMode.QUANTITY:
+      default:
+        return this.normalizeQuantityOrderConfig(config.quantity);
+    }
+  }
+
+  private normalizeQuantityOrderConfig(rawValue: unknown): ProductOrderConfig {
+    const quantityConfig =
+      rawValue && typeof rawValue === 'object'
+        ? (rawValue as Record<string, unknown>)
+        : {};
+
+    const unitLabel = this.normalizeOptionalText(quantityConfig.unit_label, 32);
+    const unitOptions = this.normalizeQuantityUnitOptions(
+      quantityConfig.unit_options,
+    );
+
+    return {
+      quantity: {
+        unit_label: unitLabel || DEFAULT_QUANTITY_UNIT_LABEL,
+        ...(unitOptions.length > 0 ? { unit_options: unitOptions } : {}),
+      },
+    };
+  }
+
+  private normalizeWeightOrderConfig(rawValue: unknown): ProductOrderConfig {
+    const weightConfig =
+      rawValue && typeof rawValue === 'object'
+        ? (rawValue as Record<string, unknown>)
+        : {};
+
+    const presetGrams = this.normalizeNumericPresets(
+      weightConfig.preset_grams,
+      DEFAULT_WEIGHT_PRESET_GRAMS,
+    );
+    const allowCustomGrams =
+      typeof weightConfig.allow_custom_grams === 'boolean'
+        ? weightConfig.allow_custom_grams
+        : true;
+
+    return {
+      weight: {
+        preset_grams: presetGrams,
+        allow_custom_grams: allowCustomGrams,
+      },
+    };
+  }
+
+  private normalizePriceOrderConfig(rawValue: unknown): ProductOrderConfig {
+    const priceConfig =
+      rawValue && typeof rawValue === 'object'
+        ? (rawValue as Record<string, unknown>)
+        : {};
+
+    const presetAmounts = this.normalizeNumericPresets(
+      priceConfig.preset_amounts_egp,
+      DEFAULT_PRICE_PRESET_AMOUNTS,
+    );
+    const allowCustomAmount =
+      typeof priceConfig.allow_custom_amount === 'boolean'
+        ? priceConfig.allow_custom_amount
+        : true;
+
+    return {
+      price: {
+        preset_amounts_egp: presetAmounts,
+        allow_custom_amount: allowCustomAmount,
+      },
+    };
+  }
+
+  private normalizeNumericPresets(
+    rawValue: unknown,
+    fallback: readonly number[],
+  ): number[] {
+    if (!Array.isArray(rawValue)) {
+      return [...fallback];
+    }
+
+    const uniquePresets = new Set<number>();
+    for (const value of rawValue) {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        continue;
+      }
+
+      uniquePresets.add(Math.round(parsed));
+
+      if (uniquePresets.size >= MAX_ORDER_PRESETS) {
+        break;
+      }
+    }
+
+    if (uniquePresets.size === 0) {
+      return [...fallback];
+    }
+
+    return Array.from(uniquePresets).sort((left, right) => left - right);
+  }
+
+  private normalizeQuantityUnitOptions(
+    rawValue: unknown,
+  ): QuantityUnitOptionConfig[] {
+    if (!Array.isArray(rawValue)) {
+      return [];
+    }
+
+    const normalizedOptions: QuantityUnitOptionConfig[] = [];
+    const optionIds = new Set<string>();
+
+    for (const option of rawValue) {
+      if (!option || typeof option !== 'object') {
+        continue;
+      }
+
+      const optionRecord = option as Record<string, unknown>;
+      const label = this.normalizeOptionalText(optionRecord.label, 64);
+      const multiplier = Number(optionRecord.multiplier);
+      if (!label || !Number.isFinite(multiplier) || multiplier <= 0) {
+        continue;
+      }
+
+      const providedId = this.normalizeOptionalText(optionRecord.id, 64);
+      const candidateId = providedId || `unit_${normalizedOptions.length + 1}`;
+      if (optionIds.has(candidateId)) {
+        continue;
+      }
+
+      optionIds.add(candidateId);
+      normalizedOptions.push({
+        id: candidateId,
+        label,
+        multiplier: Number(multiplier.toFixed(3)),
+      });
+
+      if (normalizedOptions.length >= MAX_ORDER_PRESETS) {
+        break;
+      }
+    }
+
+    return normalizedOptions;
+  }
+
+  private normalizeOptionalText(value: unknown, maxLength: number): string {
+    if (typeof value !== 'string') {
+      return '';
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return '';
+    }
+
+    return normalized.slice(0, maxLength);
   }
 
   private getTenantSearchCacheVersionKey(tenantId: number): string {

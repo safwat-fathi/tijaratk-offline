@@ -175,7 +175,21 @@ export class TenantRlsInterceptor implements NestInterceptor {
    * Splits request path into non-empty parts for route matching.
    */
   private getPathParts(path: string): string[] {
-    return path.split('/').filter(Boolean);
+    return path
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => this.safeDecodePathSegment(segment));
+  }
+
+  /**
+   * Safely decodes URL-encoded path segments without throwing on malformed input.
+   */
+  private safeDecodePathSegment(segment: string): string {
+    try {
+      return decodeURIComponent(segment);
+    } catch {
+      return segment;
+    }
   }
 
   /**
@@ -221,14 +235,17 @@ export class TenantRlsInterceptor implements NestInterceptor {
     slug: string,
     queryRunner: QueryRunner,
   ): Promise<number> {
+    const normalizedSlug = this.safeDecodePathSegment(slug);
     const rows = await queryRunner.query(
       `SELECT app.resolve_tenant_id_by_slug($1)::int AS tenant_id`,
-      [slug],
+      [normalizedSlug],
     );
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     if (!tenantId) {
-      throw new NotFoundException(`Tenant with slug ${slug} not found`);
+      throw new NotFoundException(
+        `Tenant with slug ${normalizedSlug} not found`,
+      );
     }
 
     return tenantId;
@@ -314,7 +331,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
 
     const normalized = flattened
       .filter((token): token is string => typeof token === 'string')
-      .map((token) => token.trim())
+      .map((token) => this.safeDecodePathSegment(token.trim()))
       .filter((token) => token.length > 0);
 
     return Array.from(new Set(normalized));

@@ -2,6 +2,7 @@ import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { TenantBaseEntity } from 'src/common/entities/tenant-base.entity';
 import { ProductSource } from 'src/common/enums/product-source.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
+import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 
 @Entity('products')
 export class Product extends TenantBaseEntity {
@@ -33,4 +34,14 @@ export class Product extends TenantBaseEntity {
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   current_price?: number | null;
+
+  @Column({
+    type: 'enum',
+    enum: ProductOrderMode,
+    default: ProductOrderMode.QUANTITY,
+  })
+  order_mode: ProductOrderMode;
+
+  @Column({ type: 'jsonb', nullable: true })
+  order_config?: Record<string, unknown> | null;
 }

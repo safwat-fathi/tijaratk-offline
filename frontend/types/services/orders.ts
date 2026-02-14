@@ -14,6 +14,11 @@ export interface CreateOrderRequest {
     notes?: string;
     unit_price?: number;
     total_price?: number;
+    selection_mode?: 'quantity' | 'weight' | 'price';
+    selection_quantity?: number;
+    selection_grams?: number;
+    selection_amount_egp?: number;
+    unit_option_id?: string;
   }>;
   notes?: string;
   free_text_payload?: { text: string };

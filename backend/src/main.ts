@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
 import { TypeOrmExceptionFilter } from './common/filters/db-exception.filter';
 import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
+import { validationExceptionFactory } from './common/utils/validation-exception.factory';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -118,9 +119,7 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
-      exceptionFactory(errors) {
-        return errors;
-      },
+      exceptionFactory: validationExceptionFactory,
     }),
   );
 

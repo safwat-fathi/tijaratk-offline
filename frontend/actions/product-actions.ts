@@ -2,13 +2,19 @@
 
 import { productsService } from '@/services/api/products.service';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
-import { Product } from '@/types/models/product';
+import {
+  Product,
+  ProductOrderConfig,
+  ProductOrderMode,
+} from '@/types/models/product';
 
 export async function createProductAction(
   name: string,
   imageUrl?: string,
   currentPrice?: number,
   category?: string,
+  orderMode?: ProductOrderMode,
+  orderConfig?: ProductOrderConfig,
 ) {
   try {
     const normalizedCategory = category?.trim() || undefined;
@@ -18,6 +24,8 @@ export async function createProductAction(
       image_url: imageUrl,
       current_price: currentPrice,
       category: normalizedCategory,
+      order_mode: orderMode,
+      order_config: orderConfig,
     });
 
     if (!response.success || !response.data) {
@@ -76,6 +84,8 @@ export async function updateProductAction(productId: number, formData: FormData)
     const rawName = formData.get('name');
     const rawCurrentPrice = formData.get('current_price');
     const rawCategory = formData.get('category');
+    const rawOrderMode = formData.get('order_mode');
+    const rawOrderConfig = formData.get('order_config');
     const file = formData.get('file');
 
     if (typeof rawName === 'string') {
@@ -96,6 +106,20 @@ export async function updateProductAction(productId: number, formData: FormData)
       const trimmed = rawCategory.trim();
       if (trimmed) {
         normalizedPayload.set('category', trimmed);
+      }
+    }
+
+    if (typeof rawOrderMode === 'string') {
+      const trimmed = rawOrderMode.trim();
+      if (trimmed) {
+        normalizedPayload.set('order_mode', trimmed);
+      }
+    }
+
+    if (typeof rawOrderConfig === 'string') {
+      const trimmed = rawOrderConfig.trim();
+      if (trimmed) {
+        normalizedPayload.set('order_config', trimmed);
       }
     }
 

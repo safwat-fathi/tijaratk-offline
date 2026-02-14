@@ -26,6 +26,70 @@ const DEFAULT_TIMEOUT = 10000;
 const LOGIN_ROUTE = "/merchant/login";
 const REVOKE_ROUTE = `/api/auth/session/revoke?redirect=${encodeURIComponent(LOGIN_ROUTE)}`;
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+
+const toReadableMessage = (value: unknown): string | null => {
+	if (typeof value === "string") {
+		const normalized = value.trim();
+		return normalized.length > 0 ? normalized : null;
+	}
+
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+
+	return null;
+};
+
+const extractFirstReadableMessage = (value: unknown, depth = 0): string | null => {
+	if (depth > 6 || value === null || value === undefined) {
+		return null;
+	}
+
+	const directMessage = toReadableMessage(value);
+	if (directMessage) {
+		return directMessage;
+	}
+
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			const nestedMessage = extractFirstReadableMessage(item, depth + 1);
+			if (nestedMessage) {
+				return nestedMessage;
+			}
+		}
+
+		return null;
+	}
+
+	if (!isRecord(value)) {
+		return null;
+	}
+
+	const preferredKeys = ["message", "error", "detail", "details", "errors", "constraints"];
+	for (const key of preferredKeys) {
+		if (!(key in value)) {
+			continue;
+		}
+
+		const nestedMessage = extractFirstReadableMessage(value[key], depth + 1);
+		if (nestedMessage) {
+			return nestedMessage;
+		}
+	}
+
+	for (const nestedValue of Object.values(value)) {
+		const nestedMessage = extractFirstReadableMessage(nestedValue, depth + 1);
+		if (nestedMessage) {
+			return nestedMessage;
+		}
+	}
+
+	return null;
+};
+
 export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 	private readonly _baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 	private _token: string | undefined = undefined;
@@ -70,14 +134,20 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 			errorBody = `<<failed to read body: ${String(readError)}>>`;
 		}
 
-		let errorMessage = response.statusText;
+		let errorMessage = response.statusText || "Request failed";
 		let errorData: unknown = null;
 		try {
-			const errorJson = JSON.parse(errorBody || "{}");
-			errorMessage = errorJson.message || errorMessage;
+			const errorJson = JSON.parse(errorBody || "{}") as unknown;
+			const normalizedMessage = extractFirstReadableMessage(errorJson);
+			if (normalizedMessage) {
+				errorMessage = normalizedMessage;
+			}
 			errorData = errorJson;
 		} catch {
-			errorMessage = errorBody || errorMessage;
+			const fallbackMessage = toReadableMessage(errorBody);
+			if (fallbackMessage) {
+				errorMessage = fallbackMessage;
+			}
 		}
 
 		return { message: errorMessage, data: errorData };
@@ -152,19 +222,22 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 				return { success: true };
 			}
 
-			if (!response.ok) {
-				const { message, data } = await this._parseErrorResponse(response);
+				if (!response.ok) {
+					const { message, data } = await this._parseErrorResponse(response);
+					const errors =
+						isRecord(data) && Array.isArray(data.errors) ? data.errors : undefined;
 
-				if (response.status === 401 && authRequired) {
-					await this._handleUnauthorized();
+					if (response.status === 401 && authRequired) {
+						await this._handleUnauthorized();
 				}
 
-				return {
-					success: false,
-					message,
-					data: data as R,
-				};
-			}
+					return {
+						success: false,
+						message,
+						data: data as R,
+						errors,
+					};
+				}
 
 			// Parse response
 			const contentType = response.headers.get("content-type");

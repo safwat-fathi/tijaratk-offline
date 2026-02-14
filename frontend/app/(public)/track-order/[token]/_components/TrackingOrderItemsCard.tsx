@@ -130,6 +130,22 @@ export default function TrackingOrderItemsCard({
   const getDecisionStatus = (item: OrderItem) =>
     item.replacement_decision_status || ReplacementDecisionStatus.NONE;
 
+  const resolveSelectionText = (item: OrderItem): string => {
+    if (item.selection_mode === 'weight' && item.selection_grams) {
+      return `${item.selection_grams} جم`;
+    }
+
+    if (item.selection_mode === 'price' && item.selection_amount_egp) {
+      return `${Number(item.selection_amount_egp)} جنيه`;
+    }
+
+    if (item.selection_mode === 'quantity' && item.selection_quantity) {
+      return String(item.selection_quantity);
+    }
+
+    return item.quantity;
+  };
+
   return (
     <>
       {isDecisionWindow && (
@@ -180,7 +196,7 @@ export default function TrackingOrderItemsCard({
                 <div className="flex items-center justify-between">
                   <div className="w-0 flex-1">
                     <span className="ml-2 block truncate font-medium">
-                      {displayName} x {item.quantity}
+                      {displayName} x {resolveSelectionText(item)}
                     </span>
                   </div>
                   <div className="ml-4 shrink-0">

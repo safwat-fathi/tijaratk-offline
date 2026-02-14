@@ -11,6 +11,7 @@ import {
   DataSource,
   DeepPartial,
   EntityManager,
+  FindOptionsWhere,
   In,
   IsNull,
   Repository,
@@ -32,6 +33,8 @@ import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision
 import { ReplacementDecisionAction } from './dto/decide-replacement.dto';
 import { DayClosure } from './entities/day-closure.entity';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
+import { OrderItemSelectionMode } from 'src/common/enums/order-item-selection-mode.enum';
+import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 
 type DayCloseSummary = {
   orders_count: number;
@@ -103,135 +106,200 @@ export class OrdersService {
   ): Promise<Order> {
     let isFirstOrder = false;
 
-    const savedOrder = await this.withTenantManager(tenantId, async (manager) => {
-      const customer = await this.customersService.findOrCreate(
-        createOrderDto.customer.phone,
-        tenantId,
-        createOrderDto.customer.name,
-        createOrderDto.customer.address,
-        manager,
-      );
+    const savedOrder = await this.withTenantManager(
+      tenantId,
+      async (manager) => {
+        const customer = await this.customersService.findOrCreate(
+          createOrderDto.customer.phone,
+          tenantId,
+          createOrderDto.customer.name,
+          createOrderDto.customer.address,
+          manager,
+        );
 
-      const hasItems = Boolean(createOrderDto.items?.length);
-      const items = createOrderDto.items || [];
+        const hasItems = Boolean(createOrderDto.items?.length);
+        const items = createOrderDto.items || [];
 
-      const productIds = Array.from(
-        new Set(
-          items
-            .map((item) => item.product_id)
-            .filter((id): id is number => typeof id === 'number'),
-        ),
-      );
+        const productIds = Array.from(
+          new Set(
+            items
+              .map((item) => item.product_id)
+              .filter((id): id is number => typeof id === 'number'),
+          ),
+        );
 
-      const products = productIds.length
-        ? await manager.getRepository(Product).find({
-            where: {
-              id: In(productIds),
-              tenant_id: tenantId,
-              status: ProductStatus.ACTIVE,
+        const products = productIds.length
+          ? await manager.getRepository(Product).find({
+              where: {
+                id: In(productIds),
+                tenant_id: tenantId,
+                status: ProductStatus.ACTIVE,
+              },
+            })
+          : [];
+
+        const productsById = new Map(
+          products.map((product) => [product.id, product]),
+        );
+
+        const deliveryFee = createOrderDto.delivery_fee || 0;
+        let subtotal: number | undefined;
+        let total: number | undefined;
+        let pricingMode = PricingMode.MANUAL;
+
+        const orderPayload: DeepPartial<Order> = {
+          tenant_id: tenantId,
+          customer_id: customer.id,
+          public_token: randomUUID(),
+          order_type: createOrderDto.order_type,
+          status: OrderStatus.DRAFT,
+          pricing_mode: pricingMode,
+          delivery_fee: deliveryFee,
+          free_text_payload: createOrderDto.free_text_payload,
+          notes: createOrderDto.notes,
+        };
+
+        const orderRepository = manager.getRepository(Order);
+        const orderEntity = orderRepository.create(orderPayload);
+        const persistedOrder = await orderRepository.save(orderEntity);
+
+        if (hasItems) {
+          const orderItemsPayload: DeepPartial<OrderItem>[] = items.map(
+            (item) => {
+              const matchedProduct = item.product_id
+                ? productsById.get(item.product_id)
+                : undefined;
+
+              const selectionMode = this.resolveItemSelectionMode(
+                item.selection_mode,
+                matchedProduct?.order_mode,
+              );
+              const selectionQuantity =
+                item.selection_quantity !== undefined &&
+                item.selection_quantity !== null &&
+                Number.isFinite(Number(item.selection_quantity)) &&
+                Number(item.selection_quantity) > 0
+                  ? Number(item.selection_quantity)
+                  : null;
+              const selectionGrams =
+                item.selection_grams !== undefined &&
+                item.selection_grams !== null &&
+                Number.isFinite(Number(item.selection_grams)) &&
+                Number(item.selection_grams) > 0
+                  ? Math.round(Number(item.selection_grams))
+                  : null;
+              const selectionAmountEgp =
+                item.selection_amount_egp !== undefined &&
+                item.selection_amount_egp !== null &&
+                Number.isFinite(Number(item.selection_amount_egp)) &&
+                Number(item.selection_amount_egp) > 0
+                  ? this.roundCurrency(Number(item.selection_amount_egp))
+                  : null;
+              const unitOptionId =
+                typeof item.unit_option_id === 'string'
+                  ? item.unit_option_id.trim().slice(0, 64)
+                  : null;
+              const quantityText = this.resolveQuantityText(
+                String(item.quantity).trim(),
+                selectionMode,
+                selectionQuantity,
+                selectionGrams,
+                unitOptionId,
+                matchedProduct,
+              );
+              const resolvedUnitPrice = this.resolveItemUnitPrice(
+                item.unit_price,
+                matchedProduct?.current_price,
+              );
+              const explicitLineTotal =
+                selectionMode === OrderItemSelectionMode.PRICE
+                  ? (selectionAmountEgp ?? item.total_price)
+                  : item.total_price;
+              const lineTotal = this.resolveItemTotal(
+                quantityText,
+                resolvedUnitPrice ?? undefined,
+                explicitLineTotal,
+              );
+
+              return {
+                order_id: persistedOrder.id,
+                product_id: matchedProduct?.id,
+                name_snapshot:
+                  item.name?.trim() || matchedProduct?.name || 'منتج غير محدد',
+                quantity: quantityText,
+                unit_price: resolvedUnitPrice,
+                total_price: lineTotal,
+                notes: item.notes,
+                selection_mode: selectionMode,
+                selection_quantity: selectionQuantity,
+                selection_grams: selectionGrams,
+                selection_amount_egp: selectionAmountEgp,
+                unit_option_id: unitOptionId,
+              };
             },
-          })
-        : [];
-
-      const productsById = new Map(products.map((product) => [product.id, product]));
-
-      const deliveryFee = createOrderDto.delivery_fee || 0;
-      let subtotal: number | undefined;
-      let total: number | undefined;
-      let pricingMode = PricingMode.MANUAL;
-
-      const orderPayload: DeepPartial<Order> = {
-        tenant_id: tenantId,
-        customer_id: customer.id,
-        public_token: randomUUID(),
-        order_type: createOrderDto.order_type,
-        status: OrderStatus.DRAFT,
-        pricing_mode: pricingMode,
-        delivery_fee: deliveryFee,
-        free_text_payload: createOrderDto.free_text_payload,
-        notes: createOrderDto.notes,
-      };
-
-      const orderRepository = manager.getRepository(Order);
-      const orderEntity = orderRepository.create(orderPayload);
-      const persistedOrder = await orderRepository.save(orderEntity);
-
-      if (hasItems) {
-        const orderItemsPayload: DeepPartial<OrderItem>[] = items.map((item) => {
-          const matchedProduct = item.product_id
-            ? productsById.get(item.product_id)
-            : undefined;
-
-          const quantityText = String(item.quantity).trim();
-          const resolvedUnitPrice = this.resolveItemUnitPrice(
-            item.unit_price,
-            matchedProduct?.current_price,
-          );
-          const lineTotal = this.resolveItemTotal(
-            quantityText,
-            resolvedUnitPrice ?? undefined,
-            item.total_price,
           );
 
-          return {
-            order_id: persistedOrder.id,
-            product_id: matchedProduct?.id,
-            name_snapshot:
-              item.name?.trim() || matchedProduct?.name || 'منتج غير محدد',
-            quantity: quantityText,
-            unit_price: resolvedUnitPrice,
-            total_price: lineTotal,
-            notes: item.notes,
-          };
-        });
+          const orderItems = await manager
+            .getRepository(OrderItem)
+            .save(orderItemsPayload);
 
-        const orderItems = await manager
-          .getRepository(OrderItem)
-          .save(orderItemsPayload);
+          const pricedLines = orderItems
+            .map((item) =>
+              item.total_price !== null ? Number(item.total_price) : null,
+            )
+            .filter(
+              (value): value is number =>
+                value !== null && !Number.isNaN(value),
+            );
 
-        const pricedLines = orderItems
-          .map((item) => (item.total_price !== null ? Number(item.total_price) : null))
-          .filter((value): value is number => value !== null && !Number.isNaN(value));
-
-        if (pricedLines.length > 0) {
-          subtotal = this.roundCurrency(
-            pricedLines.reduce((sum, lineTotal) => sum + lineTotal, 0),
-          );
+          if (pricedLines.length > 0) {
+            subtotal = this.roundCurrency(
+              pricedLines.reduce((sum, lineTotal) => sum + lineTotal, 0),
+            );
+          }
         }
-      }
 
-      if (createOrderDto.total !== undefined && createOrderDto.total !== null) {
-        pricingMode = PricingMode.MANUAL;
-        total = Number(createOrderDto.total);
-      } else if (subtotal !== undefined) {
-        pricingMode = PricingMode.AUTO;
-        total = this.roundCurrency(subtotal + Number(deliveryFee));
-      } else if (deliveryFee > 0) {
-        pricingMode = PricingMode.MANUAL;
-        total = Number(deliveryFee);
-      } else {
-        pricingMode = PricingMode.MANUAL;
-        total = undefined;
-      }
+        if (
+          createOrderDto.total !== undefined &&
+          createOrderDto.total !== null
+        ) {
+          pricingMode = PricingMode.MANUAL;
+          total = Number(createOrderDto.total);
+        } else if (subtotal !== undefined) {
+          pricingMode = PricingMode.AUTO;
+          total = this.roundCurrency(subtotal + Number(deliveryFee));
+        } else if (deliveryFee > 0) {
+          pricingMode = PricingMode.MANUAL;
+          total = Number(deliveryFee);
+        } else {
+          pricingMode = PricingMode.MANUAL;
+          total = undefined;
+        }
 
-      persistedOrder.pricing_mode = pricingMode;
-      persistedOrder.subtotal = subtotal;
-      persistedOrder.total = total;
-      await orderRepository.save(persistedOrder);
+        persistedOrder.pricing_mode = pricingMode;
+        persistedOrder.subtotal = subtotal;
+        persistedOrder.total = total;
+        await orderRepository.save(persistedOrder);
 
-      await manager.increment(Customer, { id: customer.id }, 'order_count', 1);
-      await manager.update(
-        Customer,
-        { id: customer.id },
-        { last_order_at: new Date() },
-      );
+        await manager.increment(
+          Customer,
+          { id: customer.id },
+          'order_count',
+          1,
+        );
+        await manager.update(
+          Customer,
+          { id: customer.id },
+          { last_order_at: new Date() },
+        );
 
-      if (customer.order_count === 0) {
-        isFirstOrder = true;
-      }
+        if (customer.order_count === 0) {
+          isFirstOrder = true;
+        }
 
-      return persistedOrder;
-    });
+        return persistedOrder;
+      },
+    );
 
     const completeOrder = await this.findOne(savedOrder.id);
     await this.notifyOrderCreated(completeOrder, isFirstOrder);
@@ -240,7 +308,7 @@ export class OrdersService {
   }
 
   async findAll(tenantId: number, date?: string): Promise<Order[]> {
-    const where: any = { tenant_id: tenantId };
+    const where: FindOptionsWhere<Order> = { tenant_id: tenantId };
 
     if (date) {
       const start = new Date(date);
@@ -352,13 +420,14 @@ export class OrdersService {
 
     if (tenant?.phone) {
       try {
-        whatsappSent = await this.orderWhatsappService.notifyMerchantDailySummary({
-          phone: tenant.phone,
-          date: this.formatCairoDateForMessage(closureDate),
-          orders: summary.orders_count,
-          cancelled: summary.cancelled_count,
-          totalCash: summary.completed_sales_total,
-        });
+        whatsappSent =
+          await this.orderWhatsappService.notifyMerchantDailySummary({
+            phone: tenant.phone,
+            date: this.formatCairoDateForMessage(closureDate),
+            orders: summary.orders_count,
+            cancelled: summary.cancelled_count,
+            totalCash: summary.completed_sales_total,
+          });
       } catch (error) {
         this.logger.warn(
           `Failed to send close-day summary to tenant ${tenantId}`,
@@ -436,8 +505,10 @@ export class OrdersService {
     this.ensureCustomerDecisionWindow(orderItem.order.status);
 
     if (
-      orderItem.replacement_decision_status === ReplacementDecisionStatus.APPROVED ||
-      orderItem.replacement_decision_status === ReplacementDecisionStatus.REJECTED
+      orderItem.replacement_decision_status ===
+        ReplacementDecisionStatus.APPROVED ||
+      orderItem.replacement_decision_status ===
+        ReplacementDecisionStatus.REJECTED
     ) {
       throw new BadRequestException(
         'Replacement decision is locked. Reset replacement decision before changing it.',
@@ -476,7 +547,10 @@ export class OrdersService {
 
     const savedItem = await this.getOrderItemsRepository().save(orderItem);
 
-    await this.notifyCustomerReplacementRequested(savedItem.order_id, savedItem.id);
+    await this.notifyCustomerReplacementRequested(
+      savedItem.order_id,
+      savedItem.id,
+    );
 
     return savedItem;
   }
@@ -536,7 +610,8 @@ export class OrdersService {
     this.ensureCustomerDecisionWindow(orderItem.order.status);
 
     if (
-      orderItem.replacement_decision_status !== ReplacementDecisionStatus.PENDING ||
+      orderItem.replacement_decision_status !==
+        ReplacementDecisionStatus.PENDING ||
       !orderItem.pending_replacement_product_id
     ) {
       throw new BadRequestException(
@@ -547,13 +622,16 @@ export class OrdersService {
     const normalizedReason = this.normalizeOptionalReason(reason);
 
     if (decision === ReplacementDecisionAction.APPROVE) {
-      orderItem.replaced_by_product_id = orderItem.pending_replacement_product_id;
+      orderItem.replaced_by_product_id =
+        orderItem.pending_replacement_product_id;
       orderItem.pending_replacement_product_id = null;
-      orderItem.replacement_decision_status = ReplacementDecisionStatus.APPROVED;
+      orderItem.replacement_decision_status =
+        ReplacementDecisionStatus.APPROVED;
     } else if (decision === ReplacementDecisionAction.REJECT) {
       orderItem.replaced_by_product_id = null;
       orderItem.pending_replacement_product_id = null;
-      orderItem.replacement_decision_status = ReplacementDecisionStatus.REJECTED;
+      orderItem.replacement_decision_status =
+        ReplacementDecisionStatus.REJECTED;
     } else {
       throw new BadRequestException('Invalid replacement decision');
     }
@@ -576,7 +654,10 @@ export class OrdersService {
   /**
    * Sets order as rejected by customer through public tracking token.
    */
-  async rejectOrderByPublicToken(token: string, reason?: string): Promise<Order> {
+  async rejectOrderByPublicToken(
+    token: string,
+    reason?: string,
+  ): Promise<Order> {
     const order = await this.getOrdersRepository().findOne({
       where: { public_token: token },
     });
@@ -656,12 +737,18 @@ export class OrdersService {
       });
 
       const pricedLines = orderItems
-        .map((item) => (item.total_price !== null ? Number(item.total_price) : null))
-        .filter((value): value is number => value !== null && !Number.isNaN(value));
+        .map((item) =>
+          item.total_price !== null ? Number(item.total_price) : null,
+        )
+        .filter(
+          (value): value is number => value !== null && !Number.isNaN(value),
+        );
 
       const subtotal =
         pricedLines.length > 0
-          ? this.roundCurrency(pricedLines.reduce((sum, value) => sum + value, 0))
+          ? this.roundCurrency(
+              pricedLines.reduce((sum, value) => sum + value, 0),
+            )
           : undefined;
 
       const deliveryFee = Number(order.delivery_fee || 0);
@@ -1006,6 +1093,93 @@ export class OrdersService {
   /**
    * Resolves total price from explicit total or a unit-price calculation.
    */
+  private resolveItemSelectionMode(
+    selectionMode?: OrderItemSelectionMode | null,
+    productOrderMode?: ProductOrderMode | null,
+  ): OrderItemSelectionMode | null {
+    if (selectionMode) {
+      return selectionMode;
+    }
+
+    if (productOrderMode === ProductOrderMode.WEIGHT) {
+      return OrderItemSelectionMode.WEIGHT;
+    }
+
+    if (productOrderMode === ProductOrderMode.PRICE) {
+      return OrderItemSelectionMode.PRICE;
+    }
+
+    if (productOrderMode === ProductOrderMode.QUANTITY) {
+      return OrderItemSelectionMode.QUANTITY;
+    }
+
+    return null;
+  }
+
+  private resolveQuantityText(
+    fallbackQuantityText: string,
+    selectionMode: OrderItemSelectionMode | null,
+    selectionQuantity: number | null,
+    selectionGrams: number | null,
+    unitOptionId: string | null,
+    matchedProduct?: Product,
+  ): string {
+    if (selectionMode === OrderItemSelectionMode.WEIGHT && selectionGrams) {
+      return Number((selectionGrams / 1000).toFixed(3)).toString();
+    }
+
+    if (selectionMode === OrderItemSelectionMode.PRICE) {
+      return '1';
+    }
+
+    if (
+      selectionMode === OrderItemSelectionMode.QUANTITY &&
+      selectionQuantity
+    ) {
+      const multiplier = this.resolveUnitOptionMultiplier(
+        matchedProduct?.order_config,
+        unitOptionId,
+      );
+      return Number((selectionQuantity * multiplier).toFixed(3)).toString();
+    }
+
+    return fallbackQuantityText || '1';
+  }
+
+  private resolveUnitOptionMultiplier(
+    orderConfig: Product['order_config'],
+    unitOptionId: string | null,
+  ): number {
+    if (!unitOptionId || !orderConfig || typeof orderConfig !== 'object') {
+      return 1;
+    }
+
+    const config = orderConfig as {
+      quantity?: { unit_options?: Array<{ id?: string; multiplier?: number }> };
+    };
+    const options = config.quantity?.unit_options;
+    if (!Array.isArray(options) || options.length === 0) {
+      return 1;
+    }
+
+    for (const option of options) {
+      if (!option || typeof option !== 'object') {
+        continue;
+      }
+
+      if (option.id !== unitOptionId) {
+        continue;
+      }
+
+      const multiplier = Number(option.multiplier);
+      if (Number.isFinite(multiplier) && multiplier > 0) {
+        return multiplier;
+      }
+    }
+
+    return 1;
+  }
+
   private resolveItemTotal(
     quantityText: string,
     unitPrice?: number,
@@ -1031,7 +1205,10 @@ export class OrdersService {
    * Parses numeric quantity from free-text input when possible.
    */
   private parseNumericQuantity(quantityText: string): number | null {
-    const match = quantityText.trim().replace(',', '.').match(/\d+(\.\d+)?/);
+    const match = quantityText
+      .trim()
+      .replace(',', '.')
+      .match(/\d+(\.\d+)?/);
     if (!match) {
       return null;
     }
@@ -1111,7 +1288,10 @@ export class OrdersService {
         return;
       }
 
-      await this.orderWhatsappService.notifyCustomerReplacementRequested(order, item);
+      await this.orderWhatsappService.notifyCustomerReplacementRequested(
+        order,
+        item,
+      );
     } catch (error) {
       this.logger.warn(
         `Failed to notify customer for replacement request on order ${orderId}, item ${itemId}`,
@@ -1231,7 +1411,9 @@ export class OrdersService {
    */
   private getOrderItemsRepository(): Repository<OrderItem> {
     const manager = DbTenantContext.getManager();
-    return manager ? manager.getRepository(OrderItem) : this.orderItemsRepository;
+    return manager
+      ? manager.getRepository(OrderItem)
+      : this.orderItemsRepository;
   }
 
   /**

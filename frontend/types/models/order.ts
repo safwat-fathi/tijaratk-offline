@@ -21,6 +21,11 @@ export interface OrderItem {
   unit_price?: number | string | null;
   total_price?: number | string | null;
   notes?: string;
+  selection_mode?: 'quantity' | 'weight' | 'price' | null;
+  selection_quantity?: number | string | null;
+  selection_grams?: number | null;
+  selection_amount_egp?: number | string | null;
+  unit_option_id?: string | null;
   replaced_by_product_id?: number | null;
   replaced_by_product?: {
     id: number;

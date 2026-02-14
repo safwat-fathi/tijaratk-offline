@@ -1,5 +1,27 @@
 export type ProductSource = 'manual' | 'catalog' | 'order_note';
 export type ProductStatus = 'active' | 'archived';
+export type ProductOrderMode = 'quantity' | 'weight' | 'price';
+
+export interface QuantityUnitOption {
+  id: string;
+  label: string;
+  multiplier: number;
+}
+
+export interface ProductOrderConfig {
+  quantity?: {
+    unit_label?: string;
+    unit_options?: QuantityUnitOption[];
+  };
+  weight?: {
+    preset_grams: number[];
+    allow_custom_grams: boolean;
+  };
+  price?: {
+    preset_amounts_egp: number[];
+    allow_custom_amount: boolean;
+  };
+}
 
 export interface Product {
   id: number;
@@ -7,6 +29,8 @@ export interface Product {
   image_url?: string | null;
   current_price?: number | string | null;
   category?: string | null;
+  order_mode: ProductOrderMode;
+  order_config?: ProductOrderConfig | null;
   source: ProductSource;
   status: ProductStatus;
   tenant_id?: number;

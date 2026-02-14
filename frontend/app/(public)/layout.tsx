@@ -7,10 +7,10 @@ export default function PublicLayout({
 }) {
   return (
 		<>
-			<div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 sm:px-6 lg:px-8">
+			<div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 sm:px-6 lg:px-8 pb-8">
 				<div className="w-full max-w-3xl space-y-8">{children}</div>
 			</div>
-			<footer className="w-full border-t border-gray-200 bg-white">
+			<footer className="w-full border-t border-gray-200 bg-white flex items-center justify-center">
 				<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 md:flex md:items-center gap-2 lg:px-8">
 					<Image src="/logo.png" alt="Tijaratk" width={32} height={32} />
 					<div className="flex justify-center space-x-6 md:order-2">

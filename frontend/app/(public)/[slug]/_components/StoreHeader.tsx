@@ -1,12 +1,9 @@
-"use client";
-
 import { TENANT_CATEGORIES, type TenantCategory } from "@/constants";
 import { Tenant } from "@/types/models/tenant";
-import { JSX } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-const CATEGORY_BY_VALUE: Record<
+export const CATEGORY_BY_VALUE: Record<
 	TenantCategory,
 	(typeof TENANT_CATEGORIES)[keyof typeof TENANT_CATEGORIES]
 > = {

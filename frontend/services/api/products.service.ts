@@ -2,6 +2,7 @@ import HttpService from '@/services/base/http.service';
 import {
   CatalogItem,
   Product,
+  ProductOrderConfig,
   PublicProductCategory,
   PublicProductsResponse,
   TenantProductsSearchResponse,
@@ -51,6 +52,8 @@ class ProductsService extends HttpService {
     image_url?: string;
     current_price?: number;
     category?: string;
+    order_mode?: 'quantity' | 'weight' | 'price';
+    order_config?: ProductOrderConfig;
   }) {
     return this.post<Product>('', payload, undefined, { authRequired: true });
   }

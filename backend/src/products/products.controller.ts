@@ -34,6 +34,7 @@ import { imageFileFilter } from 'src/common/utils/file-filters';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { GetPublicProductsDto } from './dto/get-public-products.dto';
 import { GetTenantProductsDto } from './dto/get-tenant-products.dto';
+import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -211,6 +212,8 @@ export class ProductsController {
         name: { type: 'string' },
         image_url: { type: 'string' },
         current_price: { type: 'number', format: 'float' },
+        order_mode: { type: 'string', enum: Object.values(ProductOrderMode) },
+        order_config: { type: 'object' },
         status: { type: 'string', enum: Object.values(ProductStatus) },
         file: { type: 'string', format: 'binary' },
       },
