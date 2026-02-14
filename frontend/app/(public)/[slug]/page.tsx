@@ -118,11 +118,11 @@ export default async function StorePage({ params, searchParams }: Props) {
 
 	const [{ products, meta }, categories, initialOrder, savedCustomerProfile] =
 		await Promise.all([
-		getInitialProducts(slug),
-		getPublicCategories(slug),
-		getOrder(reorder),
-		getCustomerProfileBySlugFromCookie(tenant.slug),
-	]);
+			getInitialProducts(slug),
+			getPublicCategories(slug),
+			getOrder(reorder),
+			getCustomerProfileBySlugFromCookie(tenant.slug),
+		]);
 
 	return (
 		<div className="w-full max-w-md mx-auto min-h-screen bg-gray-50">
