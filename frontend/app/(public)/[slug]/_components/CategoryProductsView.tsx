@@ -1,11 +1,11 @@
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
 import type { Product } from "@/types/models/product";
-import ProductList, { type ProductCartSelection } from "./ProductList";
-import type {
-	CategoryTab,
-	PaginationState,
-} from "../_utils/order-form.logic";
+import ProductList, {
+	type AvailabilityRequestOutcome,
+	type ProductCartSelection,
+} from "./ProductList";
+import type { CategoryTab, PaginationState } from "../_utils/order-form";
 
 type CategoryProductsViewProps = {
 	categoryTabs: CategoryTab[];
@@ -23,6 +23,7 @@ type CategoryProductsViewProps = {
 	) => void;
 	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
 	onProductAdded: () => void;
+	onRequestAvailability: (product: Product) => Promise<AvailabilityRequestOutcome>;
 	setLoadMoreTarget: (node: HTMLDivElement | null) => void;
 };
 
@@ -39,6 +40,7 @@ export default function CategoryProductsView({
 	setCategoryPillRef,
 	onUpdateSelection,
 	onProductAdded,
+	onRequestAvailability,
 	setLoadMoreTarget,
 }: CategoryProductsViewProps) {
 	const activeLabel =
@@ -103,6 +105,7 @@ export default function CategoryProductsView({
 					selections={cartSelections}
 					onUpdateSelection={onUpdateSelection}
 					onAdded={onProductAdded}
+					onRequestAvailability={onRequestAvailability}
 					loadMoreTriggerIndex={
 						hasMoreInActiveCategory ? activeLoadMoreIndex : undefined
 					}

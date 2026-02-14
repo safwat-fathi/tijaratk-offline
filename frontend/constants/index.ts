@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   ACCESS_TOKEN: "access_token",
   USER: "user_info",
   CUSTOMER_TRACKED_ORDERS: "customer_tracked_orders",
+  CUSTOMER_AVAILABILITY_STATE: "customer_availability_state",
 };
 
 export {

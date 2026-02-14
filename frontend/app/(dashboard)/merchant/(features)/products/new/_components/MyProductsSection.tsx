@@ -2,10 +2,10 @@ import Image from 'next/image';
 import type { Product } from '@/types/models/product';
 import { SECTION_MY_PRODUCTS } from '../_utils/product-onboarding.constants';
 import {
-  normalizeModeBadge,
-  resolveImageUrl,
-  resolveProductPriceText,
-} from '../_utils/product-onboarding.logic';
+	normalizeModeBadge,
+	resolveImageUrl,
+	resolveProductPriceText,
+} from "../_utils/product-onboarding";
 
 type MyProductsSectionProps = {
   active: boolean;

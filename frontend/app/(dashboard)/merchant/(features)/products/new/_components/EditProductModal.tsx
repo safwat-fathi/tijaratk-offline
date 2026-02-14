@@ -2,7 +2,7 @@ import Image from 'next/image';
 import type { ChangeEvent, FormEvent } from 'react';
 import type { Product, ProductOrderMode } from '@/types/models/product';
 import type { CategoryMode } from '../_utils/product-onboarding.types';
-import { resolveImageUrl } from '../_utils/product-onboarding.logic';
+import { resolveImageUrl } from "../_utils/product-onboarding";
 import CategoryFields from './CategoryFields';
 import OrderModeFields from './OrderModeFields';
 

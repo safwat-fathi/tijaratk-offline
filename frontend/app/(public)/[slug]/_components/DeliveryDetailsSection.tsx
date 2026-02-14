@@ -2,6 +2,13 @@ import type { Order } from "@/types/models/order";
 
 type DeliveryDetailsSectionProps = {
 	initialOrder?: Order | null;
+	savedCustomerProfile?: {
+		name?: string;
+		phone: string;
+		address?: string;
+		notes?: string;
+		updated_at: string;
+	} | null;
 	notes: string;
 	onNotesChange: (value: string) => void;
 	errors?: Record<string, string[]>;
@@ -11,12 +18,20 @@ type DeliveryDetailsSectionProps = {
 
 export default function DeliveryDetailsSection({
 	initialOrder,
+	savedCustomerProfile,
 	notes,
 	onNotesChange,
 	errors,
 	message,
 	success,
 }: DeliveryDetailsSectionProps) {
+	const defaultName =
+		initialOrder?.customer?.name || savedCustomerProfile?.name || "";
+	const defaultPhone =
+		initialOrder?.customer?.phone || savedCustomerProfile?.phone || "";
+	const defaultAddress =
+		initialOrder?.customer?.address || savedCustomerProfile?.address || "";
+
 	return (
 		<div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-8">
 			<div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
@@ -51,7 +66,7 @@ export default function DeliveryDetailsSection({
 							placeholder="الاسم"
 							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
 							required
-							defaultValue={initialOrder?.customer?.name || ""}
+							defaultValue={defaultName}
 						/>
 						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
 							<svg
@@ -86,7 +101,7 @@ export default function DeliveryDetailsSection({
 							placeholder="01xxxxxxxxx"
 							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
 							required
-							defaultValue={initialOrder?.customer?.phone || ""}
+							defaultValue={defaultPhone}
 						/>
 						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
 							<svg
@@ -120,7 +135,7 @@ export default function DeliveryDetailsSection({
 							placeholder="العمارة، الشارع، الدور..."
 							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
 							required
-							defaultValue={initialOrder?.customer?.address || ""}
+							defaultValue={defaultAddress}
 						/>
 						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
 							<svg

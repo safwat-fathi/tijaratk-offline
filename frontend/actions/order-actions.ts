@@ -6,7 +6,10 @@ import { CloseDayResponse, CreateOrderRequest } from '@/types/services/orders';
 import { revalidatePath } from 'next/cache';
 import { createOrderSchema } from '@/lib/validations/order';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
-import { appendTrackedOrderToCookie } from '@/lib/tracking/customer-tracking-cookie';
+import {
+  appendTrackedOrderToCookie,
+  upsertCustomerProfileBySlugInCookie,
+} from '@/lib/tracking/customer-tracking-cookie';
 
 export async function updateOrderStatus(orderId: number, status: OrderStatus) {
   try {
@@ -213,15 +216,30 @@ export async function createOrderAction(
             : '';
 
         if (publicToken) {
-          await appendTrackedOrderToCookie({
-            token: publicToken,
-            slug: tenantSlug,
-            created_at:
-              typeof createdOrder.created_at === 'string'
-                ? createdOrder.created_at
-                : new Date().toISOString(),
-          });
+          try {
+            await appendTrackedOrderToCookie({
+              token: publicToken,
+              slug: tenantSlug,
+              created_at:
+                typeof createdOrder.created_at === 'string'
+                  ? createdOrder.created_at
+                  : new Date().toISOString(),
+            });
+          } catch (cookieError) {
+            console.error('Failed to persist tracked order cookie:', cookieError);
+          }
         }
+      }
+
+      try {
+        await upsertCustomerProfileBySlugInCookie(tenantSlug, {
+          name: customerData.name,
+          phone: customerData.phone,
+          address: customerData.address,
+          notes: customerData.notes,
+        });
+      } catch (cookieError) {
+        console.error('Failed to persist customer profile cookie:', cookieError);
       }
 
       return {

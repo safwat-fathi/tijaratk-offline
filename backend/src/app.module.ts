@@ -14,6 +14,7 @@ import { CustomersModule } from './customers/customers.module';
 import { OrdersModule } from './orders/orders.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
+import { AvailabilityRequestsModule } from './availability-requests/availability-requests.module';
 
 const ENV = process.env.NODE_ENV;
 
@@ -41,6 +42,7 @@ const ENV = process.env.NODE_ENV;
     ProductsModule,
     CustomersModule,
     OrdersModule,
+    AvailabilityRequestsModule,
     WebhooksModule,
   ],
   controllers: [HealthController],

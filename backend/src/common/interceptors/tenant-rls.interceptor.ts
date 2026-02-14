@@ -111,6 +111,11 @@ export class TenantRlsInterceptor implements NestInterceptor {
       return this.resolveTenantIdBySlug(slug, queryRunner);
     }
 
+    if (this.isAvailabilityRequestsPublicSlugRoute(parts)) {
+      const slug = parts[2];
+      return this.resolveTenantIdBySlug(slug, queryRunner);
+    }
+
     if (this.isOrdersPublicCreateRoute(req.method, parts)) {
       return this.resolveTenantIdBySlug(parts[1], queryRunner);
     }
@@ -143,7 +148,8 @@ export class TenantRlsInterceptor implements NestInterceptor {
     return (
       path.startsWith('/products') ||
       path.startsWith('/orders') ||
-      path.startsWith('/customers')
+      path.startsWith('/customers') ||
+      path.startsWith('/availability-requests')
     );
   }
 
@@ -197,6 +203,17 @@ export class TenantRlsInterceptor implements NestInterceptor {
    */
   private isProductsPublicSlugRoute(parts: string[]): boolean {
     return parts.length >= 3 && parts[0] === 'products' && parts[1] === 'public';
+  }
+
+  /**
+   * Returns true for /availability-requests/public/:slug routes.
+   */
+  private isAvailabilityRequestsPublicSlugRoute(parts: string[]): boolean {
+    return (
+      parts.length >= 3 &&
+      parts[0] === 'availability-requests' &&
+      parts[1] === 'public'
+    );
   }
 
   /**

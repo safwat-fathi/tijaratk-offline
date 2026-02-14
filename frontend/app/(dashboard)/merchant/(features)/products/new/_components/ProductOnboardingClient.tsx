@@ -48,7 +48,7 @@ import {
 	normalizeProductName,
 	parseOptionalPositivePrice,
 	resolveSectionFromQuery,
-} from "../_utils/product-onboarding.logic";
+} from "../_utils/product-onboarding";
 import type { CategoryMode, ProductSection } from '../_utils/product-onboarding.types';
 
 type ProductOnboardingClientProps = {

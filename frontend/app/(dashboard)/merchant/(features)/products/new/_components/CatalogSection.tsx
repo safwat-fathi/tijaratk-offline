@@ -2,7 +2,7 @@ import Image from 'next/image';
 import type { CatalogItem } from '@/types/models/product';
 import type { CategoryTab } from '../_utils/product-onboarding.types';
 import { SECTION_CATALOG } from '../_utils/product-onboarding.constants';
-import { resolveImageUrl } from '../_utils/product-onboarding.logic';
+import { resolveImageUrl } from "../_utils/product-onboarding";
 
 type CatalogSectionProps = {
   active: boolean;

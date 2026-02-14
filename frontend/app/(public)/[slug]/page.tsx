@@ -17,6 +17,7 @@ import { Order } from "@/types/models/order";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { TENANT_CATEGORIES } from "@/constants";
+import { getCustomerProfileBySlugFromCookie } from "@/lib/tracking/customer-tracking-cookie";
 
 type Props = {
 	params: Promise<{ slug: string }>;
@@ -111,15 +112,17 @@ export default async function StorePage({ params, searchParams }: Props) {
 	const { reorder } = await searchParams;
 
 	const tenant = await getTenant(slug);
-	const [{ products, meta }, categories] = await Promise.all([
-		getInitialProducts(slug),
-		getPublicCategories(slug),
-	]);
-	const initialOrder = await getOrder(reorder);
-
 	if (!tenant || !tenant.id) {
 		notFound();
 	}
+
+	const [{ products, meta }, categories, initialOrder, savedCustomerProfile] =
+		await Promise.all([
+		getInitialProducts(slug),
+		getPublicCategories(slug),
+		getOrder(reorder),
+		getCustomerProfileBySlugFromCookie(tenant.slug),
+	]);
 
 	return (
 		<div className="w-full max-w-md mx-auto min-h-screen bg-gray-50">
@@ -140,6 +143,7 @@ export default async function StorePage({ params, searchParams }: Props) {
 					initialProductsMeta={meta}
 					initialCategories={categories}
 					initialOrder={initialOrder}
+					savedCustomerProfile={savedCustomerProfile}
 				/>
 			</div>
 		</div>

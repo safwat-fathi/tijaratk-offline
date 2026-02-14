@@ -8,16 +8,20 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type {
-	Product,
-	PublicProductCategory,
-	PublicProductsMeta,
-} from "@/types/models/product";
+import type { Product, PublicProductCategory, PublicProductsMeta } from "@/types/models/product";
 import type { Order } from "@/types/models/order";
 import { createOrderAction, type CreateOrderState } from "@/actions/order-actions";
+import {
+	markAvailabilityRequestSentAction,
+	prepareAvailabilityRequestAction,
+} from "@/actions/availability-request-cookie-actions";
 import { productsService } from "@/services/api/products.service";
+import { availabilityRequestsService } from "@/services/api/availability-requests.service";
 import { dedupeByNumericId } from "@/lib/utils/collections";
-import { type ProductCartSelection } from "./ProductList";
+import {
+	type AvailabilityRequestOutcome,
+	type ProductCartSelection,
+} from "./ProductList";
 import Toast from "./Toast";
 import CategoryEntryGrid from "./CategoryEntryGrid";
 import CategoryProductsView from "./CategoryProductsView";
@@ -32,7 +36,7 @@ import {
 	buildCartItems,
 	calculateCartSummary,
 	type PaginationState,
-} from "../_utils/order-form.logic";
+} from "../_utils/order-form";
 
 const initialState: CreateOrderState = {
 	success: false,
@@ -51,12 +55,24 @@ const DEFAULT_PAGINATION_STATE: PaginationState = {
 	error: null,
 };
 
+type ToastState = {
+	message: string;
+	type: "success" | "error";
+};
+
 type OrderFormProps = {
 	tenantSlug: string;
 	initialProducts: Product[];
 	initialProductsMeta: PublicProductsMeta;
 	initialCategories: PublicProductCategory[];
 	initialOrder?: Order | null;
+	savedCustomerProfile?: {
+		name?: string;
+		phone: string;
+		address?: string;
+		notes?: string;
+		updated_at: string;
+	} | null;
 };
 
 export default function OrderForm({
@@ -65,11 +81,14 @@ export default function OrderForm({
 	initialProductsMeta,
 	initialCategories,
 	initialOrder,
+	savedCustomerProfile,
 }: OrderFormProps) {
 	const [cartSelections, setCartSelections] = useState<
 		Record<number, ProductCartSelection>
 	>(() => buildInitialCartSelections(initialOrder));
-	const [notes, setNotes] = useState(initialOrder?.notes || "");
+	const [notes, setNotes] = useState(
+		initialOrder?.notes || savedCustomerProfile?.notes || "",
+	);
 	const [orderRequest, setOrderRequest] = useState(
 		initialOrder?.free_text_payload?.text || "",
 	);
@@ -79,7 +98,7 @@ export default function OrderForm({
 	);
 	const [activeCategory, setActiveCategory] = useState(ALL_PRODUCTS_CATEGORY);
 	const [isCategoryProductsView, setIsCategoryProductsView] = useState(false);
-	const [toastMessage, setToastMessage] = useState<string | null>(null);
+	const [toastState, setToastState] = useState<ToastState | null>(null);
 	const [productsByCategory, setProductsByCategory] = useState<
 		Record<string, Product[]>
 	>({
@@ -311,6 +330,10 @@ export default function OrderForm({
 		product: Product,
 		selection: ProductCartSelection | null,
 	) => {
+		if (!product.is_available) {
+			return;
+		}
+
 		setCartSelections(prev => {
 			if (!selection) {
 				const next = { ...prev };
@@ -326,20 +349,103 @@ export default function OrderForm({
 	};
 
 	const handleProductAdded = () => {
-		setToastMessage("تمت الإضافة");
+		setToastState({ message: "تمت الإضافة", type: "success" });
 		if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
 			navigator.vibrate(10);
 		}
 	};
 
+	const handleRequestAvailability = useCallback(
+		async (product: Product): Promise<AvailabilityRequestOutcome> => {
+			if (product.is_available) {
+				return "failed";
+			}
+
+			const prepared = await prepareAvailabilityRequestAction({
+				slug: tenantSlug,
+				product_id: product.id,
+			});
+
+			if (!prepared.success || !prepared.visitor_key) {
+				setToastState({
+					message: prepared.message || "تعذر إرسال الطلب حالياً",
+					type: "error",
+				});
+				return "failed";
+			}
+
+			if (prepared.already_requested_today) {
+				setToastState({
+					message: "سبق وسجلنا طلبك لهذا المنتج اليوم",
+					type: "success",
+				});
+				return "already_requested_today";
+			}
+
+			const response = await availabilityRequestsService.createPublicRequest(
+				tenantSlug,
+				{
+					product_id: product.id,
+					visitor_key: prepared.visitor_key,
+				},
+			);
+
+			if (!response.success || !response.data) {
+				setToastState({
+					message: response.message || "تعذر إرسال الطلب حالياً",
+					type: "error",
+				});
+				return "failed";
+			}
+
+			await markAvailabilityRequestSentAction({
+				slug: tenantSlug,
+				product_id: product.id,
+				date_key: prepared.date_key,
+			});
+
+			if (response.data.status === "created") {
+				setToastState({ message: "تم إرسال طلبك للتاجر", type: "success" });
+			} else {
+				setToastState({
+					message: "سبق وسجلنا طلبك لهذا المنتج اليوم",
+					type: "success",
+				});
+			}
+
+			return response.data.status;
+		},
+		[tenantSlug],
+	);
+
+	const effectiveCartSelections = useMemo(() => {
+		return Object.entries(cartSelections).reduce<Record<number, ProductCartSelection>>(
+			(acc, [productId, selection]) => {
+				const parsedProductId = Number(productId);
+				const product = knownProductsById[parsedProductId];
+				if (product?.is_available === false) {
+					return acc;
+				}
+
+				acc[parsedProductId] = selection;
+				return acc;
+			},
+			{},
+		);
+	}, [cartSelections, knownProductsById]);
+
 	const { totalItems, estimatedTotal, hasPricedItems } = useMemo(
-		() => calculateCartSummary(cartSelections, knownProductsById),
-		[cartSelections, knownProductsById],
+		() => calculateCartSummary(effectiveCartSelections, knownProductsById),
+		[effectiveCartSelections, knownProductsById],
 	);
 
 	const cartItems = useMemo(
-		() => buildCartItems(cartSelections, knownProductsById),
-		[cartSelections, knownProductsById],
+		() =>
+			buildCartItems(effectiveCartSelections, knownProductsById).filter(item => {
+				const product = knownProductsById[item.product_id];
+				return product ? product.is_available !== false : true;
+			}),
+		[effectiveCartSelections, knownProductsById],
 	);
 
 	const copyToken = () => {
@@ -368,13 +474,13 @@ export default function OrderForm({
 
 	return (
 		<>
-			{toastMessage && (
+			{toastState && (
 				<Toast
-					message={toastMessage}
-					type="success"
+					message={toastState.message}
+					type={toastState.type}
 					position="bottom"
 					duration={1400}
-					onClose={() => setToastMessage(null)}
+					onClose={() => setToastState(null)}
 				/>
 			)}
 			<form action={formAction}>
@@ -398,12 +504,13 @@ export default function OrderForm({
 								activePagination={activePagination}
 								hasMoreInActiveCategory={hasMoreInActiveCategory}
 								activeLoadMoreIndex={activeLoadMoreIndex}
-								cartSelections={cartSelections}
+								cartSelections={effectiveCartSelections}
 								onBack={() => setIsCategoryProductsView(false)}
 								onCategoryChange={handleCategoryChange}
 								setCategoryPillRef={setCategoryPillRef}
 								onUpdateSelection={handleUpdateSelection}
 								onProductAdded={handleProductAdded}
+								onRequestAvailability={handleRequestAvailability}
 								setLoadMoreTarget={setLoadMoreTarget}
 							/>
 						)}
@@ -418,6 +525,7 @@ export default function OrderForm({
 
 				<DeliveryDetailsSection
 					initialOrder={initialOrder}
+					savedCustomerProfile={savedCustomerProfile}
 					notes={notes}
 					onNotesChange={setNotes}
 					errors={state.errors}

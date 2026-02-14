@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
-import type { CategoryTab } from "../_utils/order-form.logic";
+import type { CategoryTab } from "../_utils/order-form";
 
 type CategoryEntryGridProps = {
 	categoryCards: CategoryTab[];
