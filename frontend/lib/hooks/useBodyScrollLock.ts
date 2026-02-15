@@ -15,7 +15,7 @@ let activeLocks = 0;
 let lockedScrollY = 0;
 let snapshot: BodyStyleSnapshot | null = null;
 
-const captureBodyStyles = (body: HTMLBodyElement): BodyStyleSnapshot => ({
+const captureBodyStyles = (body: HTMLElement): BodyStyleSnapshot => ({
 	position: body.style.position,
 	top: body.style.top,
 	left: body.style.left,
