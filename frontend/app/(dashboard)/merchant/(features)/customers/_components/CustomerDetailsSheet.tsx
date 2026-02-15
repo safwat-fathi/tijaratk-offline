@@ -1,6 +1,7 @@
 "use client";
 
 import { getCustomerDetailsAction } from "@/actions/customer-actions";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -14,6 +15,7 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  useBodyScrollLock(Boolean(customerId));
 
   useEffect(() => {
     let isCancelled = false;
@@ -65,16 +67,25 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
   const displayName = customer?.name || customer?.phone || "عميل";
   
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
         <div 
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl animate-slide-up max-h-[85vh] overflow-y-auto"
+            className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl animate-slide-up"
             onClick={(e) => e.stopPropagation()}
         >
              {/* Handle */}
-             <div className="flex justify-center pt-3 pb-2">
+             <div className="shrink-0 flex justify-center pt-3 pb-2">
                  <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
              </div>
 
+             <div
+               className="flex-1 overflow-y-auto overscroll-contain"
+               style={{ WebkitOverflowScrolling: "touch" }}
+             >
              {loading ? (
                  <div className="p-8 flex justify-center">
                      <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -159,6 +170,7 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                     </div>
                 </div>
              )}
+             </div>
         </div>
     </div>
   );

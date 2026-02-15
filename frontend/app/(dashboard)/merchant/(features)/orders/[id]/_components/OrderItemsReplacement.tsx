@@ -13,6 +13,7 @@ import {
   searchTenantProductsAction,
 } from '@/actions/product-actions';
 import { formatCurrency } from '@/lib/utils/currency';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { getImageUrl } from '@/lib/utils/image';
 import { OrderStatus, ReplacementDecisionStatus } from '@/types/enums';
 import { OrderItem } from '@/types/models/order';
@@ -105,6 +106,7 @@ export default function OrderItemsReplacement({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [debouncedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+  useBodyScrollLock(Boolean(activeSheet));
 
   useEffect(() => {
     setItems(initialItems);
@@ -627,7 +629,7 @@ export default function OrderItemsReplacement({
       </div>
 
       {activeItem && activeSheet && (
-        <div className="fixed inset-0 z-50 bg-black/40">
+        <div className="fixed inset-0 z-50 bg-black/40" role="dialog" aria-modal="true">
           <button
             type="button"
             aria-label="close"
@@ -635,217 +637,224 @@ export default function OrderItemsReplacement({
             onClick={closeSheet}
           />
 
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white p-4 shadow-2xl">
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-gray-300" />
-            {activeSheet === 'replacement' && (
-              <>
-                <h3 className="text-lg font-bold text-gray-900">اختر المنتج البديل</h3>
-                <p className="text-sm text-gray-500">{activeItem.name_snapshot}</p>
+          <div className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl">
+            <div className="shrink-0 px-4 pb-2 pt-4">
+              <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-300" />
+            </div>
+            <div
+              className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {activeSheet === 'replacement' && (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900">اختر المنتج البديل</h3>
+                  <p className="text-sm text-gray-500">{activeItem.name_snapshot}</p>
 
-                {(activeItem.replacement_decision_status ===
-                  ReplacementDecisionStatus.APPROVED ||
-                  activeItem.replacement_decision_status ===
-                    ReplacementDecisionStatus.REJECTED) && (
-                  <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
-                    قرار العميل مقفل على هذا الصنف. استخدم زر إعادة الضبط لفتحه مرة
-                    أخرى.
-                  </div>
-                )}
+                  {(activeItem.replacement_decision_status ===
+                    ReplacementDecisionStatus.APPROVED ||
+                    activeItem.replacement_decision_status ===
+                      ReplacementDecisionStatus.REJECTED) && (
+                    <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
+                      قرار العميل مقفل على هذا الصنف. استخدم زر إعادة الضبط لفتحه مرة
+                      أخرى.
+                    </div>
+                  )}
 
-                {activeItem.replacement_decision_status !==
-                  ReplacementDecisionStatus.APPROVED &&
-                  activeItem.replacement_decision_status !==
-                    ReplacementDecisionStatus.REJECTED && (
-                    <>
-                      <div className="mt-3 rounded-xl border border-gray-200 p-3">
-                        <input
-                          value={searchQuery}
-                          onChange={(event) => setSearchQuery(event.target.value)}
-                          placeholder="ابحث بالاسم"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
-                        </p>
-                        {activeItemCategory && (
-                          <p className="mt-1 text-xs text-indigo-600">
-                            النتائج مفلترة تلقائياً حسب قسم الصنف: {activeItemCategory}
+                  {activeItem.replacement_decision_status !==
+                    ReplacementDecisionStatus.APPROVED &&
+                    activeItem.replacement_decision_status !==
+                      ReplacementDecisionStatus.REJECTED && (
+                      <>
+                        <div className="mt-3 rounded-xl border border-gray-200 p-3">
+                          <input
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="ابحث بالاسم"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
                           </p>
-                        )}
-                      </div>
+                          {activeItemCategory && (
+                            <p className="mt-1 text-xs text-indigo-600">
+                              النتائج مفلترة تلقائياً حسب قسم الصنف: {activeItemCategory}
+                            </p>
+                          )}
+                        </div>
 
-                      <div className="mt-4 max-h-60 space-y-2 overflow-y-auto">
-                        {!isTextSearchActive && replacementOptions.length > 0 && (
-                          <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
-                            منتجات مشابهة مقترحة
-                          </p>
-                        )}
-
-                        {isReplacementResultsLoading && (
-                          <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                            {isTextSearchActive
-                              ? 'جاري البحث...'
-                              : 'جاري تحميل المنتجات المشابهة...'}
-                          </p>
-                        )}
-
-                        {!isReplacementResultsLoading && replacementResultsError && (
-                          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-                            {replacementResultsError}
-                          </p>
-                        )}
-
-                        {!isReplacementResultsLoading &&
-                          !replacementResultsError &&
-                          replacementOptions.length === 0 && (
-                            <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
-                              {activeItemCategory
-                                ? `لا توجد نتائج مطابقة داخل قسم ${activeItemCategory}`
-                                : 'لا توجد نتائج مطابقة'}
+                        <div className="mt-4 max-h-60 space-y-2 overflow-y-auto">
+                          {!isTextSearchActive && replacementOptions.length > 0 && (
+                            <p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
+                              منتجات مشابهة مقترحة
                             </p>
                           )}
 
-                        {!isReplacementResultsLoading &&
-                          !replacementResultsError &&
-                          replacementOptions.map((product) => (
-                            <button
-                              key={product.id}
-                              type="button"
-                              onClick={() =>
-                                handleSelectReplacement(activeItem.id, product)
-                              }
-                              disabled={isPending}
-                              className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-start"
-                            >
-                              <span className="flex items-center gap-3">
-                                <ProductThumbnail
-                                  imageUrl={product.image_url}
-                                  name={product.name}
-                                />
-                                <span className="font-medium text-gray-900">
-                                  {product.name}
-                                </span>
-                              </span>
-                              <span className="text-xs text-gray-500">اختيار</span>
-                            </button>
-                          ))}
-                      </div>
+                          {isReplacementResultsLoading && (
+                            <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                              {isTextSearchActive
+                                ? 'جاري البحث...'
+                                : 'جاري تحميل المنتجات المشابهة...'}
+                            </p>
+                          )}
 
-                      <div className="mt-4 rounded-xl border border-gray-200 p-3">
-                        <p className="text-sm font-semibold text-gray-800">
-                          + إضافة منتج جديد
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          <input
-                            value={newProductName}
-                            onChange={(event) => setNewProductName(event.target.value)}
-                            placeholder="اسم المنتج البديل"
-                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                          />
+                          {!isReplacementResultsLoading && replacementResultsError && (
+                            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                              {replacementResultsError}
+                            </p>
+                          )}
+
+                          {!isReplacementResultsLoading &&
+                            !replacementResultsError &&
+                            replacementOptions.length === 0 && (
+                              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                                {activeItemCategory
+                                  ? `لا توجد نتائج مطابقة داخل قسم ${activeItemCategory}`
+                                  : 'لا توجد نتائج مطابقة'}
+                              </p>
+                            )}
+
+                          {!isReplacementResultsLoading &&
+                            !replacementResultsError &&
+                            replacementOptions.map((product) => (
+                              <button
+                                key={product.id}
+                                type="button"
+                                onClick={() =>
+                                  handleSelectReplacement(activeItem.id, product)
+                                }
+                                disabled={isPending}
+                                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-start"
+                              >
+                                <span className="flex items-center gap-3">
+                                  <ProductThumbnail
+                                    imageUrl={product.image_url}
+                                    name={product.name}
+                                  />
+                                  <span className="font-medium text-gray-900">
+                                    {product.name}
+                                  </span>
+                                </span>
+                                <span className="text-xs text-gray-500">اختيار</span>
+                              </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-gray-200 p-3">
+                          <p className="text-sm font-semibold text-gray-800">
+                            + إضافة منتج جديد
+                          </p>
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              value={newProductName}
+                              onChange={(event) => setNewProductName(event.target.value)}
+                              placeholder="اسم المنتج البديل"
+                              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleCreateAndSelect}
+                              disabled={isPending}
+                              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                            >
+                              حفظ
+                            </button>
+                          </div>
+                        </div>
+
+                        {activeItem.pending_replacement_product_id && (
                           <button
                             type="button"
-                            onClick={handleCreateAndSelect}
+                            onClick={() => handleClearReplacement(activeItem.id)}
                             disabled={isPending}
-                            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                            className="mt-3 w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700 disabled:opacity-60"
                           >
-                            حفظ
+                            إلغاء طلب الاستبدال
                           </button>
-                        </div>
-                      </div>
+                        )}
+                      </>
+                    )}
 
-                      {activeItem.pending_replacement_product_id && (
+                  {(activeItem.replacement_decision_status ===
+                    ReplacementDecisionStatus.APPROVED ||
+                    activeItem.replacement_decision_status ===
+                      ReplacementDecisionStatus.REJECTED) && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetReplacementDecision(activeItem.id)}
+                      disabled={isPending}
+                      className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
+                    >
+                      إعادة فتح قرار الاستبدال
+                    </button>
+                  )}
+                </>
+              )}
+
+              {activeSheet === 'price' && (
+                <>
+                  <h3 className="text-lg font-bold text-gray-900">تحديد سعر الصنف</h3>
+                  <p className="text-sm text-gray-500">{activeItem.name_snapshot}</p>
+
+                  <div className="mt-4 rounded-xl border border-gray-200 p-3">
+                    <label className="mb-2 block text-sm font-medium text-gray-700">
+                      السعر النهائي للصنف (ج.م)
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={priceInput}
+                      onChange={(event) => {
+                        setPriceInput(event.target.value);
+                        setPriceError(null);
+                      }}
+                      placeholder="مثال: 45"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm outline-none focus:border-indigo-500"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">
+                      سيتم حفظ السعر كإجمالي هذا الصنف.
+                    </p>
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="mb-2 text-xs font-semibold text-gray-500">
+                      أسعار سريعة
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {PRICE_CHIP_VALUES.map((value) => (
                         <button
+                          key={value}
                           type="button"
-                          onClick={() => handleClearReplacement(activeItem.id)}
-                          disabled={isPending}
-                          className="mt-3 w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700 disabled:opacity-60"
+                          onClick={() => {
+                            setPriceInput(String(value));
+                            setPriceError(null);
+                          }}
+                          className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-semibold text-gray-700"
                         >
-                          إلغاء طلب الاستبدال
+                          {value}
                         </button>
-                      )}
-                    </>
+                      ))}
+                    </div>
+                  </div>
+
+                  {priceError && (
+                    <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {priceError}
+                    </p>
                   )}
 
-                {(activeItem.replacement_decision_status ===
-                  ReplacementDecisionStatus.APPROVED ||
-                  activeItem.replacement_decision_status ===
-                    ReplacementDecisionStatus.REJECTED) && (
                   <button
                     type="button"
-                    onClick={() => handleResetReplacementDecision(activeItem.id)}
+                    onClick={handleSaveLinePrice}
                     disabled={isPending}
                     className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
                   >
-                    إعادة فتح قرار الاستبدال
+                    حفظ السعر
                   </button>
-                )}
-              </>
-            )}
-
-            {activeSheet === 'price' && (
-              <>
-                <h3 className="text-lg font-bold text-gray-900">تحديد سعر الصنف</h3>
-                <p className="text-sm text-gray-500">{activeItem.name_snapshot}</p>
-
-                <div className="mt-4 rounded-xl border border-gray-200 p-3">
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    السعر النهائي للصنف (ج.م)
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
-                    value={priceInput}
-                    onChange={(event) => {
-                      setPriceInput(event.target.value);
-                      setPriceError(null);
-                    }}
-                    placeholder="مثال: 45"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm outline-none focus:border-indigo-500"
-                  />
-                  <p className="mt-2 text-xs text-gray-500">
-                    سيتم حفظ السعر كإجمالي هذا الصنف.
-                  </p>
-                </div>
-
-                <div className="mt-3">
-                  <p className="mb-2 text-xs font-semibold text-gray-500">
-                    أسعار سريعة
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {PRICE_CHIP_VALUES.map((value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          setPriceInput(String(value));
-                          setPriceError(null);
-                        }}
-                        className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-semibold text-gray-700"
-                      >
-                        {value}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {priceError && (
-                  <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                    {priceError}
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  onClick={handleSaveLinePrice}
-                  disabled={isPending}
-                  className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
-                >
-                  حفظ السعر
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 
 interface OrderStatsProps {
   count: number;
@@ -12,6 +13,7 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
+  useBodyScrollLock(isOpen);
 
   // Helper to format label
   const getLabel = () => {
@@ -81,7 +83,12 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
 
         {/* Bottom Sheet Backdrop */}
         {isOpen && (
-            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
+            <div
+              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in"
+              onClick={() => setIsOpen(false)}
+              role="dialog"
+              aria-modal="true"
+            >
                 <div 
                     className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 shadow-2xl animate-slide-up"
                     onClick={(e) => e.stopPropagation()}

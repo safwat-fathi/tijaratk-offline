@@ -1,6 +1,7 @@
 "use client";
 
 import { Product } from "@/types/models/product";
+import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -88,6 +89,7 @@ export default function ProductList({
 	const [availabilitySheet, setAvailabilitySheet] =
 		useState<AvailabilitySheetState>(null);
 	const [isAvailabilitySubmitting, setIsAvailabilitySubmitting] = useState(false);
+	useBodyScrollLock(Boolean(customSheet || availabilitySheet));
 
 	const selectedProduct = customSheet?.product ?? null;
 	const selectedAvailabilityProduct = availabilitySheet?.product ?? null;
@@ -532,8 +534,15 @@ export default function ProductList({
 			</div>
 
 			{customSheet && selectedProduct && (
-				<div className="fixed inset-0 z-[70] flex items-end bg-black/35">
-					<div className="w-full rounded-t-3xl bg-white p-4 shadow-2xl">
+				<div
+					className="fixed inset-0 z-[70] flex items-end bg-black/35"
+					role="dialog"
+					aria-modal="true"
+				>
+					<div
+						className="max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl"
+						style={{ WebkitOverflowScrolling: "touch" }}
+					>
 						<p className="text-sm font-semibold text-gray-900">
 							{customSheet.mode === "weight" ? "أدخل الكمية بالجرام" : "أدخل المبلغ بالجنيه"}
 						</p>
@@ -566,14 +575,21 @@ export default function ProductList({
 			)}
 
 			{availabilitySheet && selectedAvailabilityProduct && (
-				<div className="fixed inset-0 z-[75] flex items-end bg-black/40">
+				<div
+					className="fixed inset-0 z-[75] flex items-end bg-black/40"
+					role="dialog"
+					aria-modal="true"
+				>
 					<button
 						type="button"
 						onClick={() => closeAvailabilitySheet()}
 						className="absolute inset-0"
 						aria-label="إغلاق"
 					/>
-					<div className="relative w-full rounded-t-3xl bg-white p-4 shadow-2xl">
+					<div
+						className="relative max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl"
+						style={{ WebkitOverflowScrolling: "touch" }}
+					>
 						<p className="text-base font-bold text-gray-900">العنصر غير متاح حالياً</p>
 						<p className="mt-1 text-sm text-gray-600">
 							تحب نبلغ التاجر إنك محتاجه؟
