@@ -1,125 +1,155 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { getCustomersPageAction } from "@/actions/customer-actions";
 import { Customer } from "@/types/models/customer";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CustomerHeader from "./CustomerHeader";
 import CustomerSearch from "./CustomerSearch";
-import CustomerFilters from "./CustomerFilters";
 import CustomerCard from "./CustomerCard";
 import CustomerDetailsSheet from "./CustomerDetailsSheet";
-import { customersService } from "@/services/api/customers.service";
-import { useDebounce } from "use-debounce";
+import { useDebouncedCallback } from "use-debounce";
 
 interface CustomersViewProps {
-  initialCustomers: Customer[];
+	initialCustomers: Customer[];
+	initialPage: number;
+	initialLastPage: number;
+	initialSearch?: string;
 }
 
-type FilterType = 'all' | 'frequent' | 'new' | 'inactive';
+const DEFAULT_LIMIT = 20;
+const SEARCH_DEBOUNCE_MS = 500;
 
-export default function CustomersView({ initialCustomers }: CustomersViewProps) {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch] = useDebounce(searchQuery, 500);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
-  
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const observerTarget = useRef(null);
+export default function CustomersView({
+	initialCustomers,
+	initialPage,
+	initialLastPage,
+	initialSearch = "",
+}: CustomersViewProps) {
+	const safeInitialPage = Math.max(1, initialPage || 1);
+	const safeInitialLastPage = Math.max(
+		safeInitialPage,
+		initialLastPage || safeInitialPage,
+	);
 
-  // Reset when filter or search changes
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    // If it's the initial load and we have initialCustomers, we might use them,
-    // but complexity arises if we want to sync client filters with server search.
-    // Ideally, for search/filter changes, we wipe and re-fetch.
-    setCustomers([]); 
-    fetchData(1, debouncedSearch, activeFilter, true);
-  }, [debouncedSearch, activeFilter]);
+	const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+	const [searchQuery, setSearchQuery] = useState(initialSearch);
+	const [activeSearch, setActiveSearch] = useState(initialSearch);
+	const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
+		null,
+	);
 
-  const fetchData = async (pageNum: number, search: string, filter: FilterType, isReset: boolean) => {
-    setIsLoading(true);
-    try {
-        // Note: Filter is not yet supported by Backend in this example, only Search.
-        // If 'activeFilter' needs to be server-side, we would need to add it to API.
-        // For now, I will assume Search is server-side and Filter is... tricky?
-        // The user request said "search input ... should make a search in BE".
-        // It didn't explicitly say "move filters to BE", but infinite scroll + client filters = bad UX (filtering partial data).
-        // I will implement search server-side. For filters, I'll pass them if supported or ignore for now/implement basic support if implicit. 
-        // Actually, looking at the previous logic, the filters depend on all data ('frequent' = count > 5). 
-        // Realistically, these should be backend filters.
-        // For this task, I'll focus on Search in BE. I'll pass search. `activeFilter` logic needs backend support to be correct with pagination.
-        // I'll leave filters as "client-side post-fetch" (filtering *fetched* results) IS WRONG for pagination.
-        // I'll disable filters for now or treat 'all' as standard.
-        // Let's just fetch for now.
-        
-        const res = await customersService.getCustomers({ 
-            search: search, 
-            page: pageNum, 
-            limit: 20 
-        });
+	const [page, setPage] = useState(safeInitialPage);
+	const [hasMore, setHasMore] = useState(safeInitialPage < safeInitialLastPage);
+	const [isLoading, setIsLoading] = useState(false);
+	const [listError, setListError] = useState<string | null>(null);
 
-        if (res.success && res.data) {
-            const newCustomers = res.data.data;
-            const meta = res.data.meta;
-            const currentPage = Number(meta.page ?? pageNum);
-            const lastPage = Number(meta.last_page ?? pageNum);
-            const hasValidMeta =
-              Number.isFinite(currentPage) &&
-              Number.isFinite(lastPage) &&
-              lastPage > 0;
+	const observerTarget = useRef<HTMLDivElement | null>(null);
+	const requestIdRef = useRef(0);
 
-            setCustomers(prev => isReset ? newCustomers : [...prev, ...newCustomers]);
-            setHasMore(hasValidMeta ? currentPage < lastPage : newCustomers.length > 0);
-        }
-    } catch (err) {
-        console.error("Failed to fetch customers", err);
-    } finally {
-        setIsLoading(false);
-    }
-  };
+	const loadCustomers = useCallback(
+		async ({
+			pageNumber,
+			search,
+			reset,
+		}: {
+			pageNumber: number;
+			search: string;
+			reset: boolean;
+		}) => {
+			const requestId = ++requestIdRef.current;
+			setIsLoading(true);
+			setListError(null);
 
-  // Infinite Scroll Observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
-          setPage(prev => {
-            const nextPage = prev + 1;
-            fetchData(nextPage, debouncedSearch, activeFilter, false);
-            return nextPage;
-          });
-        }
-      },
-      { threshold: 1.0 }
-    );
+			const response = await getCustomersPageAction({
+				search: search.trim() || undefined,
+				page: pageNumber,
+				limit: DEFAULT_LIMIT,
+			});
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
-    }
+			if (requestId !== requestIdRef.current) {
+				return;
+			}
 
-    return () => {
-      if (observerTarget.current) {
-        observer.unobserve(observerTarget.current);
-      }
-    };
-  }, [hasMore, isLoading, debouncedSearch, activeFilter]);
+			if (!response.success) {
+				if (reset) {
+					setCustomers([]);
+					setPage(1);
+				}
 
-  // Counts need to be from server to be accurate, or we just remove them/show '?'
-  // For now, I'll use simple placeholder counts or calculate from *loaded* customers (which is inaccurate but prevents crash).
-  const counts = { all: customers.length, frequent: 0, new: 0, inactive: 0 }; 
+				setHasMore(false);
+				setListError(response.message || "تعذر تحميل العملاء");
+				setIsLoading(false);
+				return;
+			}
+
+			const nextPage = Math.max(1, response.meta.page || pageNumber);
+			const nextLastPage = Math.max(nextPage, response.meta.last_page || nextPage);
+
+			setCustomers(previous =>
+				reset ? response.data : [...previous, ...response.data],
+			);
+			setPage(nextPage);
+			setHasMore(nextPage < nextLastPage);
+			setIsLoading(false);
+		},
+		[],
+	);
+
+	const debouncedSearch = useDebouncedCallback((value: string) => {
+		setActiveSearch(value);
+		void loadCustomers({
+			pageNumber: 1,
+			search: value,
+			reset: true,
+		});
+	}, SEARCH_DEBOUNCE_MS);
+
+	const handleSearchChange = (value: string) => {
+		setSearchQuery(value);
+		debouncedSearch(value);
+	};
+
+	useEffect(() => {
+		return () => debouncedSearch.cancel();
+	}, [debouncedSearch]);
+
+	useEffect(() => {
+		const target = observerTarget.current;
+		if (!target || !hasMore) {
+			return;
+		}
+
+		const observer = new IntersectionObserver(
+			entries => {
+				const entry = entries[0];
+				if (!entry?.isIntersecting || isLoading || !hasMore) {
+					return;
+				}
+
+				void loadCustomers({
+					pageNumber: page + 1,
+					search: activeSearch,
+					reset: false,
+				});
+			},
+			{ threshold: 1.0 },
+		);
+
+		observer.observe(target);
+		return () => observer.disconnect();
+	}, [activeSearch, hasMore, isLoading, loadCustomers, page]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <CustomerHeader count={customers.length} />
       
       <div className="sticky top-[57px] z-10 bg-white shadow-sm pb-1">
-        <CustomerSearch value={searchQuery} onChange={setSearchQuery} />
-        {/* Filters temporarily disabled or simplified as they require full backend support for correct counts/pagination */}
-        {/* <CustomerFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} /> */}
+        <CustomerSearch value={searchQuery} onChange={handleSearchChange} />
       </div>
+
+			{listError && (
+				<div className="bg-white px-4 py-2 text-sm text-red-600">{listError}</div>
+			)}
 
       <div className="bg-gray-50 min-h-[calc(100vh-200px)]">
         {customers.length > 0 ? (
@@ -149,7 +179,9 @@ export default function CustomersView({ initialCustomers }: CustomersViewProps) 
                     </svg>
                  </div>
                  <p className="text-gray-900 font-medium">لا يوجد عملاء</p>
-                 <p className="text-sm text-gray-500 mt-1">حاول تعديل البحث.</p>
+                 <p className="text-sm text-gray-500 mt-1">
+										{listError ? "حدث خطأ أثناء تحميل البيانات." : "حاول تعديل البحث."}
+									</p>
                </div>
            )
         )}
@@ -165,6 +197,7 @@ export default function CustomersView({ initialCustomers }: CustomersViewProps) 
       </div>
 
       <CustomerDetailsSheet 
+        key={selectedCustomerId ?? "customer-sheet"}
         customerId={selectedCustomerId} 
         onClose={() => setSelectedCustomerId(null)} 
       />

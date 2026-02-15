@@ -6,6 +6,7 @@ type OrderSubmitBarProps = {
 	estimatedTotal: number;
 	orderRequest: string;
 	isPending: boolean;
+	onSubmitClick?: () => void;
 };
 
 export default function OrderSubmitBar({
@@ -14,6 +15,7 @@ export default function OrderSubmitBar({
 	estimatedTotal,
 	orderRequest,
 	isPending,
+	onSubmitClick,
 }: OrderSubmitBarProps) {
 	if (!(totalItems > 0 || orderRequest.trim())) {
 		return null;
@@ -21,7 +23,10 @@ export default function OrderSubmitBar({
 
 	return (
 		<>
-			<div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 p-4 shadow-[0_-4px_30px_rgba(0,0,0,0.08)] z-50">
+			<div
+				data-order-submit-bar
+				className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 p-4 shadow-[0_-4px_30px_rgba(0,0,0,0.08)] z-50"
+			>
 				<div className="max-w-md mx-auto">
 					<div className="flex justify-between items-end mb-4 px-2">
 						<div className="text-sm font-medium text-gray-500">العناصر المختارة</div>
@@ -48,6 +53,7 @@ export default function OrderSubmitBar({
 
 					<button
 						type="submit"
+						onClick={onSubmitClick}
 						disabled={isPending || (totalItems === 0 && !orderRequest.trim())}
 						className="w-full bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all"
 					>

@@ -8,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { InvalidEvent } from "react";
 import type { Product, PublicProductCategory, PublicProductsMeta } from "@/types/models/product";
 import type { Order } from "@/types/models/order";
 import { createOrderAction, type CreateOrderState } from "@/actions/order-actions";
@@ -47,6 +48,9 @@ const initialState: CreateOrderState = {
 
 const PAGE_SIZE = 20;
 const PRELOAD_THRESHOLD_ITEMS = 5;
+const STICKY_HEADER_SELECTOR = "[data-store-header]";
+const SUBMIT_BAR_SELECTOR = "[data-order-submit-bar]";
+const VIEWPORT_SCROLL_MARGIN = 16;
 
 const DEFAULT_PAGINATION_STATE: PaginationState = {
 	page: 1,
@@ -125,6 +129,7 @@ export default function OrderForm({
 
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
 	const categoryPillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	const hasHandledInvalidRef = useRef(false);
 
 	const categoryTabs = useMemo(
 		() =>
@@ -355,6 +360,82 @@ export default function OrderForm({
 		}
 	};
 
+	const getViewportOffsets = useCallback(() => {
+		const stickyHeader = document.querySelector<HTMLElement>(
+			STICKY_HEADER_SELECTOR,
+		);
+		const submitBar = document.querySelector<HTMLElement>(SUBMIT_BAR_SELECTOR);
+		const safeTop =
+			(stickyHeader?.getBoundingClientRect().height || 0) +
+			VIEWPORT_SCROLL_MARGIN;
+		const desiredSafeBottom =
+			window.innerHeight -
+			(submitBar?.getBoundingClientRect().height || 0) -
+			VIEWPORT_SCROLL_MARGIN;
+		const safeBottom = Math.max(safeTop + 120, desiredSafeBottom);
+		return { safeTop, safeBottom };
+	}, []);
+
+	const keepElementVisibleInViewport = useCallback(
+		(element: HTMLElement, behavior: ScrollBehavior) => {
+			const { safeTop, safeBottom } = getViewportOffsets();
+			const rect = element.getBoundingClientRect();
+			let targetTop: number | null = null;
+
+			if (rect.top < safeTop) {
+				targetTop = window.scrollY + rect.top - safeTop;
+			} else if (rect.bottom > safeBottom) {
+				targetTop = window.scrollY + rect.bottom - safeBottom;
+			}
+
+			if (targetTop === null) {
+				return;
+			}
+
+			window.scrollTo({
+				top: Math.max(0, targetTop),
+				behavior,
+			});
+		},
+		[getViewportOffsets],
+	);
+
+	const scrollToDeliveryDetails = useCallback(() => {
+		const section = document.getElementById("delivery-details-section");
+		if (!section) {
+			return;
+		}
+
+		const { safeTop } = getViewportOffsets();
+		const sectionTop = window.scrollY + section.getBoundingClientRect().top;
+		window.scrollTo({
+			top: Math.max(0, sectionTop - safeTop),
+			behavior: "smooth",
+		});
+	}, [getViewportOffsets]);
+
+	const handleFormSubmitCapture = useCallback(() => {
+		hasHandledInvalidRef.current = false;
+	}, []);
+
+	const handleFormInvalidCapture = useCallback(
+		(event: InvalidEvent<HTMLFormElement>) => {
+			if (hasHandledInvalidRef.current) {
+				return;
+			}
+
+			const invalidElement = event.target;
+			if (!(invalidElement instanceof HTMLElement)) {
+				return;
+			}
+
+			hasHandledInvalidRef.current = true;
+			invalidElement.focus({ preventScroll: true });
+			keepElementVisibleInViewport(invalidElement, "auto");
+		},
+		[keepElementVisibleInViewport],
+	);
+
 	const handleRequestAvailability = useCallback(
 		async (product: Product): Promise<AvailabilityRequestOutcome> => {
 			if (product.is_available) {
@@ -483,7 +564,11 @@ export default function OrderForm({
 					onClose={() => setToastState(null)}
 				/>
 			)}
-			<form action={formAction}>
+			<form
+				action={formAction}
+				onSubmitCapture={handleFormSubmitCapture}
+				onInvalidCapture={handleFormInvalidCapture}
+			>
 				<input type="hidden" name="cart" value={JSON.stringify(cartItems)} />
 
 				{hasMerchantProducts && (
@@ -539,6 +624,7 @@ export default function OrderForm({
 					estimatedTotal={estimatedTotal}
 					orderRequest={orderRequest}
 					isPending={isPending}
+					onSubmitClick={scrollToDeliveryDetails}
 				/>
 			</form>
 		</>

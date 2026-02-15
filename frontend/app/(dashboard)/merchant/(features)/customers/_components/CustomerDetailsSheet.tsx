@@ -1,8 +1,8 @@
 "use client";
 
+import { getCustomerDetailsAction } from "@/actions/customer-actions";
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
-import { customersService } from "@/services/api/customers.service";
 import { formatCurrency } from "@/lib/utils/currency";
 
 interface CustomerDetailsSheetProps {
@@ -12,22 +12,50 @@ interface CustomerDetailsSheetProps {
 
 export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDetailsSheetProps) {
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (customerId) {
-        setLoading(true);
-        customersService.getCustomer(customerId)
-            .then(res => {
-                if (res.success && res.data) {
-                    setCustomer(res.data);
-                }
-            })
-            .catch(err => console.error(err))
-            .finally(() => setLoading(false));
-    } else {
-        setCustomer(null);
+    let isCancelled = false;
+
+    if (!customerId) {
+      return () => {
+        isCancelled = true;
+      };
     }
+
+    void (async () => {
+      try {
+        const response = await getCustomerDetailsAction(customerId);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (!response.success || !response.data) {
+          setCustomer(null);
+          setError(response.message || "تعذر تحميل بيانات العميل");
+          setLoading(false);
+          return;
+        }
+
+        setCustomer(response.data);
+        setError(null);
+        setLoading(false);
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setCustomer(null);
+        setError("تعذر تحميل بيانات العميل");
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [customerId]);
 
   if (!customerId) return null;
@@ -47,13 +75,21 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                  <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
              </div>
 
-             {loading || !customer ? (
+             {loading ? (
                  <div className="p-8 flex justify-center">
                      <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                      </svg>
                  </div>
+             ) : error ? (
+                <div className="px-5 pb-8">
+                    <p className="text-sm text-red-600">{error}</p>
+                </div>
+             ) : !customer ? (
+                <div className="px-5 pb-8">
+                    <p className="text-sm text-gray-500">لا توجد بيانات للعميل.</p>
+                </div>
              ) : (
                 <div className="px-5 pb-8">
                     {/* Header */}
@@ -66,7 +102,7 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                              <a href={`tel:${customer.phone}`} className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
                              </a>
-                             <a href={`https://wa.me/20${customer.phone.replace(/\D/g, '').replace(/^0+/, '')}`} target="_blank" className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center">
+                             <a href={`https://wa.me/20${customer.phone.replace(/\D/g, '').replace(/^0+/, '')}`} target="_blank" rel="noreferrer" className="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center">
                                 <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
                              </a>
                         </div>
@@ -91,7 +127,7 @@ export default function CustomerDetailsSheet({ customerId, onClose }: CustomerDe
                         <h3 className="font-bold text-gray-900 mb-3 text-sm">أحدث الطلبات</h3>
                         {customer.orders && customer.orders.length > 0 ? (
                             <div className="space-y-2">
-                                {customer.orders.slice(0, 5).map((order: any) => (
+                                {customer.orders.slice(0, 5).map((order) => (
                                     <div key={order.id} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
                                         <div>
                                             <p className="text-gray-900 font-medium text-sm">طلب رقم {order.id}#</p>

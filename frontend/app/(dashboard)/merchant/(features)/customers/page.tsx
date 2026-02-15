@@ -1,11 +1,24 @@
-import { customersService } from "@/services/api/customers.service";
+import { getCustomersPageAction } from "@/actions/customer-actions";
 import CustomersView from "./_components/CustomersView";
 
 export const metadata = {
 	title: "Customers",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function CustomersPage() {
-	// Rendering client view which handles fetching
-	return <CustomersView initialCustomers={[]} />;
+	const initialResult = await getCustomersPageAction({
+		page: 1,
+		limit: 20,
+	});
+
+	return (
+		<CustomersView
+			initialCustomers={initialResult.data}
+			initialPage={initialResult.meta.page}
+			initialLastPage={initialResult.meta.last_page}
+			initialSearch=""
+		/>
+	);
 }

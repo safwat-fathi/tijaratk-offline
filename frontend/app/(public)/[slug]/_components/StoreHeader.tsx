@@ -155,7 +155,10 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 	// 	CATEGORY_ICONS[TENANT_CATEGORIES.OTHER.value];
 
 	return (
-		<div className="sticky top-0 z-40 bg-linear-to-br from-indigo-600/80 to-violet-700/80 backdrop-blur-md border-b border-white/10 text-white shadow-md transition-all duration-300 rounded-bl-2xl rounded-br-2xl">
+		<div
+			data-store-header
+			className="sticky top-0 z-40 bg-linear-to-br from-indigo-600/80 to-violet-700/80 backdrop-blur-md border-b border-white/10 text-white shadow-md transition-all duration-300 rounded-bl-2xl rounded-br-2xl"
+		>
 			<div className="px-4 py-3 flex items-center justify-between">
 				{/* Left: Branding */}
 				<div className="flex items-center gap-3">

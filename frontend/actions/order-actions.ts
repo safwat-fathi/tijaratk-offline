@@ -190,16 +190,16 @@ export async function createOrderAction(
   const orderType = items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT;
 
   const payload: CreateOrderRequest = {
-    customer: {
-      name: customerData.name,
-      phone: customerData.phone,
-      address: customerData.address,
-    },
-    items,
-    notes: customerData.notes,
-    free_text_payload: order_request ? { text: order_request } : undefined,
-    order_type: orderType,
-  };
+		customer: {
+			name: customerData.customer_name,
+			phone: customerData.customer_phone,
+			address: customerData.delivery_address,
+		},
+		items,
+		notes: customerData.notes,
+		free_text_payload: order_request ? { text: order_request } : undefined,
+		order_type: orderType,
+	};
 
   try {
     const response = await ordersService.createPublicOrder(tenantSlug, payload);
@@ -233,11 +233,11 @@ export async function createOrderAction(
 
       try {
         await upsertCustomerProfileBySlugInCookie(tenantSlug, {
-          name: customerData.name,
-          phone: customerData.phone,
-          address: customerData.address,
-          notes: customerData.notes,
-        });
+					name: customerData.customer_name,
+					phone: customerData.customer_phone,
+					address: customerData.delivery_address,
+					notes: customerData.notes,
+				});
       } catch (cookieError) {
         console.error('Failed to persist customer profile cookie:', cookieError);
       }

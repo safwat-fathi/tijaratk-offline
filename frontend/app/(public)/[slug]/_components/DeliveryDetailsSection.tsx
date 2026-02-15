@@ -33,7 +33,10 @@ export default function DeliveryDetailsSection({
 		initialOrder?.customer?.address || savedCustomerProfile?.address || "";
 
 	return (
-		<div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-8">
+		<div
+			id="delivery-details-section"
+			className="scroll-mt-24 bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-8"
+		>
 			<div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
 				<div className="bg-blue-100 p-2.5 rounded-xl text-blue-600">
 					<svg
@@ -61,7 +64,7 @@ export default function DeliveryDetailsSection({
 					</label>
 					<div className="relative">
 						<input
-							name="name"
+							name="customer_name"
 							type="text"
 							placeholder="الاسم"
 							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
@@ -85,7 +88,11 @@ export default function DeliveryDetailsSection({
 							</svg>
 						</div>
 					</div>
-					{errors?.name && <p className="text-sm text-red-600 mt-1">{errors.name[0]}</p>}
+					{errors?.customer_name && (
+						<p className="text-sm text-red-600 mt-1">
+							{errors.customer_name[0]}
+						</p>
+					)}
 				</div>
 
 				<div>
@@ -94,7 +101,7 @@ export default function DeliveryDetailsSection({
 					</label>
 					<div className="relative">
 						<input
-							name="phone"
+							name="customer_phone"
 							type="tel"
 							inputMode="numeric"
 							dir="ltr"
@@ -119,8 +126,10 @@ export default function DeliveryDetailsSection({
 							</svg>
 						</div>
 					</div>
-					{errors?.phone && (
-						<p className="text-sm text-red-600 mt-1">{errors.phone[0]}</p>
+					{errors?.customer_phone && (
+						<p className="text-sm text-red-600 mt-1">
+							{errors.customer_phone[0]}
+						</p>
 					)}
 				</div>
 
@@ -130,7 +139,7 @@ export default function DeliveryDetailsSection({
 					</label>
 					<div className="relative">
 						<input
-							name="address"
+							name="delivery_address"
 							type="text"
 							placeholder="العمارة، الشارع، الدور..."
 							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
@@ -154,8 +163,10 @@ export default function DeliveryDetailsSection({
 							</svg>
 						</div>
 					</div>
-					{errors?.address && (
-						<p className="text-sm text-red-600 mt-1">{errors.address[0]}</p>
+					{errors?.delivery_address && (
+						<p className="text-sm text-red-600 mt-1">
+							{errors.delivery_address[0]}
+						</p>
 					)}
 				</div>
 

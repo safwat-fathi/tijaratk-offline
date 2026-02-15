@@ -197,9 +197,21 @@ export default function ProductList({
 		}
 
 		if (mode === "weight") {
+			const nextGrams = Math.round(value);
+			const currentSelection = selections[product.id];
+			const currentGrams =
+				currentSelection?.selection_mode === "weight"
+					? Number(currentSelection.selection_grams || 0)
+					: 0;
+
+			if (currentGrams === nextGrams) {
+				onUpdateSelection(product, null);
+				return;
+			}
+
 			onUpdateSelection(product, {
 				selection_mode: "weight",
-				selection_grams: Math.round(value),
+				selection_grams: nextGrams,
 			});
 		} else {
 			onUpdateSelection(product, {
@@ -296,6 +308,8 @@ export default function ProductList({
 							? selection.unit_option_id
 							: undefined) ||
 						quantityOptions[0]?.id;
+					const isCustomWeightSelection =
+						selectedGrams > 0 && !weightPresets.includes(selectedGrams);
 
 					return (
 						<div
@@ -444,6 +458,7 @@ export default function ProductList({
 															onClick={() =>
 																handlePresetSelection(product, "weight", grams)
 															}
+															aria-pressed={selectedGrams === grams}
 															className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
 																selectedGrams === grams
 																	? "border-indigo-600 bg-indigo-50 text-indigo-700"
@@ -453,16 +468,30 @@ export default function ProductList({
 															{grams} جم
 														</button>
 													))}
-													<button
-														type="button"
-														onClick={() => setCustomSheet({ product, mode: "weight" })}
-														className="rounded-full border border-dashed border-gray-400 px-3 py-1 text-xs font-medium text-gray-700 active:scale-[0.97]"
+														<button
+															type="button"
+															onClick={() => {
+																if (isCustomWeightSelection) {
+																	onUpdateSelection(product, null);
+																	return;
+																}
+
+																setCustomSheet({ product, mode: "weight" });
+															}}
+															aria-pressed={isCustomWeightSelection}
+															className={`rounded-full border border-dashed px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+																isCustomWeightSelection
+																	? "border-indigo-600 bg-indigo-50 text-indigo-700"
+																	: "border-gray-400 text-gray-700"
+														}`}
 													>
-														كمية مخصصة
-													</button>
+															{isCustomWeightSelection
+																? `كمية مخصصة (${selectedGrams} جم)`
+																: "كمية مخصصة"}
+														</button>
+													</div>
 												</div>
-											</div>
-										)}
+											)}
 
 										{mode === "price" && (
 											<div className="space-y-2">

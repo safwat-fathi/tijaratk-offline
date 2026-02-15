@@ -20,16 +20,7 @@ class CustomersService extends HttpService {
 	}
 
 	public async getCustomers(params?: { search?: string; page?: number; limit?: number }) {
-		const searchParams = new URLSearchParams();
-		if (params?.search) searchParams.append("search", params.search);
-		if (params?.page) searchParams.append("page", params.page.toString());
-		if (params?.limit) searchParams.append("limit", params.limit.toString());
-		
-		return this.get<CustomersListResponse>(
-			`?${searchParams.toString()}`,
-			undefined,
-			{ authRequired: true },
-		);
+		return this.get<CustomersListResponse>("", params, { authRequired: true });
 	}
 
 	public async getCustomer(id: number) {
