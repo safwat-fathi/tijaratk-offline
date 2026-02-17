@@ -37,7 +37,7 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
 
-            cd ~/apps/tijaratk-offline
+            cd apps/tijaratk-offline
 
             git fetch --all
             git checkout main
