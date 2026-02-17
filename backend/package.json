@@ -13,6 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint:ci": "eslint \"{src,apps,libs,test}/**/*.ts\" --max-warnings=0",
     "seed:dev": "NODE_ENV=development dotenv_config_path=.env.development ts-node -r tsconfig-paths/register -r dotenv/config ./src/common/seed.ts",
     "seed:prod": "NODE_ENV=production dotenv_config_path=.env.production ts-node -r tsconfig-paths/register -r dotenv/config ./src/common/seed.ts",
     "typeorm:dev": "NODE_ENV=development dotenv_config_path=.env.development ts-node -r tsconfig-paths/register -r dotenv/config ./node_modules/typeorm/cli.js",
