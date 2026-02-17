@@ -40,8 +40,7 @@ jobs:
             cd apps/tijaratk-offline
 
             git fetch --all
-            git checkout main
-            git pull --ff-only origin main
+            git pull origin main
             pnpm -C backend install --frozen-lockfile
             pnpm -C backend build
             pnpm -C backend migration:run:prod
