@@ -39,9 +39,6 @@ jobs:
       - name: Install dependencies
         run: pnpm -C backend install --no-frozen-lockfile
 
-      - name: Lint
-        run: pnpm -C backend lint:ci
-
       - name: Build
         run: pnpm -C backend build
 

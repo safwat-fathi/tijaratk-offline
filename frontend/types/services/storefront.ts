@@ -76,22 +76,6 @@ export interface StoreSeo {
 	[key: string]: unknown;
 }
 
-export interface PublicStorefront {
-	id: number;
-	slug: string;
-	name: string;
-	description?: string;
-
-	address_text?: string;
-	cover_image_url?: string;
-	logo_url?: string;
-	storefrontCategory?: any;
-	subCategories?: any[];
-	theme_config?: StoreThemeConfig;
-	seo?: StoreSeo;
-	[key: string]: unknown;
-}
-
 export interface StorefrontVariant {
 	id: string;
 	stock: number;
