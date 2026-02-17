@@ -37,11 +37,6 @@ jobs:
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
 
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-            nvm use 20
-
             cd "${{ secrets.DEPLOY_PATH }}"
 
             git fetch --all
