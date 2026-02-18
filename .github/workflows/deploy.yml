@@ -58,7 +58,7 @@ jobs:
           ssh -T ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
 
-            cd apps/tijaratk-offline
+            cd ${{secrets.DEPLOY_PATH}}
 
             git fetch origin main --prune
             git checkout -f main
@@ -93,7 +93,7 @@ jobs:
           ssh -T ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
 
-            cd apps/tijaratk-offline
+            cd ${{secrets.DEPLOY_PATH}}
 
             git fetch origin main --prune
             git checkout -f main
