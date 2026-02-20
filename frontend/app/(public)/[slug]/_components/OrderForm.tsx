@@ -121,14 +121,15 @@ export default function OrderForm({
 	const [knownProductsById, setKnownProductsById] = useState<
 		Record<number, Product>
 	>(() =>
-		initialProducts.reduce<Record<number, Product>>((acc, product) => {
-			acc[product.id] = product;
-			return acc;
-		}, {}),
+		Object.fromEntries(
+			initialProducts.map((product) => [product.id, product]),
+		) as Record<number, Product>,
 	);
 
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
-	const categoryPillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+	const categoryPillRefs = useRef<Map<string, HTMLButtonElement | null>>(
+		new Map(),
+	);
 	const hasHandledInvalidRef = useRef(false);
 
 	const categoryTabs = useMemo(
@@ -146,10 +147,18 @@ export default function OrderForm({
 		initialProductsMeta.total > 0 ||
 		initialProducts.length > 0 ||
 		initialCategories.some(category => category.count > 0);
+	const productsByCategoryMap = useMemo(
+		() => new Map(Object.entries(productsByCategory)),
+		[productsByCategory],
+	);
+	const paginationByCategoryMap = useMemo(
+		() => new Map(Object.entries(paginationByCategory)),
+		[paginationByCategory],
+	);
 
-	const activeProducts = productsByCategory[activeCategory] || [];
+	const activeProducts = productsByCategoryMap.get(activeCategory) || [];
 	const activePagination =
-		paginationByCategory[activeCategory] || DEFAULT_PAGINATION_STATE;
+		paginationByCategoryMap.get(activeCategory) || DEFAULT_PAGINATION_STATE;
 	const hasMoreInActiveCategory = activePagination.page < activePagination.lastPage;
 	const activeLoadMoreIndex =
 		activeProducts.length === 0
@@ -159,19 +168,22 @@ export default function OrderForm({
 	const fetchProductsPage = useCallback(
 		async (categoryKey: string, page: number, replace: boolean) => {
 			const currentState =
-				paginationByCategory[categoryKey] || DEFAULT_PAGINATION_STATE;
+				paginationByCategoryMap.get(categoryKey) || DEFAULT_PAGINATION_STATE;
 			if (currentState.isLoading) {
 				return;
 			}
 
-			setPaginationByCategory(prev => ({
-				...prev,
-				[categoryKey]: {
-					...(prev[categoryKey] || DEFAULT_PAGINATION_STATE),
+			setPaginationByCategory((prev) => {
+				const prevMap = new Map(Object.entries(prev));
+				const previousState =
+					prevMap.get(categoryKey) || DEFAULT_PAGINATION_STATE;
+				prevMap.set(categoryKey, {
+					...previousState,
 					isLoading: true,
 					error: null,
-				},
-			}));
+				});
+				return Object.fromEntries(prevMap);
+			});
 
 			const response = await productsService.getPublicProducts(tenantSlug, {
 				category: categoryKey === ALL_PRODUCTS_CATEGORY ? undefined : categoryKey,
@@ -180,61 +192,75 @@ export default function OrderForm({
 			});
 
 			if (!response.success || !response.data) {
-				setPaginationByCategory(prev => ({
-					...prev,
-					[categoryKey]: {
-						...(prev[categoryKey] || DEFAULT_PAGINATION_STATE),
+				setPaginationByCategory((prev) => {
+					const prevMap = new Map(Object.entries(prev));
+					const previousState =
+						prevMap.get(categoryKey) || DEFAULT_PAGINATION_STATE;
+					prevMap.set(categoryKey, {
+						...previousState,
 						isLoading: false,
 						error: "تعذر تحميل المنتجات حالياً",
-					},
-				}));
+					});
+					return Object.fromEntries(prevMap);
+				});
 				return;
 			}
 
 			const nextProducts = response.data.data;
 			const nextMeta = response.data.meta;
 
-			setProductsByCategory(prev => ({
-				...prev,
-				[categoryKey]: replace
-					? nextProducts
-					: dedupeByNumericId([...(prev[categoryKey] || []), ...nextProducts]),
-			}));
-
-			setKnownProductsById(prev => {
-				const next = { ...prev };
-				for (const product of nextProducts) {
-					next[product.id] = product;
-				}
-				return next;
+			setProductsByCategory((prev) => {
+				const prevMap = new Map(Object.entries(prev));
+				const previousProducts = prevMap.get(categoryKey) || [];
+				prevMap.set(
+					categoryKey,
+					replace
+						? nextProducts
+						: dedupeByNumericId([...previousProducts, ...nextProducts]),
+				);
+				return Object.fromEntries(prevMap);
 			});
 
-			setPaginationByCategory(prev => ({
-				...prev,
-				[categoryKey]: {
+			setKnownProductsById((prev) => {
+				const nextMap = new Map(
+					Object.entries(prev).map(([productId, product]) => [
+						Number(productId),
+						product,
+					]),
+				);
+				for (const product of nextProducts) {
+					nextMap.set(product.id, product);
+				}
+				return Object.fromEntries(nextMap) as Record<number, Product>;
+			});
+
+			setPaginationByCategory((prev) => {
+				const prevMap = new Map(Object.entries(prev));
+				prevMap.set(categoryKey, {
 					page: nextMeta.page,
 					lastPage: nextMeta.last_page,
 					isLoading: false,
 					error: null,
-				},
-			}));
+				});
+				return Object.fromEntries(prevMap);
+			});
 		},
-		[paginationByCategory, tenantSlug],
+		[paginationByCategoryMap, tenantSlug],
 	);
 
 	const handleCategoryChange = useCallback(
 		(categoryKey: string) => {
 			setActiveCategory(categoryKey);
 
-			const hasData = (productsByCategory[categoryKey] || []).length > 0;
+			const hasData = (productsByCategoryMap.get(categoryKey) || []).length > 0;
 			const categoryState =
-				paginationByCategory[categoryKey] || DEFAULT_PAGINATION_STATE;
+				paginationByCategoryMap.get(categoryKey) || DEFAULT_PAGINATION_STATE;
 
 			if (!hasData && !categoryState.isLoading) {
 				void fetchProductsPage(categoryKey, 1, true);
 			}
 		},
-		[fetchProductsPage, paginationByCategory, productsByCategory],
+		[fetchProductsPage, paginationByCategoryMap, productsByCategoryMap],
 	);
 
 	const handleCategoryEntry = useCallback(
@@ -246,7 +272,7 @@ export default function OrderForm({
 	);
 
 	const scrollActiveCategoryPillIntoView = useCallback((categoryKey: string) => {
-		const pillNode = categoryPillRefs.current[categoryKey];
+		const pillNode = categoryPillRefs.current.get(categoryKey);
 		if (!pillNode) {
 			return;
 		}
@@ -260,14 +286,14 @@ export default function OrderForm({
 
 	const loadNextPage = useCallback(() => {
 		const categoryState =
-			paginationByCategory[activeCategory] || DEFAULT_PAGINATION_STATE;
+			paginationByCategoryMap.get(activeCategory) || DEFAULT_PAGINATION_STATE;
 
 		if (categoryState.isLoading || categoryState.page >= categoryState.lastPage) {
 			return;
 		}
 
 		void fetchProductsPage(activeCategory, categoryState.page + 1, false);
-	}, [activeCategory, fetchProductsPage, paginationByCategory]);
+	}, [activeCategory, fetchProductsPage, paginationByCategoryMap]);
 
 	const setLoadMoreTarget = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -299,7 +325,12 @@ export default function OrderForm({
 
 	const setCategoryPillRef = useCallback(
 		(categoryKey: string, node: HTMLButtonElement | null) => {
-			categoryPillRefs.current[categoryKey] = node;
+			if (node) {
+				categoryPillRefs.current.set(categoryKey, node);
+				return;
+			}
+
+			categoryPillRefs.current.delete(categoryKey);
 		},
 		[],
 	);
@@ -499,21 +530,37 @@ export default function OrderForm({
 		[tenantSlug],
 	);
 
+	const knownProductsByIdMap = useMemo(
+		() =>
+			new Map(
+				Object.entries(knownProductsById).map(([productId, product]) => [
+					Number(productId),
+					product,
+				]),
+			),
+		[knownProductsById],
+	);
+
 	const effectiveCartSelections = useMemo(() => {
-		return Object.entries(cartSelections).reduce<Record<number, ProductCartSelection>>(
-			(acc, [productId, selection]) => {
+		const effectiveSelectionEntries = Object.entries(cartSelections).flatMap(
+			([productId, selection]) => {
 				const parsedProductId = Number(productId);
-				const product = knownProductsById[parsedProductId];
+				const product = knownProductsByIdMap.get(parsedProductId);
 				if (product?.is_available === false) {
-					return acc;
+					return [];
 				}
 
-				acc[parsedProductId] = selection;
-				return acc;
+				return [[parsedProductId, selection]] as Array<
+					[number, ProductCartSelection]
+				>;
 			},
-			{},
 		);
-	}, [cartSelections, knownProductsById]);
+
+		return Object.fromEntries(effectiveSelectionEntries) as Record<
+			number,
+			ProductCartSelection
+		>;
+	}, [cartSelections, knownProductsByIdMap]);
 
 	const { totalItems, estimatedTotal, hasPricedItems } = useMemo(
 		() => calculateCartSummary(effectiveCartSelections, knownProductsById),
@@ -523,10 +570,10 @@ export default function OrderForm({
 	const cartItems = useMemo(
 		() =>
 			buildCartItems(effectiveCartSelections, knownProductsById).filter(item => {
-				const product = knownProductsById[item.product_id];
+				const product = knownProductsByIdMap.get(item.product_id);
 				return product ? product.is_available !== false : true;
 			}),
-		[effectiveCartSelections, knownProductsById],
+		[effectiveCartSelections, knownProductsById, knownProductsByIdMap],
 	);
 
 	const copyToken = () => {

@@ -9,6 +9,18 @@ interface LatestOrdersProps {
   orders: LatestOrder[];
 }
 
+const getStatusBadgeClasses = (status: string) => {
+  if (status === OrderStatus.COMPLETED) {
+    return "border-transparent bg-green-500/15 text-green-700 dark:text-green-400";
+  }
+
+  if (status === OrderStatus.CANCELLED) {
+    return "border-transparent bg-red-500/15 text-red-700 dark:text-red-400";
+  }
+
+  return "border-transparent bg-secondary text-secondary-foreground";
+};
+
 export default function LatestOrders({ orders }: LatestOrdersProps) {
   if (!orders || orders.length === 0) return null;
 
@@ -36,9 +48,7 @@ export default function LatestOrders({ orders }: LatestOrdersProps) {
                         <div className="flex items-center gap-2 mt-1.5">
                             <span className={cn(
                                 "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                                order.status === OrderStatus.COMPLETED ? "border-transparent bg-green-500/15 text-green-700 dark:text-green-400" :
-                                order.status === OrderStatus.CANCELLED ? "border-transparent bg-red-500/15 text-red-700 dark:text-red-400" :
-                                "border-transparent bg-secondary text-secondary-foreground"
+                                getStatusBadgeClasses(order.status)
                             )}>
                                 {order.status}
                             </span>

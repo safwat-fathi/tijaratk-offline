@@ -1,4 +1,4 @@
-import StoreHeader, { CATEGORY_BY_VALUE } from "./_components/StoreHeader";
+import StoreHeader, { resolveTenantCategoryMeta } from "./_components/StoreHeader";
 
 import OrderForm from "./_components/OrderForm";
 
@@ -16,7 +16,6 @@ import {
 import { Order } from "@/types/models/order";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { TENANT_CATEGORIES } from "@/constants";
 import { getCustomerProfileBySlugFromCookie } from "@/lib/tracking/customer-tracking-cookie";
 
 type Props = {
@@ -93,10 +92,7 @@ export async function generateMetadata(
 
 	if (!tenant) return { title: "" };
 
-	const categoryValue = CATEGORY_BY_VALUE[tenant.category]
-		? tenant.category
-		: TENANT_CATEGORIES.OTHER.value;
-	const categoryLabel = CATEGORY_BY_VALUE[categoryValue].labels.ar;
+	const categoryLabel = resolveTenantCategoryMeta(tenant.category).labels.ar;
 	return {
 		title: tenant.name || "",
 		description: categoryLabel,

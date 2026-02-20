@@ -81,6 +81,24 @@ const dedupeProductsById = (products: Product[]) => {
   });
 };
 
+const getReplacementButtonLabel = ({
+  decisionStatus,
+  replacementProductName,
+}: {
+  decisionStatus: ReplacementDecisionStatus;
+  replacementProductName?: string;
+}) => {
+  if (decisionStatus === ReplacementDecisionStatus.PENDING) {
+    return 'تعديل البديل المقترح';
+  }
+
+  if (replacementProductName) {
+    return 'تغيير البديل';
+  }
+
+  return 'استبدال المنتج';
+};
+
 export default function OrderItemsReplacement({
   orderId,
   orderStatus,
@@ -542,18 +560,17 @@ export default function OrderItemsReplacement({
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openReplacementSheet(item.id)}
-                    disabled={isDecisionLocked}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-                  >
-                    {decisionStatus === ReplacementDecisionStatus.PENDING
-                      ? 'تعديل البديل المقترح'
-                      : replacementProduct?.name
-                        ? 'تغيير البديل'
-                        : 'استبدال المنتج'}
-                  </button>
+	                  <button
+	                    type="button"
+	                    onClick={() => openReplacementSheet(item.id)}
+	                    disabled={isDecisionLocked}
+	                    className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+	                  >
+	                    {getReplacementButtonLabel({
+	                      decisionStatus,
+	                      replacementProductName: replacementProduct?.name,
+	                    })}
+	                  </button>
 
                   <button
                     type="button"

@@ -23,8 +23,8 @@ class AuthService extends HttpService {
 		// Best effort API call
 		try {
 			await this.post("logout", {});
-		} catch (e) {
-			// Ignore errors
+		} catch (error) {
+			console.error("Logout API call failed:", error);
 		}
 		return { success: true };
 	}

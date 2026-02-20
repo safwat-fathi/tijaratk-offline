@@ -7,11 +7,17 @@ export function formatCurrency(amount?: number | string | null) {
 	}
 
 	const normalizedAmount =
-		typeof amount === "number"
-			? amount
-			: typeof amount === "string"
-				? Number(amount.trim())
-				: NaN;
+		(() => {
+			if (typeof amount === "number") {
+				return amount;
+			}
+
+			if (typeof amount === "string") {
+				return Number(amount.trim());
+			}
+
+			return Number.NaN;
+		})();
 
 	if (!Number.isFinite(normalizedAmount)) {
 		return undefined;

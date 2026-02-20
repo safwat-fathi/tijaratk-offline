@@ -135,6 +135,108 @@ export type CreateOrderState = {
   data?: unknown;
 };
 
+type CreateOrderCartItem = {
+  product_id: number;
+  quantity: string;
+  name?: string;
+  total_price?: number;
+  selection_mode?: 'quantity' | 'weight' | 'price';
+  selection_quantity?: number;
+  selection_grams?: number;
+  selection_amount_egp?: number;
+  unit_option_id?: string;
+};
+
+type CreateOrderCustomerData = {
+  customer_name: string;
+  customer_phone: string;
+  delivery_address?: string;
+  notes?: string;
+};
+
+type CreatedOrderMeta = {
+  public_token?: unknown;
+  created_at?: unknown;
+};
+
+const parseCartItems = (cart?: string): CreateOrderCartItem[] => {
+  if (!cart) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(cart) as CreateOrderCartItem[];
+    return parsed.filter(
+      (item) => item.product_id && String(item.quantity || '').trim().length > 0,
+    );
+  } catch (error) {
+    console.error('Failed to parse cart items:', error);
+    return [];
+  }
+};
+
+const buildCreateOrderPayload = ({
+  customerData,
+  items,
+  orderRequest,
+}: {
+  customerData: CreateOrderCustomerData;
+  items: CreateOrderCartItem[];
+  orderRequest?: string;
+}): CreateOrderRequest => ({
+  customer: {
+    name: customerData.customer_name,
+    phone: customerData.customer_phone,
+    address: customerData.delivery_address,
+  },
+  items,
+  notes: customerData.notes,
+  free_text_payload: orderRequest ? { text: orderRequest } : undefined,
+  order_type: items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT,
+});
+
+const persistCreatedOrderTrackingArtifacts = async ({
+  tenantSlug,
+  responseData,
+  customerData,
+}: {
+  tenantSlug: string;
+  responseData: unknown;
+  customerData: CreateOrderCustomerData;
+}) => {
+  const createdOrder = responseData as CreatedOrderMeta | undefined;
+  const publicToken =
+    typeof createdOrder?.public_token === 'string'
+      ? createdOrder.public_token.trim()
+      : '';
+
+  if (publicToken) {
+    try {
+      await appendTrackedOrderToCookie({
+        token: publicToken,
+        slug: tenantSlug,
+        created_at:
+          typeof createdOrder?.created_at === 'string'
+            ? createdOrder.created_at
+            : new Date().toISOString(),
+      });
+    } catch (cookieError) {
+      console.error('Failed to persist tracked order cookie:', cookieError);
+    }
+  }
+
+  try {
+    await upsertCustomerProfileBySlugInCookie(tenantSlug, {
+      name: customerData.customer_name,
+      phone: customerData.customer_phone,
+      address: customerData.delivery_address,
+      notes: customerData.notes,
+    });
+  } catch (cookieError) {
+    console.error('Failed to persist customer profile cookie:', cookieError);
+  }
+};
+
 export async function createOrderAction(
   tenantSlug: string,
   _prevState: CreateOrderState,
@@ -153,94 +255,22 @@ export async function createOrderAction(
   }
 
   const { cart, order_request, ...customerData } = validatedFields.data;
-
-  let items: Array<{
-    product_id: number;
-    quantity: string;
-    name?: string;
-    total_price?: number;
-    selection_mode?: 'quantity' | 'weight' | 'price';
-    selection_quantity?: number;
-    selection_grams?: number;
-    selection_amount_egp?: number;
-    unit_option_id?: string;
-  }> = [];
-  if (cart) {
-    try {
-      const parsed = JSON.parse(cart) as Array<{
-        product_id: number;
-        quantity: string;
-        name?: string;
-        total_price?: number;
-        selection_mode?: 'quantity' | 'weight' | 'price';
-        selection_quantity?: number;
-        selection_grams?: number;
-        selection_amount_egp?: number;
-        unit_option_id?: string;
-      }>;
-
-      items = parsed.filter(
-        (item) => item.product_id && String(item.quantity || '').trim().length > 0,
-      );
-    } catch (e) {
-      console.error('Failed to parse cart items:', e);
-    }
-  }
-
-  const orderType = items.length > 0 ? OrderType.CATALOG : OrderType.FREE_TEXT;
-
-  const payload: CreateOrderRequest = {
-		customer: {
-			name: customerData.customer_name,
-			phone: customerData.customer_phone,
-			address: customerData.delivery_address,
-		},
-		items,
-		notes: customerData.notes,
-		free_text_payload: order_request ? { text: order_request } : undefined,
-		order_type: orderType,
-	};
+  const items = parseCartItems(cart);
+  const payload = buildCreateOrderPayload({
+    customerData,
+    items,
+    orderRequest: order_request,
+  });
 
   try {
     const response = await ordersService.createPublicOrder(tenantSlug, payload);
 
     if (response.success) {
-      if (response.data) {
-        const createdOrder = response.data as {
-          public_token?: unknown;
-          created_at?: unknown;
-        };
-        const publicToken =
-          typeof createdOrder.public_token === 'string'
-            ? createdOrder.public_token.trim()
-            : '';
-
-        if (publicToken) {
-          try {
-            await appendTrackedOrderToCookie({
-              token: publicToken,
-              slug: tenantSlug,
-              created_at:
-                typeof createdOrder.created_at === 'string'
-                  ? createdOrder.created_at
-                  : new Date().toISOString(),
-            });
-          } catch (cookieError) {
-            console.error('Failed to persist tracked order cookie:', cookieError);
-          }
-        }
-      }
-
-      try {
-        await upsertCustomerProfileBySlugInCookie(tenantSlug, {
-					name: customerData.customer_name,
-					phone: customerData.customer_phone,
-					address: customerData.delivery_address,
-					notes: customerData.notes,
-				});
-      } catch (cookieError) {
-        console.error('Failed to persist customer profile cookie:', cookieError);
-      }
+      await persistCreatedOrderTrackingArtifacts({
+        tenantSlug,
+        responseData: response.data,
+        customerData,
+      });
 
       return {
         success: true,

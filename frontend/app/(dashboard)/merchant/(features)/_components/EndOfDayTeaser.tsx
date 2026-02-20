@@ -42,6 +42,12 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 		() => buildSummaryFromClosure(status.closure, status.preview),
 		[status.closure, status.preview],
 	);
+	let closeDayLabel = "إغلاق اليوم";
+	if (isPending) {
+		closeDayLabel = "جارٍ الإغلاق...";
+	} else if (status.is_closed) {
+		closeDayLabel = "تم الإغلاق";
+	}
 
 	const handleCloseDay = () => {
 		if (isPending || status.is_closed) {
@@ -143,7 +149,7 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 							disabled={isPending || status.is_closed}
 							className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3"
 						>
-							{isPending ? "جارٍ الإغلاق..." : status.is_closed ? "تم الإغلاق" : "إغلاق اليوم"}
+							{closeDayLabel}
 						</button>
 					</div>
 

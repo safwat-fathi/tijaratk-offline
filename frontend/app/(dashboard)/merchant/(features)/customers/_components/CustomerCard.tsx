@@ -10,12 +10,6 @@ export default function CustomerCard({ customer }: CustomerCardProps) {
     ? new Date(customer.last_order_at).toLocaleDateString("ar-EG", { month: "short", day: "numeric" })
     : "أبداً";
 
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    return name.substring(0, 2).toUpperCase();
-  };
-  
-  const displayName = customer.name || customer.phone;
   const displayPhone = customer.phone;
 
   // Phone processing for WhatsApp (remove leading 0, add +20 for Egypt)

@@ -8,6 +8,36 @@ interface ActionCenterProps {
   items: ActionItem[];
 }
 
+const getIconContainerClasses = (type: ActionItem["type"]) => {
+  if (type === "late_order") {
+    return "bg-destructive/10 text-destructive";
+  }
+
+  if (type === "out_for_delivery") {
+    return "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400";
+  }
+
+  return "bg-primary/10 text-primary";
+};
+
+const renderActionIcon = (type: ActionItem["type"]) => {
+  if (type === "late_order") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    );
+  }
+
+  if (type === "out_for_delivery") {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+    );
+  }
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+  );
+};
+
 export default function ActionCenter({ items }: ActionCenterProps) {
   if (!items || items.length === 0) return null;
 
@@ -38,17 +68,9 @@ export default function ActionCenter({ items }: ActionCenterProps) {
                     <div className="flex items-start gap-3">
                         <div className={cn(
                             "p-2.5 rounded-full shrink-0",
-                            isUrgent ? "bg-destructive/10 text-destructive" :
-                            isDelivery ? "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" :
-                            "bg-primary/10 text-primary"
+                            getIconContainerClasses(item.type)
                         )}>
-                            {isUrgent ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-                            ) : isDelivery ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-                            ) : (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            )}
+                            {renderActionIcon(item.type)}
                         </div>
                         <div>
                              <div className="flex items-center gap-2 mb-1">

@@ -19,9 +19,7 @@ export function createParams(params: IParams): URLSearchParams {
 
 	if (!params) return searchParams;
 
-	// Use Object.keys to avoid iterating over prototype properties
-	Object.keys(params).forEach(key => {
-		const value = params[key];
+	Object.entries(params).forEach(([key, value]) => {
 
 		if (Array.isArray(value)) {
 			value.forEach(v => searchParams.append(key + "[]", String(v)));
@@ -34,14 +32,7 @@ export function createParams(params: IParams): URLSearchParams {
 }
 
 export function revertParamsToObj(params: ReadonlyURLSearchParams): IParams {
-  const obj = [...params?.entries()].reduce(
-    (acc, [key, value]) => {
-      acc[key] = value;
-
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
+  const obj = Object.fromEntries(params.entries()) as Record<string, string>;
 
   return obj;
 }

@@ -12,19 +12,22 @@ export interface OrderCustomer {
   [key: string]: unknown;
 }
 
+export type OrderItemSelectionMode = "quantity" | "weight" | "price" | null;
+export type OrderNumericValue = number | string | null;
+
 export interface OrderItem {
   id: number;
   order_id: number;
   product_id?: number | null;
   name_snapshot: string;
   quantity: string;
-  unit_price?: number | string | null;
-  total_price?: number | string | null;
+  unit_price?: OrderNumericValue;
+  total_price?: OrderNumericValue;
   notes?: string;
-  selection_mode?: 'quantity' | 'weight' | 'price' | null;
-  selection_quantity?: number | string | null;
+  selection_mode?: OrderItemSelectionMode;
+  selection_quantity?: OrderNumericValue;
   selection_grams?: number | null;
-  selection_amount_egp?: number | string | null;
+  selection_amount_egp?: OrderNumericValue;
   unit_option_id?: string | null;
   replaced_by_product_id?: number | null;
   replaced_by_product?: {
@@ -58,9 +61,9 @@ export interface Order {
   order_type: OrderType;
   status: OrderStatus;
   pricing_mode: PricingMode;
-  subtotal?: number | string | null;
-  delivery_fee?: number | string | null;
-  total?: number | string | null;
+  subtotal?: OrderNumericValue;
+  delivery_fee?: OrderNumericValue;
+  total?: OrderNumericValue;
   free_text_payload?: { text?: string };
   notes?: string;
   customer_rejection_reason?: string | null;

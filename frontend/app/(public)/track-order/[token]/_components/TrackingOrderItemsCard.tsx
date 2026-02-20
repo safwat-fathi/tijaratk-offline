@@ -19,6 +19,46 @@ type TrackingOrderItemsCardProps = {
   initialItems: OrderItem[];
 };
 
+const applyApprovedReplacementDecision = (items: OrderItem[], itemId: number) =>
+  items.map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      replaced_by_product_id: item.pending_replacement_product_id || null,
+      replaced_by_product: item.pending_replacement_product || null,
+      pending_replacement_product_id: null,
+      pending_replacement_product: null,
+      replacement_decision_status: ReplacementDecisionStatus.APPROVED,
+      replacement_decision_reason: null,
+      replacement_decided_at: new Date().toISOString(),
+    };
+  });
+
+const applyRejectedReplacementDecision = (
+  items: OrderItem[],
+  itemId: number,
+  reason: string | undefined,
+) =>
+  items.map((item) => {
+    if (item.id !== itemId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      replaced_by_product_id: null,
+      replaced_by_product: null,
+      pending_replacement_product_id: null,
+      pending_replacement_product: null,
+      replacement_decision_status: ReplacementDecisionStatus.REJECTED,
+      replacement_decision_reason: reason || null,
+      replacement_decided_at: new Date().toISOString(),
+    };
+  });
+
 export default function TrackingOrderItemsCard({
   token,
   initialOrderStatus,
@@ -28,8 +68,8 @@ export default function TrackingOrderItemsCard({
   const [orderStatus, setOrderStatus] = useState<OrderStatus>(initialOrderStatus);
   const [orderRejectReason, setOrderRejectReason] = useState('');
   const [itemRejectReasons, setItemRejectReasons] = useState<
-    Record<number, string>
-  >({});
+    Map<number, string>
+  >(new Map());
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -48,24 +88,7 @@ export default function TrackingOrderItemsCard({
         return;
       }
 
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) {
-            return item;
-          }
-
-          return {
-            ...item,
-            replaced_by_product_id: item.pending_replacement_product_id || null,
-            replaced_by_product: item.pending_replacement_product || null,
-            pending_replacement_product_id: null,
-            pending_replacement_product: null,
-            replacement_decision_status: ReplacementDecisionStatus.APPROVED,
-            replacement_decision_reason: null,
-            replacement_decided_at: new Date().toISOString(),
-          };
-        }),
-      );
+      setItems((prev) => applyApprovedReplacementDecision(prev, itemId));
 
       router.refresh();
       setFeedback('تمت الموافقة على البديل');
@@ -74,7 +97,7 @@ export default function TrackingOrderItemsCard({
 
   const handleReject = (itemId: number) => {
     startTransition(async () => {
-      const reason = itemRejectReasons[itemId]?.trim();
+      const reason = itemRejectReasons.get(itemId)?.trim();
       const response = await decideReplacementByTrackingAction(token, itemId, {
         decision: 'reject',
         reason: reason || undefined,
@@ -85,24 +108,7 @@ export default function TrackingOrderItemsCard({
         return;
       }
 
-      setItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) {
-            return item;
-          }
-
-          return {
-            ...item,
-            replaced_by_product_id: null,
-            replaced_by_product: null,
-            pending_replacement_product_id: null,
-            pending_replacement_product: null,
-            replacement_decision_status: ReplacementDecisionStatus.REJECTED,
-            replacement_decision_reason: reason || null,
-            replacement_decided_at: new Date().toISOString(),
-          };
-        }),
-      );
+      setItems((prev) => applyRejectedReplacementDecision(prev, itemId, reason));
 
       router.refresh();
       setFeedback('تم رفض البديل المقترح');
@@ -212,12 +218,13 @@ export default function TrackingOrderItemsCard({
                       تم اقتراح بديل: {pendingReplacementName}
                     </p>
                     <textarea
-                      value={itemRejectReasons[item.id] || ''}
+                      value={itemRejectReasons.get(item.id) || ''}
                       onChange={(event) =>
-                        setItemRejectReasons((prev) => ({
-                          ...prev,
-                          [item.id]: event.target.value,
-                        }))
+                        setItemRejectReasons((prev) => {
+                          const next = new Map(prev);
+                          next.set(item.id, event.target.value);
+                          return next;
+                        })
                       }
                       placeholder="سبب الرفض (اختياري)"
                       rows={2}

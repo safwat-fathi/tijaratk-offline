@@ -127,7 +127,7 @@ function normalizeCustomerProfilesBySlug(
 		return {};
 	}
 
-	const nextProfiles: Record<string, CustomerProfileCookieItem> = {};
+	const nextProfilesEntries: Array<[string, CustomerProfileCookieItem]> = [];
 
 	for (const [rawSlug, rawProfile] of Object.entries(value)) {
 		const slug = normalizeSlugKey(rawSlug);
@@ -142,16 +142,19 @@ function normalizeCustomerProfilesBySlug(
 			continue;
 		}
 
-		nextProfiles[slug] = {
+		nextProfilesEntries.push([
+			slug,
+			{
 			phone,
 			updated_at: updatedAt,
 			name: normalizeOptionalText(rawProfile.name),
 			address: normalizeOptionalText(rawProfile.address),
 			notes: normalizeOptionalText(rawProfile.notes),
-		};
+			},
+		]);
 	}
 
-	return nextProfiles;
+	return Object.fromEntries(nextProfilesEntries);
 }
 
 function parseTrackedOrdersCookie(
@@ -243,7 +246,10 @@ export async function getCustomerProfileBySlugFromCookie(
 	}
 
 	const payload = await readTrackedOrdersCookiePayload();
-	return payload.customer_profiles_by_slug[normalizedSlug] || null;
+	const customerProfilesBySlug = new Map(
+		Object.entries(payload.customer_profiles_by_slug),
+	);
+	return customerProfilesBySlug.get(normalizedSlug) || null;
 }
 
 export async function upsertCustomerProfileBySlugInCookie(
@@ -258,21 +264,21 @@ export async function upsertCustomerProfileBySlugInCookie(
 	}
 
 	const payload = await readTrackedOrdersCookiePayload();
-	const nextProfiles = {
-		...payload.customer_profiles_by_slug,
-		[normalizedSlug]: {
-			phone: normalizedPhone,
-			name: normalizeOptionalText(profile.name),
-			address: normalizeOptionalText(profile.address),
-			notes: normalizeOptionalText(profile.notes),
-			updated_at: new Date().toISOString(),
-		},
-	};
+	const nextProfilesMap = new Map(
+		Object.entries(payload.customer_profiles_by_slug),
+	);
+	nextProfilesMap.set(normalizedSlug, {
+		phone: normalizedPhone,
+		name: normalizeOptionalText(profile.name),
+		address: normalizeOptionalText(profile.address),
+		notes: normalizeOptionalText(profile.notes),
+		updated_at: new Date().toISOString(),
+	});
 
 	await writeTrackedOrdersCookie({
 		v: COOKIE_VERSION,
 		items: payload.items,
-		customer_profiles_by_slug: nextProfiles,
+		customer_profiles_by_slug: Object.fromEntries(nextProfilesMap),
 	});
 }
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { STORAGE_KEYS } from "@/constants";
@@ -76,7 +77,7 @@ function normalizeRequestsByKey(value: unknown): Record<string, string> {
 		return {};
 	}
 
-	const next: Record<string, string> = {};
+	const nextEntries: Array<[string, string]> = [];
 
 	for (const [rawKey, rawValue] of Object.entries(value)) {
 		const key = normalizeRequestKey(rawKey);
@@ -85,10 +86,10 @@ function normalizeRequestsByKey(value: unknown): Record<string, string> {
 			continue;
 		}
 
-		next[key] = dateKey;
+		nextEntries.push([key, dateKey]);
 	}
 
-	return pruneRequestsByKey(next);
+	return pruneRequestsByKey(Object.fromEntries(nextEntries));
 }
 
 function parseAvailabilityStateCookie(
@@ -131,7 +132,7 @@ function generateVisitorKey(): string {
 		return `v_${globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
 	}
 
-	return `v_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+	return `v_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
 }
 
 export function getCairoDateKey(date = new Date()): string {
@@ -210,8 +211,11 @@ export async function prepareAvailabilityCookieState(
 	const dateKey = getCairoDateKey();
 
 	const visitorKey = payload.visitor_key || generateVisitorKey();
-	const requestsByKey = pruneRequestsByKey({ ...payload.requests_by_key });
-	const alreadyRequestedToday = requestsByKey[requestKey] === dateKey;
+	const requestsByKeyMap = new Map(
+		Object.entries(pruneRequestsByKey({ ...payload.requests_by_key })),
+	);
+	const alreadyRequestedToday = requestsByKeyMap.get(requestKey) === dateKey;
+	const requestsByKey = Object.fromEntries(requestsByKeyMap);
 
 	const shouldWrite =
 		payload.visitor_key !== visitorKey ||
@@ -241,13 +245,12 @@ export async function markAvailabilityCookieRequestSent(
 	const requestKey = buildRequestKey(slug, productId);
 	const payload = await readAvailabilityStateCookie();
 	const resolvedDateKey = normalizeDateKey(dateKey) || getCairoDateKey();
+	const nextRequestsByKeyMap = new Map(Object.entries(payload.requests_by_key));
+	nextRequestsByKeyMap.set(requestKey, resolvedDateKey);
 
 	await writeAvailabilityStateCookie({
 		v: COOKIE_VERSION,
 		visitor_key: payload.visitor_key || generateVisitorKey(),
-		requests_by_key: {
-			...payload.requests_by_key,
-			[requestKey]: resolvedDateKey,
-		},
+		requests_by_key: Object.fromEntries(nextRequestsByKeyMap),
 	});
 }

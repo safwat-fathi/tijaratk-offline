@@ -165,7 +165,13 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 	};
 
-  const config = statusConfig[status] || statusConfig[OrderStatus.DRAFT];
+  const statusConfigMap = new Map(
+		Object.entries(statusConfig) as Array<
+			[OrderStatus, { label: string; color: string; icon: React.ReactNode }]
+		>,
+	);
+  const config =
+		statusConfigMap.get(status) ?? statusConfigMap.get(OrderStatus.DRAFT)!;
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${config.color}`}>

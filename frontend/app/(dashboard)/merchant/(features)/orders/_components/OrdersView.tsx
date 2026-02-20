@@ -14,7 +14,7 @@ interface OrdersViewProps {
   tenantId?: number | null;
 }
 
-export default function OrdersView({ initialOrders, selectedDate, tenantId }: OrdersViewProps) {
+export default function OrdersView({ initialOrders, selectedDate }: OrdersViewProps) {
   const [activeStatus, setActiveStatus] = useState<OrderStatus>(OrderStatus.DRAFT);
   const [orders, setOrders] = useState<Order[]>(initialOrders);
 

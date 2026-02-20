@@ -1,0 +1,6 @@
+{
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": "security\\.e2e-spec\\.js$",
+  "moduleFileExtensions": ["js", "json"]
+}

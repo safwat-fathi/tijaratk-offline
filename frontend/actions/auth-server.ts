@@ -1,6 +1,5 @@
 "use server";
 
-import { z } from "zod";
 import { authService } from "@/services/api/auth.service";
 import { loginSchema, registerSchema } from "@/lib/validations/auth";
 import { redirect } from "next/navigation";
@@ -58,6 +57,7 @@ export async function loginAction(prevState: ActionState, formData: FormData): P
       };
     }
   } catch (error) {
+    console.error("Login action failed:", error);
     return {
       success: false,
       message: "An unexpected error occurred.",
@@ -107,6 +107,7 @@ export async function registerAction(prevState: ActionState, formData: FormData)
     }
 
   } catch (error) {
+     console.error("Register action failed:", error);
      return {
       success: false,
       message: "An unexpected error occurred.",

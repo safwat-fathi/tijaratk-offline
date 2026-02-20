@@ -9,19 +9,19 @@ type Parser<T> = {
   default: T;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Options<TSchema> = {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	defaultValues: Partial<Record<keyof TSchema, any>>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	schema: Record<keyof TSchema, Parser<any>>;
+type Schema<TSchema extends Record<string, unknown>> = {
+	[K in keyof TSchema]: Parser<TSchema[K]>;
+};
+
+type Options<TSchema extends Record<string, unknown>> = {
+	defaultValues: Partial<TSchema>;
+	schema: Schema<TSchema>;
 	pushMode?: "push" | "replace";
 	refreshOnChange?: boolean;
 	debounce?: number;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function useQueryParams<TSchema extends Record<string, any>>(
+export function useQueryParams<TSchema extends Record<string, unknown>>(
 	keys: (keyof TSchema)[],
 	{
 		defaultValues,
@@ -34,38 +34,59 @@ export function useQueryParams<TSchema extends Record<string, any>>(
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
+	const parserByKey = useMemo(() => {
+		const entries = Object.entries(schema) as Array<[keyof TSchema, Parser<unknown>]>;
+		return new Map<keyof TSchema, Parser<unknown>>(entries);
+	}, [schema]);
+	const defaultValuesByKey = useMemo(() => {
+		const entries = Object.entries(defaultValues) as Array<[keyof TSchema, unknown]>;
+		return new Map<keyof TSchema, unknown>(entries);
+	}, [defaultValues]);
 
-	// parse current params
 	const params = useMemo(() => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const parsed: any = {};
+		const parsedEntries: Array<[keyof TSchema, unknown]> = [];
 
 		keys.forEach(key => {
-			const parser = schema[key];
-			const raw = searchParams?.get(key as string) ?? null;
+			const parser = parserByKey.get(key);
+			if (!parser) {
+				return;
+			}
 
-			parsed[key] = raw
-				? parser.parse(raw)
-				: defaultValues[key] ?? parser.default;
+			const raw = searchParams?.get(key as string) ?? null;
+			const fallbackValue = defaultValuesByKey.has(key)
+				? defaultValuesByKey.get(key)
+				: parser.default;
+
+			const parsedValue = raw ? parser.parse(raw) : fallbackValue;
+			parsedEntries.push([key, parsedValue]);
 		});
 
-		return parsed as TSchema;
-	}, [searchParams, keys, schema, defaultValues]);
+		return Object.fromEntries(parsedEntries) as TSchema;
+	}, [searchParams, keys, parserByKey, defaultValuesByKey]);
 
-	// debounce timer ref
 	const timer = useRef<NodeJS.Timeout | null>(null);
 
 	const updateParams = useCallback(
 		(newParams: Partial<TSchema>) => {
 			const sp = new URLSearchParams(searchParams?.toString());
 
-			// merge updates
-			Object.entries(newParams).forEach(([k, v]) => {
-				if (v == null || v === "" || v === (schema[k]?.default ?? "")) {
-					sp.delete(k);
-				} else {
-					sp.set(k, schema[k].serialize(v));
+			Object.entries(newParams).forEach(([rawKey, value]) => {
+				const key = rawKey as keyof TSchema;
+				const parser = parserByKey.get(key);
+				if (!parser) {
+					return;
 				}
+
+				if (
+					value == null ||
+					value === "" ||
+					value === (parser.default as TSchema[keyof TSchema])
+				) {
+					sp.delete(rawKey);
+					return;
+				}
+
+				sp.set(rawKey, parser.serialize(value));
 			});
 
 			const url = `${pathname}?${sp.toString()}`;
@@ -89,14 +110,16 @@ export function useQueryParams<TSchema extends Record<string, any>>(
 			pushMode,
 			refreshOnChange,
 			debounce,
-			schema,
+			parserByKey,
 		]
 	);
 
 	const setParam = useCallback(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(key: keyof TSchema, value: any) => {
-			updateParams({ [key]: value } as Partial<TSchema>);
+		(key: keyof TSchema, value: TSchema[keyof TSchema]) => {
+			const partialParams = Object.fromEntries([
+				[key as string, value],
+			]) as Partial<TSchema>;
+			updateParams(partialParams);
 		},
 		[updateParams]
 	);

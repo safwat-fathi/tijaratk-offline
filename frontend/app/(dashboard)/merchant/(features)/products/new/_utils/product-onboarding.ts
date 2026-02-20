@@ -394,11 +394,12 @@ export const deriveEditFormState = (
   const weightPresetList = product.order_config?.weight?.preset_grams;
   const pricePresetList = product.order_config?.price?.preset_amounts_egp;
 
-  const categoryMode = normalizedCategory
-    ? availableCategorySet.has(normalizedCategory)
+  let categoryMode = CATEGORY_MODE_SELECT;
+  if (normalizedCategory) {
+    categoryMode = availableCategorySet.has(normalizedCategory)
       ? CATEGORY_MODE_SELECT
-      : CATEGORY_MODE_CUSTOM
-    : CATEGORY_MODE_SELECT;
+      : CATEGORY_MODE_CUSTOM;
+  }
 
   return {
     name: product.name,

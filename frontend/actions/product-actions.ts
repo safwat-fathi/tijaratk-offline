@@ -51,6 +51,55 @@ const normalizeUpdateProductErrorMessage = (
   return normalized;
 };
 
+const setTrimmedField = (
+  payload: FormData,
+  key: string,
+  value: FormDataEntryValue | null,
+) => {
+  if (typeof value !== 'string') {
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed) {
+    payload.set(key, trimmed);
+  }
+};
+
+const setNormalizedAvailabilityField = (
+  payload: FormData,
+  value: FormDataEntryValue | null,
+) => {
+  if (typeof value !== 'string') {
+    return;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') {
+    payload.set('is_available', 'true');
+  } else if (normalized === 'false' || normalized === '0') {
+    payload.set('is_available', 'false');
+  }
+};
+
+const normalizeUpdateProductPayload = (formData: FormData): FormData => {
+  const normalizedPayload = new FormData();
+
+  setTrimmedField(normalizedPayload, 'name', formData.get('name'));
+  setTrimmedField(normalizedPayload, 'current_price', formData.get('current_price'));
+  setTrimmedField(normalizedPayload, 'category', formData.get('category'));
+  setTrimmedField(normalizedPayload, 'order_mode', formData.get('order_mode'));
+  setTrimmedField(normalizedPayload, 'order_config', formData.get('order_config'));
+  setNormalizedAvailabilityField(normalizedPayload, formData.get('is_available'));
+
+  const file = formData.get('file');
+  if (file instanceof File && file.size > 0) {
+    normalizedPayload.set('file', file);
+  }
+
+  return normalizedPayload;
+};
+
 export async function createProductAction(
   name: string,
   imageUrl?: string,
@@ -123,62 +172,7 @@ export async function addProductFromCatalogAction(catalogItemId: number) {
 
 export async function updateProductAction(productId: number, formData: FormData) {
   try {
-    const normalizedPayload = new FormData();
-    const rawName = formData.get('name');
-    const rawCurrentPrice = formData.get('current_price');
-    const rawCategory = formData.get('category');
-    const rawOrderMode = formData.get('order_mode');
-    const rawOrderConfig = formData.get('order_config');
-    const rawIsAvailable = formData.get('is_available');
-    const file = formData.get('file');
-
-    if (typeof rawName === 'string') {
-      const trimmed = rawName.trim();
-      if (trimmed) {
-        normalizedPayload.set('name', trimmed);
-      }
-    }
-
-    if (typeof rawCurrentPrice === 'string') {
-      const trimmed = rawCurrentPrice.trim();
-      if (trimmed) {
-        normalizedPayload.set('current_price', trimmed);
-      }
-    }
-
-    if (typeof rawCategory === 'string') {
-      const trimmed = rawCategory.trim();
-      if (trimmed) {
-        normalizedPayload.set('category', trimmed);
-      }
-    }
-
-    if (typeof rawOrderMode === 'string') {
-      const trimmed = rawOrderMode.trim();
-      if (trimmed) {
-        normalizedPayload.set('order_mode', trimmed);
-      }
-    }
-
-    if (typeof rawOrderConfig === 'string') {
-      const trimmed = rawOrderConfig.trim();
-      if (trimmed) {
-        normalizedPayload.set('order_config', trimmed);
-      }
-    }
-
-    if (typeof rawIsAvailable === 'string') {
-      const normalized = rawIsAvailable.trim().toLowerCase();
-      if (normalized === 'true' || normalized === '1') {
-        normalizedPayload.set('is_available', 'true');
-      } else if (normalized === 'false' || normalized === '0') {
-        normalizedPayload.set('is_available', 'false');
-      }
-    }
-
-    if (file instanceof File && file.size > 0) {
-      normalizedPayload.set('file', file);
-    }
+    const normalizedPayload = normalizeUpdateProductPayload(formData);
 
     const response = await productsService.updateProduct(
       productId,

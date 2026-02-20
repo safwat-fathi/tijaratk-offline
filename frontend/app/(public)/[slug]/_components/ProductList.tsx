@@ -73,6 +73,460 @@ const resolveProductMode = (product: Product): SelectionMode => {
 	return "quantity";
 };
 
+const resolveModeLabel = (mode: SelectionMode) => {
+	if (mode === "quantity") {
+		return "بالعدد";
+	}
+
+	if (mode === "weight") {
+		return "بالوزن";
+	}
+
+	return "بالمبلغ";
+};
+
+const resolveQuantityUnitLabel = (product: Product) =>
+	product.order_config?.quantity?.unit_label || "قطعة";
+
+type ProductListCardProps = {
+	product: Product;
+	selection?: ProductCartSelection;
+	preferredQuantityUnitId?: string;
+	loadMoreRef?: (node: HTMLDivElement | null) => void;
+	onQuantityDelta: (product: Product, delta: number) => void;
+	onQuantityUnitChange: (product: Product, unitOptionId: string) => void;
+	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
+	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
+	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	onOpenAvailabilitySheet: (product: Product) => void;
+};
+
+const resolveSelectionMetrics = ({
+	product,
+	selection,
+	preferredQuantityUnitId,
+}: {
+	product: Product;
+	selection?: ProductCartSelection;
+	preferredQuantityUnitId?: string;
+}) => {
+	const quantityOptions = resolveQuantityOptions(product);
+	const selectedQty =
+		selection?.selection_mode === "quantity"
+			? Number(selection.selection_quantity || 0)
+			: 0;
+	const selectedGrams =
+		selection?.selection_mode === "weight"
+			? Number(selection.selection_grams || 0)
+			: 0;
+	const selectedAmount =
+		selection?.selection_mode === "price"
+			? Number(selection.selection_amount_egp || 0)
+			: 0;
+	const weightPresets =
+		product.order_config?.weight?.preset_grams?.length
+			? product.order_config.weight.preset_grams
+			: DEFAULT_WEIGHT_PRESETS;
+	const pricePresets =
+		product.order_config?.price?.preset_amounts_egp?.length
+			? product.order_config.price.preset_amounts_egp
+			: DEFAULT_PRICE_PRESETS;
+	const selectedUnitId =
+		preferredQuantityUnitId ||
+		(selection?.selection_mode === "quantity"
+			? selection.unit_option_id
+			: undefined) ||
+		quantityOptions[0]?.id;
+
+	return {
+		quantityOptions,
+		selectedQty,
+		selectedGrams,
+		selectedAmount,
+		weightPresets,
+		pricePresets,
+		selectedUnitId,
+		isCustomWeightSelection:
+			selectedGrams > 0 && !weightPresets.includes(selectedGrams),
+	};
+};
+
+type QuantitySelectionControlsProps = {
+	product: Product;
+	quantityOptions: ReturnType<typeof resolveQuantityOptions>;
+	selectedUnitId?: string;
+	selectedQty: number;
+	onQuantityDelta: (product: Product, delta: number) => void;
+	onQuantityUnitChange: (product: Product, unitOptionId: string) => void;
+};
+
+const QuantitySelectionControls = ({
+	product,
+	quantityOptions,
+	selectedUnitId,
+	selectedQty,
+	onQuantityDelta,
+	onQuantityUnitChange,
+}: QuantitySelectionControlsProps) => (
+	<div className="space-y-2">
+		{quantityOptions.length > 0 && (
+			<div className="flex flex-wrap gap-2">
+				{quantityOptions.map((option) => (
+					<button
+						key={option.id}
+						type="button"
+						onClick={() => onQuantityUnitChange(product, option.id)}
+						className={`rounded-full border px-3 py-1 text-xs font-medium ${
+							selectedUnitId === option.id
+								? "border-indigo-600 bg-indigo-50 text-indigo-700"
+								: "border-gray-300 bg-white text-gray-700"
+						}`}
+					>
+						{option.label}
+					</button>
+				))}
+			</div>
+		)}
+
+		<div className="flex items-center gap-2">
+			{selectedQty > 0 && (
+				<>
+					<button
+						type="button"
+						onClick={() => onQuantityDelta(product, -1)}
+						className="h-10 w-10 rounded-full border border-gray-300 text-lg text-gray-700 active:scale-[0.97]"
+					>
+						-
+					</button>
+					<span className="min-w-8 text-center text-sm font-bold text-gray-900">
+						{selectedQty}
+					</span>
+				</>
+			)}
+			<button
+				type="button"
+				onClick={() => onQuantityDelta(product, 1)}
+				className="h-10 w-10 rounded-full bg-indigo-600 text-lg text-white active:scale-[0.97]"
+			>
+				+
+			</button>
+			<span className="text-xs text-gray-500">{resolveQuantityUnitLabel(product)}</span>
+		</div>
+	</div>
+);
+
+type WeightSelectionControlsProps = {
+	product: Product;
+	weightPresets: number[];
+	selectedGrams: number;
+	isCustomWeightSelection: boolean;
+	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
+	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
+	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+};
+
+const WeightSelectionControls = ({
+	product,
+	weightPresets,
+	selectedGrams,
+	isCustomWeightSelection,
+	onPresetSelection,
+	onUpdateSelection,
+	onOpenCustomSheet,
+}: WeightSelectionControlsProps) => (
+	<div className="space-y-2">
+		<p className="text-xs font-semibold text-gray-700">اختار الكمية:</p>
+		<div className="flex flex-wrap gap-2">
+			{weightPresets.map((grams) => (
+				<button
+					key={grams}
+					type="button"
+					onClick={() => onPresetSelection(product, "weight", grams)}
+					aria-pressed={selectedGrams === grams}
+					className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+						selectedGrams === grams
+							? "border-indigo-600 bg-indigo-50 text-indigo-700"
+							: "border-gray-300 bg-white text-gray-700"
+					}`}
+				>
+					{grams} جم
+				</button>
+			))}
+			<button
+				type="button"
+				onClick={() => {
+					if (isCustomWeightSelection) {
+						onUpdateSelection(product, null);
+						return;
+					}
+
+					onOpenCustomSheet(product, "weight");
+				}}
+				aria-pressed={isCustomWeightSelection}
+				className={`rounded-full border border-dashed px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+					isCustomWeightSelection
+						? "border-indigo-600 bg-indigo-50 text-indigo-700"
+						: "border-gray-400 text-gray-700"
+				}`}
+			>
+				{isCustomWeightSelection
+					? `كمية مخصصة (${selectedGrams} جم)`
+					: "كمية مخصصة"}
+			</button>
+		</div>
+	</div>
+);
+
+type PriceSelectionControlsProps = {
+	product: Product;
+	pricePresets: number[];
+	selectedAmount: number;
+	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
+	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+};
+
+const PriceSelectionControls = ({
+	product,
+	pricePresets,
+	selectedAmount,
+	onPresetSelection,
+	onOpenCustomSheet,
+}: PriceSelectionControlsProps) => (
+	<div className="space-y-2">
+		<p className="text-xs font-semibold text-gray-700">اختار المبلغ:</p>
+		<div className="flex flex-wrap gap-2">
+			{pricePresets.map((amount) => (
+				<button
+					key={amount}
+					type="button"
+					onClick={() => onPresetSelection(product, "price", amount)}
+					className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+						selectedAmount === amount
+							? "border-indigo-600 bg-indigo-50 text-indigo-700"
+							: "border-gray-300 bg-white text-gray-700"
+					}`}
+				>
+					{amount} جنيه
+				</button>
+			))}
+			<button
+				type="button"
+				onClick={() => onOpenCustomSheet(product, "price")}
+				className="rounded-full border border-dashed border-gray-400 px-3 py-1 text-xs font-medium text-gray-700 active:scale-[0.97]"
+			>
+				مبلغ مخصص
+			</button>
+		</div>
+	</div>
+);
+
+type ProductSelectionControlsProps = {
+	product: Product;
+	mode: SelectionMode;
+	isUnavailable: boolean;
+	quantityOptions: ReturnType<typeof resolveQuantityOptions>;
+	selectedUnitId?: string;
+	selectedQty: number;
+	selectedGrams: number;
+	selectedAmount: number;
+	weightPresets: number[];
+	pricePresets: number[];
+	isCustomWeightSelection: boolean;
+	onQuantityDelta: (product: Product, delta: number) => void;
+	onQuantityUnitChange: (product: Product, unitOptionId: string) => void;
+	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
+	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
+	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	onOpenAvailabilitySheet: (product: Product) => void;
+};
+
+const ProductSelectionControls = ({
+	product,
+	mode,
+	isUnavailable,
+	quantityOptions,
+	selectedUnitId,
+	selectedQty,
+	selectedGrams,
+	selectedAmount,
+	weightPresets,
+	pricePresets,
+	isCustomWeightSelection,
+	onQuantityDelta,
+	onQuantityUnitChange,
+	onPresetSelection,
+	onUpdateSelection,
+	onOpenCustomSheet,
+	onOpenAvailabilitySheet,
+}: ProductSelectionControlsProps) => {
+	if (isUnavailable) {
+		return (
+			<button
+				type="button"
+				onClick={() => onOpenAvailabilitySheet(product)}
+				className="w-full rounded-xl border border-amber-300 bg-white px-4 py-3 text-sm font-semibold text-amber-800"
+			>
+				اطلب توفير المنتج
+			</button>
+		);
+	}
+
+	if (mode === "quantity") {
+		return (
+			<QuantitySelectionControls
+				product={product}
+				quantityOptions={quantityOptions}
+				selectedUnitId={selectedUnitId}
+				selectedQty={selectedQty}
+				onQuantityDelta={onQuantityDelta}
+				onQuantityUnitChange={onQuantityUnitChange}
+			/>
+		);
+	}
+
+	if (mode === "weight") {
+		return (
+			<WeightSelectionControls
+				product={product}
+				weightPresets={weightPresets}
+				selectedGrams={selectedGrams}
+				isCustomWeightSelection={isCustomWeightSelection}
+				onPresetSelection={onPresetSelection}
+				onUpdateSelection={onUpdateSelection}
+				onOpenCustomSheet={onOpenCustomSheet}
+			/>
+		);
+	}
+
+	return (
+		<PriceSelectionControls
+			product={product}
+			pricePresets={pricePresets}
+			selectedAmount={selectedAmount}
+			onPresetSelection={onPresetSelection}
+			onOpenCustomSheet={onOpenCustomSheet}
+		/>
+	);
+};
+
+const ProductListCard = ({
+	product,
+	selection,
+	preferredQuantityUnitId,
+	loadMoreRef,
+	onQuantityDelta,
+	onQuantityUnitChange,
+	onPresetSelection,
+	onUpdateSelection,
+	onOpenCustomSheet,
+	onOpenAvailabilitySheet,
+}: ProductListCardProps) => {
+	const mode = resolveProductMode(product);
+	const isUnavailable = product.is_available === false;
+	const priceValue = parseProductPrice(product);
+	const priceText = priceValue ? formatCurrency(priceValue) : null;
+	const {
+		quantityOptions,
+		selectedQty,
+		selectedGrams,
+		selectedAmount,
+		weightPresets,
+		pricePresets,
+		selectedUnitId,
+		isCustomWeightSelection,
+	} = resolveSelectionMetrics({
+		product,
+		selection,
+		preferredQuantityUnitId,
+	});
+
+	return (
+		<div
+			ref={loadMoreRef}
+			className={`rounded-2xl border p-4 shadow-sm ${
+				isUnavailable ? "border-gray-200 bg-gray-50" : "border-gray-200 bg-white"
+			}`}
+		>
+			<div className="flex items-center gap-3">
+				<div
+					className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-1 ${
+						isUnavailable ? "bg-gray-100 ring-gray-200" : "bg-gray-100 ring-gray-100"
+					}`}
+				>
+					{product.image_url ? (
+						<Image
+							src={getImageUrl(product.image_url)}
+							alt={product.name}
+							className={`h-full w-full object-cover ${isUnavailable ? "grayscale" : ""}`}
+							width={56}
+							height={56}
+							loading="lazy"
+							unoptimized
+						/>
+					) : (
+						<div className="flex h-full w-full items-center justify-center text-base">
+							🛒
+						</div>
+					)}
+				</div>
+
+				<div className="flex-1">
+					<h3
+						className={`text-base font-semibold ${
+							isUnavailable ? "text-gray-600" : "text-gray-900"
+						}`}
+					>
+						{product.name}
+					</h3>
+					<p
+						className={`text-xs ${
+							isUnavailable ? "text-gray-400" : "text-gray-500"
+						}`}
+					>
+						{priceText ? `السعر: ${priceText}` : "السعر يتم تأكيده بعد الطلب"}
+					</p>
+					<div className="mt-1 flex items-center gap-2">
+						<p
+							className={`text-[11px] font-semibold ${
+								isUnavailable ? "text-gray-500" : "text-indigo-700"
+							}`}
+						>
+							{resolveModeLabel(mode)}
+						</p>
+						{isUnavailable && (
+							<span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
+								غير متاح حالياً
+							</span>
+						)}
+					</div>
+				</div>
+			</div>
+
+			<div className="mt-3">
+				<ProductSelectionControls
+					product={product}
+					mode={mode}
+					isUnavailable={isUnavailable}
+					quantityOptions={quantityOptions}
+					selectedUnitId={selectedUnitId}
+					selectedQty={selectedQty}
+					selectedGrams={selectedGrams}
+					selectedAmount={selectedAmount}
+					weightPresets={weightPresets}
+					pricePresets={pricePresets}
+					isCustomWeightSelection={isCustomWeightSelection}
+					onQuantityDelta={onQuantityDelta}
+					onQuantityUnitChange={onQuantityUnitChange}
+					onPresetSelection={onPresetSelection}
+					onUpdateSelection={onUpdateSelection}
+					onOpenCustomSheet={onOpenCustomSheet}
+					onOpenAvailabilitySheet={onOpenAvailabilitySheet}
+				/>
+			</div>
+		</div>
+	);
+};
+
 export default function ProductList({
 	products,
 	selections,
@@ -128,9 +582,6 @@ export default function ProductList({
 				Number(option.multiplier) > 0,
 		);
 	};
-
-	const resolveQuantityUnitLabel = (product: Product) =>
-		product.order_config?.quantity?.unit_label || "قطعة";
 
 	const handleQuantityDelta = (product: Product, delta: number) => {
 		if (!product.is_available) {
@@ -269,269 +720,37 @@ export default function ProductList({
 
 	return (
 		<>
-			<div className="space-y-4">
-				{products.map((product, index) => {
-					const mode = resolveProductMode(product);
-					const isUnavailable = product.is_available === false;
-					const priceValue = parseProductPrice(product);
-					const priceText = priceValue ? formatCurrency(priceValue) : null;
-					const selection = selections[product.id];
-					const quantityOptions = resolveQuantityOptions(product);
-					const shouldAttachLoadMoreRef =
-						typeof loadMoreTriggerIndex === "number" &&
-						loadMoreTriggerIndex >= 0 &&
-						index === loadMoreTriggerIndex;
+				<div className="space-y-4">
+					{products.map((product, index) => {
+						const selection = selections[product.id];
+						const shouldAttachLoadMoreRef =
+							typeof loadMoreTriggerIndex === "number" &&
+							loadMoreTriggerIndex >= 0 &&
+							index === loadMoreTriggerIndex;
 
-					const selectedQty =
-						selection?.selection_mode === "quantity"
-							? Number(selection.selection_quantity || 0)
-							: 0;
-					const selectedGrams =
-						selection?.selection_mode === "weight"
-							? Number(selection.selection_grams || 0)
-							: 0;
-					const selectedAmount =
-						selection?.selection_mode === "price"
-							? Number(selection.selection_amount_egp || 0)
-							: 0;
-
-					const weightPresets =
-						product.order_config?.weight?.preset_grams?.length
-							? product.order_config.weight.preset_grams
-							: DEFAULT_WEIGHT_PRESETS;
-					const pricePresets =
-						product.order_config?.price?.preset_amounts_egp?.length
-							? product.order_config.price.preset_amounts_egp
-							: DEFAULT_PRICE_PRESETS;
-
-					const selectedUnitId =
-						preferredQuantityUnitByProduct[product.id] ||
-						(selection?.selection_mode === "quantity"
-							? selection.unit_option_id
-							: undefined) ||
-						quantityOptions[0]?.id;
-					const isCustomWeightSelection =
-						selectedGrams > 0 && !weightPresets.includes(selectedGrams);
-
-					return (
-						<div
-							key={product.id}
-							ref={shouldAttachLoadMoreRef ? setLoadMoreTarget : undefined}
-							className={`rounded-2xl border p-4 shadow-sm ${
-								isUnavailable
-									? "border-gray-200 bg-gray-50"
-									: "border-gray-200 bg-white"
-							}`}
-						>
-							<div className="flex items-center gap-3">
-								<div
-									className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-1 ${
-										isUnavailable
-											? "bg-gray-100 ring-gray-200"
-											: "bg-gray-100 ring-gray-100"
-									}`}
-								>
-									{product.image_url ? (
-										<Image
-											src={getImageUrl(product.image_url)}
-											alt={product.name}
-											className={`h-full w-full object-cover ${
-												isUnavailable ? "grayscale" : ""
-											}`}
-											width={56}
-											height={56}
-											loading="lazy"
-											unoptimized
-										/>
-									) : (
-										<div className="flex h-full w-full items-center justify-center text-base">
-											🛒
-										</div>
-									)}
-								</div>
-
-								<div className="flex-1">
-									<h3
-										className={`text-base font-semibold ${
-											isUnavailable ? "text-gray-600" : "text-gray-900"
-										}`}
-									>
-										{product.name}
-									</h3>
-									<p
-										className={`text-xs ${
-											isUnavailable ? "text-gray-400" : "text-gray-500"
-										}`}
-									>
-										{priceText ? `السعر: ${priceText}` : "السعر يتم تأكيده بعد الطلب"}
-									</p>
-									<div className="mt-1 flex items-center gap-2">
-										<p
-											className={`text-[11px] font-semibold ${
-												isUnavailable ? "text-gray-500" : "text-indigo-700"
-											}`}
-										>
-											{mode === "quantity"
-												? "بالعدد"
-												: mode === "weight"
-													? "بالوزن"
-													: "بالمبلغ"}
-										</p>
-										{isUnavailable && (
-											<span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
-												غير متاح حالياً
-											</span>
-										)}
-									</div>
-								</div>
-							</div>
-
-							<div className="mt-3">
-								{isUnavailable ? (
-									<button
-										type="button"
-										onClick={() => setAvailabilitySheet({ product })}
-										className="w-full rounded-xl border border-amber-300 bg-white px-4 py-3 text-sm font-semibold text-amber-800"
-									>
-										اطلب توفير المنتج
-									</button>
-								) : (
-									<>
-										{mode === "quantity" && (
-											<div className="space-y-2">
-												{quantityOptions.length > 0 && (
-													<div className="flex flex-wrap gap-2">
-														{quantityOptions.map(option => (
-															<button
-																key={option.id}
-																type="button"
-																onClick={() =>
-																	handleQuantityUnitChange(product, option.id)
-																}
-																className={`rounded-full border px-3 py-1 text-xs font-medium ${
-																	selectedUnitId === option.id
-																		? "border-indigo-600 bg-indigo-50 text-indigo-700"
-																		: "border-gray-300 bg-white text-gray-700"
-																}`}
-															>
-																{option.label}
-															</button>
-														))}
-													</div>
-												)}
-
-												<div className="flex items-center gap-2">
-													{selectedQty > 0 && (
-														<>
-															<button
-																type="button"
-																onClick={() => handleQuantityDelta(product, -1)}
-																className="h-10 w-10 rounded-full border border-gray-300 text-lg text-gray-700 active:scale-[0.97]"
-															>
-																-
-															</button>
-															<span className="min-w-8 text-center text-sm font-bold text-gray-900">
-																{selectedQty}
-															</span>
-														</>
-													)}
-													<button
-														type="button"
-														onClick={() => handleQuantityDelta(product, 1)}
-														className="h-10 w-10 rounded-full bg-indigo-600 text-lg text-white active:scale-[0.97]"
-													>
-														+
-													</button>
-													<span className="text-xs text-gray-500">
-														{resolveQuantityUnitLabel(product)}
-													</span>
-												</div>
-											</div>
-										)}
-
-										{mode === "weight" && (
-											<div className="space-y-2">
-												<p className="text-xs font-semibold text-gray-700">اختار الكمية:</p>
-												<div className="flex flex-wrap gap-2">
-													{weightPresets.map(grams => (
-														<button
-															key={grams}
-															type="button"
-															onClick={() =>
-																handlePresetSelection(product, "weight", grams)
-															}
-															aria-pressed={selectedGrams === grams}
-															className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
-																selectedGrams === grams
-																	? "border-indigo-600 bg-indigo-50 text-indigo-700"
-																	: "border-gray-300 bg-white text-gray-700"
-															}`}
-														>
-															{grams} جم
-														</button>
-													))}
-														<button
-															type="button"
-															onClick={() => {
-																if (isCustomWeightSelection) {
-																	onUpdateSelection(product, null);
-																	return;
-																}
-
-																setCustomSheet({ product, mode: "weight" });
-															}}
-															aria-pressed={isCustomWeightSelection}
-															className={`rounded-full border border-dashed px-3 py-1 text-xs font-medium active:scale-[0.97] ${
-																isCustomWeightSelection
-																	? "border-indigo-600 bg-indigo-50 text-indigo-700"
-																	: "border-gray-400 text-gray-700"
-														}`}
-													>
-															{isCustomWeightSelection
-																? `كمية مخصصة (${selectedGrams} جم)`
-																: "كمية مخصصة"}
-														</button>
-													</div>
-												</div>
-											)}
-
-										{mode === "price" && (
-											<div className="space-y-2">
-												<p className="text-xs font-semibold text-gray-700">اختار المبلغ:</p>
-												<div className="flex flex-wrap gap-2">
-													{pricePresets.map(amount => (
-														<button
-															key={amount}
-															type="button"
-															onClick={() =>
-																handlePresetSelection(product, "price", amount)
-															}
-															className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
-																selectedAmount === amount
-																	? "border-indigo-600 bg-indigo-50 text-indigo-700"
-																	: "border-gray-300 bg-white text-gray-700"
-															}`}
-														>
-															{amount} جنيه
-														</button>
-													))}
-													<button
-														type="button"
-														onClick={() => setCustomSheet({ product, mode: "price" })}
-														className="rounded-full border border-dashed border-gray-400 px-3 py-1 text-xs font-medium text-gray-700 active:scale-[0.97]"
-													>
-														مبلغ مخصص
-													</button>
-												</div>
-											</div>
-										)}
-									</>
-								)}
-							</div>
-						</div>
-					);
-				})}
-			</div>
+						return (
+							<ProductListCard
+								key={product.id}
+								product={product}
+								selection={selection}
+								preferredQuantityUnitId={preferredQuantityUnitByProduct[product.id]}
+								loadMoreRef={
+									shouldAttachLoadMoreRef ? setLoadMoreTarget : undefined
+								}
+								onQuantityDelta={handleQuantityDelta}
+								onQuantityUnitChange={handleQuantityUnitChange}
+								onPresetSelection={handlePresetSelection}
+								onUpdateSelection={onUpdateSelection}
+								onOpenCustomSheet={(selectedProduct, mode) =>
+									setCustomSheet({ product: selectedProduct, mode })
+								}
+								onOpenAvailabilitySheet={(selectedProduct) =>
+									setAvailabilitySheet({ product: selectedProduct })
+								}
+							/>
+						);
+					})}
+				</div>
 
 			{customSheet && selectedProduct && (
 				<div

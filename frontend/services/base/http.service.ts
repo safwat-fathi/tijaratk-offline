@@ -43,6 +43,78 @@ const toReadableMessage = (value: unknown): string | null => {
 	return null;
 };
 
+const extractMessageFromArray = (value: unknown[], depth: number): string | null => {
+	for (const item of value) {
+		const nestedMessage = extractFirstReadableMessage(item, depth + 1);
+		if (nestedMessage) {
+			return nestedMessage;
+		}
+	}
+
+	return null;
+};
+
+const extractMessageFromRecordByPreferredKeys = (
+	value: Record<string, unknown>,
+	depth: number,
+): string | null => {
+	const nestedMessageFromMessage = extractFirstReadableMessage(
+		value.message,
+		depth + 1,
+	);
+	if (nestedMessageFromMessage) {
+		return nestedMessageFromMessage;
+	}
+
+	const nestedMessageFromError = extractFirstReadableMessage(
+		value.error,
+		depth + 1,
+	);
+	if (nestedMessageFromError) {
+		return nestedMessageFromError;
+	}
+
+	const nestedMessageFromDetail = extractFirstReadableMessage(
+		value.detail,
+		depth + 1,
+	);
+	if (nestedMessageFromDetail) {
+		return nestedMessageFromDetail;
+	}
+
+	const nestedMessageFromDetails = extractFirstReadableMessage(
+		value.details,
+		depth + 1,
+	);
+	if (nestedMessageFromDetails) {
+		return nestedMessageFromDetails;
+	}
+
+	const nestedMessageFromErrors = extractFirstReadableMessage(
+		value.errors,
+		depth + 1,
+	);
+	if (nestedMessageFromErrors) {
+		return nestedMessageFromErrors;
+	}
+
+	return extractFirstReadableMessage(value.constraints, depth + 1);
+};
+
+const extractMessageFromRecordValues = (
+	value: Record<string, unknown>,
+	depth: number,
+): string | null => {
+	for (const nestedValue of Object.values(value)) {
+		const nestedMessage = extractFirstReadableMessage(nestedValue, depth + 1);
+		if (nestedMessage) {
+			return nestedMessage;
+		}
+	}
+
+	return null;
+};
+
 const extractFirstReadableMessage = (value: unknown, depth = 0): string | null => {
 	if (depth > 6 || value === null || value === undefined) {
 		return null;
@@ -54,40 +126,19 @@ const extractFirstReadableMessage = (value: unknown, depth = 0): string | null =
 	}
 
 	if (Array.isArray(value)) {
-		for (const item of value) {
-			const nestedMessage = extractFirstReadableMessage(item, depth + 1);
-			if (nestedMessage) {
-				return nestedMessage;
-			}
-		}
-
-		return null;
+		return extractMessageFromArray(value, depth);
 	}
 
 	if (!isRecord(value)) {
 		return null;
 	}
 
-	const preferredKeys = ["message", "error", "detail", "details", "errors", "constraints"];
-	for (const key of preferredKeys) {
-		if (!(key in value)) {
-			continue;
-		}
-
-		const nestedMessage = extractFirstReadableMessage(value[key], depth + 1);
-		if (nestedMessage) {
-			return nestedMessage;
-		}
+	const preferredKeyMessage = extractMessageFromRecordByPreferredKeys(value, depth);
+	if (preferredKeyMessage) {
+		return preferredKeyMessage;
 	}
 
-	for (const nestedValue of Object.values(value)) {
-		const nestedMessage = extractFirstReadableMessage(nestedValue, depth + 1);
-		if (nestedMessage) {
-			return nestedMessage;
-		}
-	}
-
-	return null;
+	return extractMessageFromRecordValues(value, depth);
 };
 
 export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
@@ -178,36 +229,28 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 		return headers;
 	}
 
-	private async _request<R = T>(
-		route: string,
+	private _buildFullURL(route: string, params?: IParams): string {
+		const urlParams = createParams(params || {});
+		const searchParams = urlParams.toString();
+		return searchParams
+			? `${this._baseUrl}/${route}?${searchParams}`
+			: `${this._baseUrl}/${route}`;
+	}
+
+	private _buildRequestOptions(
 		method: TMethod,
-		options: HttpRequestOptions = {},
-		params?: IParams
-	): Promise<ServiceResponse<R>> {
-		try {
-			// Validate base URL is configured
-			if (!this._baseUrl || this._baseUrl.startsWith("undefined")) {
-				return {
-					success: false,
-					message:
-						"API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in your .env.local file.",
-				};
-			}
+		options: HttpRequestOptions,
+		authHeaders: HeadersInit,
+	): { requestOptions: RequestInit; authRequired: boolean } {
+		const {
+			authRequired = false,
+			timeoutMs = this._timeout,
+			...requestOverrides
+		} = options;
 
-			const authHeaders = await this._getAuthHeaders();
-			const urlParams = createParams(params || {});
-			const searchParams = urlParams.toString();
-			const fullURL = searchParams
-				? `${this._baseUrl}/${route}?${searchParams}`
-				: `${this._baseUrl}/${route}`;
-			const {
-				authRequired = false,
-				timeoutMs = this._timeout,
-				...requestOverrides
-			} = options;
-
-			// Create a new AbortSignal for each request
-			const requestOptions: RequestInit = {
+		return {
+			authRequired,
+			requestOptions: {
 				...requestOverrides,
 				signal: requestOverrides.signal || AbortSignal.timeout(timeoutMs),
 				method,
@@ -217,63 +260,95 @@ export default class HttpService<T = unknown> extends HttpServiceAbstract<T> {
 					...requestOverrides.headers,
 				},
 				credentials: "include",
-			};
+			},
+		};
+	}
+
+	private async _handleNonOkResponse<R>(
+		response: Response,
+		authRequired: boolean,
+	): Promise<ServiceResponse<R>> {
+		const { message, data } = await this._parseErrorResponse(response);
+		const errors =
+			isRecord(data) && Array.isArray(data.errors) ? data.errors : undefined;
+
+		if (response.status === 401 && authRequired) {
+			await this._handleUnauthorized();
+		}
+
+		return {
+			success: false,
+			message,
+			data: data as R,
+			errors,
+		};
+	}
+
+	private async _parseSuccessResponse<R>(response: Response): Promise<ServiceResponse<R>> {
+		const contentType = response.headers.get("content-type");
+		const isJson = contentType?.includes("application/json");
+		let data: unknown;
+
+		if (isJson) {
+			try {
+				const rawData = (await response.json()) as unknown;
+				if (
+					rawData &&
+					typeof rawData === "object" &&
+					"data" in rawData &&
+					"success" in rawData
+				) {
+					data = (rawData as { data: unknown }).data;
+				} else {
+					data = rawData;
+				}
+			} catch {
+				data = null;
+			}
+		} else {
+			data = await response.text();
+		}
+
+		return {
+			success: true,
+			data: data as R,
+		};
+	}
+
+	private async _request<R = T>(
+		route: string,
+		method: TMethod,
+		options: HttpRequestOptions = {},
+		params?: IParams
+	): Promise<ServiceResponse<R>> {
+		try {
+			if (!this._baseUrl || this._baseUrl.startsWith("undefined")) {
+				return {
+					success: false,
+					message:
+						"API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL in your .env.local file.",
+				};
+			}
+
+			const authHeaders = await this._getAuthHeaders();
+			const fullURL = this._buildFullURL(route, params);
+			const { requestOptions, authRequired } = this._buildRequestOptions(
+				method,
+				options,
+				authHeaders,
+			);
 
 			const response = await fetch(fullURL, requestOptions);
 
-			// Handle no content
 			if (response.status === 204) {
 				return { success: true };
 			}
 
-				if (!response.ok) {
-					const { message, data } = await this._parseErrorResponse(response);
-					const errors =
-						isRecord(data) && Array.isArray(data.errors) ? data.errors : undefined;
-
-					if (response.status === 401 && authRequired) {
-						await this._handleUnauthorized();
-				}
-
-					return {
-						success: false,
-						message,
-						data: data as R,
-						errors,
-					};
-				}
-
-			// Parse response
-			const contentType = response.headers.get("content-type");
-			const isJson = contentType?.includes("application/json");
-
-			let data: unknown;
-
-			if (isJson) {
-				try {
-					const rawData = (await response.json()) as unknown;
-					// Unwrap NestJS standard response { success, message, data }
-					if (
-						rawData &&
-						typeof rawData === "object" &&
-						"data" in rawData &&
-						"success" in rawData
-					) {
-						data = (rawData as { data: unknown }).data;
-					} else {
-						data = rawData;
-					}
-				} catch {
-					data = null;
-				}
-			} else {
-				data = await response.text();
+			if (!response.ok) {
+				return this._handleNonOkResponse(response, authRequired);
 			}
 
-			return {
-				success: true,
-				data: data as R,
-			};
+			return this._parseSuccessResponse<R>(response);
 		} catch (error) {
 			if (isNextRedirectError(error)) {
 				throw error;

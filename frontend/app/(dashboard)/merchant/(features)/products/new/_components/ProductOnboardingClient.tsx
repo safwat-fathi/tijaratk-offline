@@ -58,6 +58,16 @@ type ProductOnboardingClientProps = {
 	productCategories: string[];
 };
 
+const removeProductFromList = (productList: Product[], productId: number) =>
+	productList.filter((item) => item.id !== productId);
+
+const replaceProductInList = (
+	productList: Product[],
+	productId: number,
+	updatedProduct: Product,
+) =>
+	productList.map((item) => (item.id === productId ? updatedProduct : item));
+
 export default function ProductOnboardingClient({
 	initialProducts,
 	catalogItems,
@@ -140,7 +150,7 @@ export default function ProductOnboardingClient({
 	const [searchError, setSearchError] = useState<string | null>(null);
 	const [searchRefreshKey, setSearchRefreshKey] = useState(0);
 
-	const productRowRefs = useRef<Record<number, HTMLLIElement | null>>({});
+	const productRowRefs = useRef<Map<number, HTMLLIElement | null>>(new Map());
 
 	const [isPending, startTransition] = useTransition();
 	const [isEditPending, startEditTransition] = useTransition();
@@ -318,7 +328,7 @@ export default function ProductOnboardingClient({
 		setConfirmRemoveProductId(null);
 
 		requestAnimationFrame(() => {
-			const row = productRowRefs.current[product.id];
+				const row = productRowRefs.current.get(product.id);
 			if (!row) {
 				return;
 			}
@@ -529,7 +539,7 @@ export default function ProductOnboardingClient({
 				return;
 			}
 
-			setProducts(prev => prev.filter(item => item.id !== product.id));
+			setProducts((prev) => removeProductFromList(prev, product.id));
 			refreshSearchResultsIfActive();
 			setConfirmRemoveProductId(prev => (prev === product.id ? null : prev));
 			if (editingProduct?.id === product.id) {
@@ -580,6 +590,135 @@ export default function ProductOnboardingClient({
 		);
 	};
 
+	const resolveDuplicateEditProduct = ({
+		editingProductId,
+		trimmedName,
+	}: {
+		editingProductId: number;
+		trimmedName: string;
+	}) =>
+		products.find(
+			(product) =>
+				product.id !== editingProductId &&
+				normalizeProductName(product.name) === normalizeProductName(trimmedName),
+		);
+
+	const handleUpdateProductErrorResponse = ({
+		responseMessage,
+		editingProductId,
+		trimmedName,
+	}: {
+		responseMessage?: string;
+		editingProductId: number;
+		trimmedName: string;
+	}): void => {
+		if (isDuplicateMessage(responseMessage)) {
+			const existingProduct = resolveDuplicateEditProduct({
+				editingProductId,
+				trimmedName,
+			});
+			if (existingProduct) {
+				highlightExistingProduct(existingProduct);
+				return;
+			}
+		}
+
+		const imageErrorMessage = normalizeImageUploadErrorMessage(responseMessage);
+		if (imageErrorMessage) {
+			setMessage(null);
+			setEditImageError(imageErrorMessage);
+			return;
+		}
+
+		setMessage(responseMessage || "تعذر تعديل المنتج، حاول مرة أخرى.");
+	};
+
+	const handleUpdateProductException = (error: unknown): void => {
+		if (isServerActionBodyLimitError(error)) {
+			setMessage(null);
+			setEditImageError(
+				`حجم الصورة كبير. الحد الأقصى ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت.`,
+			);
+			return;
+		}
+
+		const imageErrorMessage = normalizeImageUploadErrorMessage(
+			error instanceof Error ? error.message : undefined,
+		);
+		if (imageErrorMessage) {
+			setMessage(null);
+			setEditImageError(imageErrorMessage);
+			return;
+		}
+
+		setMessage("تعذر تعديل المنتج، حاول مرة أخرى.");
+	};
+
+	const runEditProductSubmit = async ({
+		editingProductId,
+		trimmedName,
+		priceValue,
+		normalizedCategory,
+		selectedImageFile,
+	}: {
+		editingProductId: number;
+		trimmedName: string;
+		priceValue: number | null;
+		normalizedCategory?: string;
+		selectedImageFile: File | null;
+	}) => {
+		try {
+			const formData = new FormData();
+			formData.set("name", trimmedName);
+			formData.set("order_mode", editOrderMode);
+			formData.set(
+				"order_config",
+				JSON.stringify(
+					buildOrderConfigPayload({
+						mode: editOrderMode,
+						unitLabel: editUnitLabel,
+						secondaryLabel: editSecondaryUnitLabel,
+						secondaryMultiplier: editSecondaryUnitMultiplier,
+						weightPresets: editWeightPresets,
+						pricePresets: editPricePresets,
+					}),
+				),
+			);
+			if (priceValue !== null) {
+				formData.set("current_price", String(priceValue));
+			}
+			formData.set("is_available", String(editIsAvailable));
+			if (normalizedCategory) {
+				formData.set("category", normalizedCategory);
+			}
+			if (selectedImageFile) {
+				formData.set("file", selectedImageFile);
+			}
+
+			const response = await updateProductAction(editingProductId, formData);
+			if (!response.success || !response.data) {
+				handleUpdateProductErrorResponse({
+					responseMessage: response.message,
+					editingProductId,
+					trimmedName,
+				});
+				return;
+			}
+
+			const updatedProduct = response.data as Product;
+			setProducts((prev) =>
+				replaceProductInList(prev, editingProductId, updatedProduct),
+			);
+			addCategoryOption(updatedProduct.category);
+			refreshSearchResultsIfActive();
+			setEditImageError(null);
+			setMessage("تم تعديل المنتج");
+			handleCloseEdit();
+		} catch (error) {
+			handleUpdateProductException(error);
+		}
+	};
+
 	const handleEditSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setEditImageError(null);
@@ -606,105 +745,25 @@ export default function ProductOnboardingClient({
 				: editCategoryCustom,
 		);
 
-		const duplicateProduct = products.find(
-			product =>
-				product.id !== editingProduct.id &&
-				normalizeProductName(product.name) ===
-					normalizeProductName(trimmedName),
-		);
+		const duplicateProduct = resolveDuplicateEditProduct({
+			editingProductId: editingProduct.id,
+			trimmedName,
+		});
 		if (duplicateProduct) {
 			highlightExistingProduct(duplicateProduct);
 			return;
 		}
 
-		startEditTransition(async () => {
-			try {
-				const formData = new FormData();
-				formData.set("name", trimmedName);
-				formData.set("order_mode", editOrderMode);
-				formData.set(
-					"order_config",
-					JSON.stringify(
-						buildOrderConfigPayload({
-							mode: editOrderMode,
-							unitLabel: editUnitLabel,
-							secondaryLabel: editSecondaryUnitLabel,
-							secondaryMultiplier: editSecondaryUnitMultiplier,
-							weightPresets: editWeightPresets,
-							pricePresets: editPricePresets,
-						}),
-					),
-				);
-				if (parsedPrice.value !== null) {
-					formData.set("current_price", String(parsedPrice.value));
-				}
-				formData.set("is_available", String(editIsAvailable));
-				if (normalizedCategory) {
-					formData.set("category", normalizedCategory);
-				}
-				if (editImageFile) {
-					formData.set("file", editImageFile);
-				}
-
-				const response = await updateProductAction(editingProduct.id, formData);
-
-				if (!response.success || !response.data) {
-					if (isDuplicateMessage(response.message)) {
-						const existingProduct = products.find(
-							product =>
-								product.id !== editingProduct.id &&
-								normalizeProductName(product.name) ===
-									normalizeProductName(trimmedName),
-						);
-						if (existingProduct) {
-							highlightExistingProduct(existingProduct);
-							return;
-						}
-					}
-
-					const imageErrorMessage = normalizeImageUploadErrorMessage(
-						response.message,
-					);
-					if (imageErrorMessage) {
-						setMessage(null);
-						setEditImageError(imageErrorMessage);
-						return;
-					}
-
-					setMessage(response.message || "تعذر تعديل المنتج، حاول مرة أخرى.");
-					return;
-				}
-
-				setProducts(prev =>
-					prev.map(product =>
-						product.id === editingProduct.id ? response.data! : product,
-					),
-				);
-				addCategoryOption(response.data.category);
-				refreshSearchResultsIfActive();
-				setEditImageError(null);
-				setMessage("تم تعديل المنتج");
-				handleCloseEdit();
-			} catch (error) {
-				if (isServerActionBodyLimitError(error)) {
-					setMessage(null);
-					setEditImageError(
-						`حجم الصورة كبير. الحد الأقصى ${MAX_PRODUCT_IMAGE_SIZE_MB} ميجابايت.`,
-					);
-					return;
-				}
-
-				const imageErrorMessage = normalizeImageUploadErrorMessage(
-					error instanceof Error ? error.message : undefined,
-				);
-				if (imageErrorMessage) {
-					setMessage(null);
-					setEditImageError(imageErrorMessage);
-					return;
-				}
-
-				setMessage("تعذر تعديل المنتج، حاول مرة أخرى.");
-			}
+		const editingProductId = editingProduct.id;
+		const selectedImageFile = editImageFile;
+		startEditTransition(() => {
+			void runEditProductSubmit({
+				editingProductId,
+				trimmedName,
+				priceValue: parsedPrice.value,
+				normalizedCategory,
+				selectedImageFile,
+			});
 		});
 	};
 
@@ -801,9 +860,14 @@ export default function ProductOnboardingClient({
 				onRequestRemove={handleRequestRemove}
 				onRemoveProduct={handleRemoveProduct}
 				onCancelRemove={() => setConfirmRemoveProductId(null)}
-				setProductRowRef={(productId, node) => {
-					productRowRefs.current[productId] = node;
-				}}
+					setProductRowRef={(productId, node) => {
+						if (node) {
+							productRowRefs.current.set(productId, node);
+							return;
+						}
+
+						productRowRefs.current.delete(productId);
+					}}
 			/>
 
 			<EditProductModal

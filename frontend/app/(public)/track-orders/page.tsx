@@ -51,6 +51,16 @@ const statusConfig: Record<
 	},
 };
 
+const statusConfigMap = new Map(
+	Object.entries(statusConfig) as Array<
+		[OrderStatus, { label: string; className: string; hint: string }]
+	>,
+);
+
+function getStatusMeta(status: OrderStatus) {
+	return statusConfigMap.get(status) ?? statusConfigMap.get(OrderStatus.DRAFT)!;
+}
+
 function formatOrderDate(value?: string) {
 	if (!value) return "غير متوفر";
 	return new Date(value).toLocaleString("ar-EG");
@@ -164,7 +174,7 @@ export default async function TrackOrdersPage() {
 					{trackedItems.map(item => {
 						const order = resolveOrder(item, ordersByToken);
 						const status = order?.status ?? OrderStatus.DRAFT;
-						const statusMeta = statusConfig[status] ?? statusConfig[OrderStatus.DRAFT];
+							const statusMeta = getStatusMeta(status);
 						const displayDate = order?.created_at ?? item.created_at;
 						const storeSlug = order?.tenant?.slug ?? item.slug;
 						const storeName = order?.tenant?.name || "المتجر";

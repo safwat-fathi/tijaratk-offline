@@ -18,6 +18,14 @@ export default function Toast({
 	position = "top",
 }: ToastProps) {
 	const [isClosing, setIsClosing] = useState(false);
+	const positionClass = position === "bottom" ? "bottom-24" : "top-4";
+	const closeAnimationClass =
+		position === "bottom" ? "translate-y-4 opacity-0" : "-translate-y-4 opacity-0";
+	const visibilityClass = isClosing ? closeAnimationClass : "translate-y-0 opacity-100";
+	const toneClass =
+		type === "error"
+			? "bg-white border-red-100 text-red-600"
+			: "bg-white border-green-100 text-green-600";
 
 	useEffect(() => {
 		if (!isClosing) {
@@ -35,10 +43,10 @@ export default function Toast({
 		return () => clearTimeout(timer);
 	}, [duration, onClose]);
 
-	return (
-		<div
-			className={`fixed ${position === "bottom" ? "bottom-24" : "top-4"} left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${isClosing ? (position === "bottom" ? "translate-y-4 opacity-0" : "-translate-y-4 opacity-0") : "translate-y-0 opacity-100"} ${type === "error" ? "bg-white border-red-100 text-red-600" : "bg-white border-green-100 text-green-600"}`}
-		>
+		return (
+			<div
+				className={`fixed ${positionClass} left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${visibilityClass} ${toneClass}`}
+			>
 			<div
 				className={`p-1 rounded-full ${type === "error" ? "bg-red-50" : "bg-green-50"}`}
 			>
