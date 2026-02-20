@@ -23,6 +23,7 @@ import {
   SECTION_QUICK_ADD,
 } from './product-onboarding.constants';
 import type {
+  CategoryMode,
   CategoryTab,
   EditFormState,
   ParsedOptionalPrice,
@@ -394,7 +395,7 @@ export const deriveEditFormState = (
   const weightPresetList = product.order_config?.weight?.preset_grams;
   const pricePresetList = product.order_config?.price?.preset_amounts_egp;
 
-  let categoryMode = CATEGORY_MODE_SELECT;
+  let categoryMode: CategoryMode = CATEGORY_MODE_SELECT;
   if (normalizedCategory) {
     categoryMode = availableCategorySet.has(normalizedCategory)
       ? CATEGORY_MODE_SELECT

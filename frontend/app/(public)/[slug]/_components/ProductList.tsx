@@ -88,6 +88,28 @@ const resolveModeLabel = (mode: SelectionMode) => {
 const resolveQuantityUnitLabel = (product: Product) =>
 	product.order_config?.quantity?.unit_label || "قطعة";
 
+export type QuantityOption = {
+	id: string;
+	label: string;
+	multiplier: number | string;
+};
+
+const resolveQuantityOptions = (product: Product): QuantityOption[] => {
+	const options = product.order_config?.quantity?.unit_options;
+	if (!Array.isArray(options) || options.length === 0) {
+		return [];
+	}
+
+	return options.filter(
+		(option: any): option is QuantityOption =>
+			option !== null &&
+			typeof option === "object" &&
+			typeof option.id === "string" &&
+			typeof option.label === "string" &&
+			Number(option.multiplier) > 0,
+	);
+};
+
 type ProductListCardProps = {
 	product: Product;
 	selection?: ProductCartSelection;
@@ -567,20 +589,6 @@ export default function ProductList({
 		}
 
 		setAvailabilitySheet(null);
-	};
-
-	const resolveQuantityOptions = (product: Product) => {
-		const options = product.order_config?.quantity?.unit_options;
-		if (!Array.isArray(options) || options.length === 0) {
-			return [];
-		}
-
-		return options.filter(
-			option =>
-				typeof option.id === "string" &&
-				typeof option.label === "string" &&
-				Number(option.multiplier) > 0,
-		);
 	};
 
 	const handleQuantityDelta = (product: Product, delta: number) => {
