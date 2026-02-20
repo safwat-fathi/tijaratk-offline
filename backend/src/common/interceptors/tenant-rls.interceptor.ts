@@ -56,7 +56,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
     try {
       const tenantId = await this.resolveTenantId(req, queryRunner);
       if (tenantId === TenantRlsInterceptor.NO_TENANT_CONTEXT) {
-        const result = await firstValueFrom(next.handle());
+        const result = await firstValueFrom<unknown>(next.handle());
         await queryRunner.commitTransaction();
         return result;
       }
@@ -71,7 +71,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
 
       const result = await DbTenantContext.run(
         { tenantId, manager: queryRunner.manager },
-        async () => firstValueFrom(next.handle()),
+        async () => firstValueFrom<unknown>(next.handle()),
       );
 
       await queryRunner.commitTransaction();
@@ -157,7 +157,9 @@ export class TenantRlsInterceptor implements NestInterceptor {
    * Extracts tenant id from authenticated request user payload.
    */
   private extractUserTenantId(req: Request): number | null {
-    const tenantId = this.parseTenantId((req as any)?.user?.tenant_id);
+    const tenantId = this.parseTenantId(
+      (req as Request & { user?: { tenant_id?: unknown } }).user?.tenant_id,
+    );
     return tenantId ?? null;
   }
 
@@ -202,7 +204,9 @@ export class TenantRlsInterceptor implements NestInterceptor {
    * Returns true for /products/public/:slug routes.
    */
   private isProductsPublicSlugRoute(parts: string[]): boolean {
-    return parts.length >= 3 && parts[0] === 'products' && parts[1] === 'public';
+    return (
+      parts.length >= 3 && parts[0] === 'products' && parts[1] === 'public'
+    );
   }
 
   /**
@@ -235,14 +239,18 @@ export class TenantRlsInterceptor implements NestInterceptor {
    * Returns true for single-token tracking routes under /orders/tracking/:token.
    */
   private isOrdersTrackingRoute(parts: string[]): boolean {
-    return parts.length >= 3 && parts[0] === 'orders' && parts[1] === 'tracking';
+    return (
+      parts.length >= 3 && parts[0] === 'orders' && parts[1] === 'tracking'
+    );
   }
 
   /**
    * Returns true for batch tracking route /orders/tracking.
    */
   private isOrdersTrackingBatchRoute(parts: string[]): boolean {
-    return parts.length === 2 && parts[0] === 'orders' && parts[1] === 'tracking';
+    return (
+      parts.length === 2 && parts[0] === 'orders' && parts[1] === 'tracking'
+    );
   }
 
   /**
@@ -253,10 +261,10 @@ export class TenantRlsInterceptor implements NestInterceptor {
     queryRunner: QueryRunner,
   ): Promise<number> {
     const normalizedSlug = this.safeDecodePathSegment(slug);
-    const rows = await queryRunner.query(
+    const rows = (await queryRunner.query(
       `SELECT app.resolve_tenant_id_by_slug($1)::int AS tenant_id`,
       [normalizedSlug],
-    );
+    )) as Array<{ tenant_id?: unknown }>;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     if (!tenantId) {
@@ -275,10 +283,10 @@ export class TenantRlsInterceptor implements NestInterceptor {
     token: string,
     queryRunner: QueryRunner,
   ): Promise<number> {
-    const rows = await queryRunner.query(
+    const rows = (await queryRunner.query(
       `SELECT app.resolve_tenant_id_by_order_token($1)::int AS tenant_id`,
       [token],
-    );
+    )) as Array<{ tenant_id?: unknown }>;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     if (!tenantId) {
@@ -361,10 +369,10 @@ export class TenantRlsInterceptor implements NestInterceptor {
     token: string,
     queryRunner: QueryRunner,
   ): Promise<number | null> {
-    const rows = await queryRunner.query(
+    const rows = (await queryRunner.query(
       `SELECT app.resolve_tenant_id_by_order_token($1)::int AS tenant_id`,
       [token],
-    );
+    )) as Array<{ tenant_id?: unknown }>;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     return tenantId ?? null;

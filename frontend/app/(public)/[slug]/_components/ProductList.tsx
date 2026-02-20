@@ -762,7 +762,7 @@ export default function ProductList({
 
 			{customSheet && selectedProduct && (
 				<div
-					className="fixed inset-0 z-[70] flex items-end bg-black/35"
+					className="fixed inset-0 z-70 flex items-end bg-black/35"
 					role="dialog"
 					aria-modal="true"
 				>
@@ -803,7 +803,7 @@ export default function ProductList({
 
 			{availabilitySheet && selectedAvailabilityProduct && (
 				<div
-					className="fixed inset-0 z-[75] flex items-end bg-black/40"
+					className="fixed inset-0 z-75 flex items-end bg-black/40"
 					role="dialog"
 					aria-modal="true"
 				>

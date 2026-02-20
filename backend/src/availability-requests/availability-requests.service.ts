@@ -70,17 +70,20 @@ export class AvailabilityRequestsService {
 
     const requestDate = this.getCairoDateKey();
 
-    const availabilityRequest = this.getAvailabilityRequestsRepository().create({
-      tenant_id: product.tenant_id,
-      product_id: product.id,
-      visitor_key: visitorKey,
-      request_date: requestDate,
-    });
+    const availabilityRequest = this.getAvailabilityRequestsRepository().create(
+      {
+        tenant_id: product.tenant_id,
+        product_id: product.id,
+        visitor_key: visitorKey,
+        request_date: requestDate,
+      },
+    );
 
     try {
-      const saved = await this.getAvailabilityRequestsRepository().save(
-        availabilityRequest,
-      );
+      const saved =
+        await this.getAvailabilityRequestsRepository().save(
+          availabilityRequest,
+        );
 
       return {
         status: 'created',

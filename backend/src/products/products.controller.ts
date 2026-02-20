@@ -37,19 +37,13 @@ import { GetTenantProductsDto } from './dto/get-tenant-products.dto';
 import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 import { parseBooleanLike } from './utils/parse-boolean-like';
 
-type AuthenticatedRequest = Request & {
-  user?: {
-    tenant_id?: number;
-  };
-};
-
 @ApiTags('Products')
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Create product (quick manual add)' })
   @ApiBody({ type: CreateProductDto })
@@ -57,10 +51,7 @@ export class ProductsController {
     status: HttpStatus.CREATED,
     description: 'Product created successfully',
   })
-  create(
-    @Req() req: AuthenticatedRequest,
-    @Body() createProductDto: CreateProductDto,
-  ) {
+  create(@Req() req: Request, @Body() createProductDto: CreateProductDto) {
     const parsedAvailability = this.parseAvailabilityFromRequestBody(req);
     if (parsedAvailability !== undefined) {
       createProductDto.is_available = parsedAvailability;
@@ -75,7 +66,7 @@ export class ProductsController {
   }
 
   @Post('from-catalog')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Create product from catalog item' })
   @ApiBody({ type: AddProductFromCatalogDto })
@@ -84,7 +75,7 @@ export class ProductsController {
     description: 'Product created from catalog successfully',
   })
   createFromCatalog(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: Request,
     @Body() body: AddProductFromCatalogDto,
   ) {
     const tenantId = req.user?.tenant_id;
@@ -96,7 +87,7 @@ export class ProductsController {
   }
 
   @Get('catalog/categories')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get catalog categories' })
   @ApiResponse({
@@ -108,14 +99,14 @@ export class ProductsController {
   }
 
   @Get('categories')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get product categories for tenant onboarding' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Return merged catalog and tenant categories',
   })
-  findTenantProductCategories(@Req() req: AuthenticatedRequest) {
+  findTenantProductCategories(@Req() req: Request) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -125,7 +116,7 @@ export class ProductsController {
   }
 
   @Get('catalog')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get catalog items' })
   @ApiQuery({
@@ -139,14 +130,11 @@ export class ProductsController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get all tenant products' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return tenant products' })
-  findAll(
-    @Req() req: AuthenticatedRequest,
-    @Query() query: GetTenantProductsDto,
-  ) {
+  findAll(@Req() req: Request, @Query() query: GetTenantProductsDto) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -206,7 +194,7 @@ export class ProductsController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Get a product by ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return the product' })
@@ -214,7 +202,7 @@ export class ProductsController {
     status: HttpStatus.NOT_FOUND,
     description: 'Product not found',
   })
-  findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+  findOne(@Req() req: Request, @Param('id') id: string) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -224,7 +212,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Update a product' })
   @ApiConsumes('multipart/form-data')
@@ -252,7 +240,7 @@ export class ProductsController {
     description: 'Product updated successfully',
   })
   update(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: Request,
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
     @UploadedFile() file?: Express.Multer.File,
@@ -271,14 +259,14 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
   @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
   @ApiOperation({ summary: 'Archive a product' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Product archived successfully',
   })
-  remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+  remove(@Req() req: Request, @Param('id') id: string) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -287,9 +275,7 @@ export class ProductsController {
     return this.productsService.remove(+id, tenantId);
   }
 
-  private parseAvailabilityFromRequestBody(
-    req: AuthenticatedRequest,
-  ): boolean | undefined {
+  private parseAvailabilityFromRequestBody(req: Request): boolean | undefined {
     const body = req.body as Record<string, unknown> | undefined;
     return parseBooleanLike(body?.is_available);
   }

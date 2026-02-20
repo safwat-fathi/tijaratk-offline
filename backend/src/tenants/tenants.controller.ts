@@ -18,12 +18,6 @@ import { Request } from 'express';
 import CONSTANTS from 'src/common/constants';
 import { TenantsService } from './tenants.service';
 
-type AuthenticatedRequest = Request & {
-  user?: {
-    tenant_id?: number;
-  };
-};
-
 @ApiTags('Tenants')
 @Controller('tenants')
 export class TenantsController {
@@ -39,7 +33,7 @@ export class TenantsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Tenant not found' })
-  async findMe(@Req() req: AuthenticatedRequest) {
+  async findMe(@Req() req: Request) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');

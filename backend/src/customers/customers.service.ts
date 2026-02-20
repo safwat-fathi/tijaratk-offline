@@ -71,17 +71,22 @@ export class CustomersService {
     };
   }
 
-  async findOne(id: number, tenantId: number): Promise<any | null> {
+  async findOne(
+    id: number,
+    tenantId: number,
+  ): Promise<(Customer & { orders?: Order[] }) | null> {
     const customer = await this.getCustomersRepository().findOne({
       where: { id, tenant_id: tenantId },
     });
     if (!customer) return null;
 
-    const [orders, totalOrders] = await this.getOrdersRepository().findAndCount({
-      where: { customer_id: id },
-      order: { created_at: 'DESC' },
-      take: 5,
-    });
+    const [orders, totalOrders] = await this.getOrdersRepository().findAndCount(
+      {
+        where: { customer_id: id },
+        order: { created_at: 'DESC' },
+        take: 5,
+      },
+    );
 
     // Self-healing: Update stats if mismatched
     if (customer.order_count !== totalOrders) {
@@ -108,7 +113,7 @@ export class CustomersService {
       ? scopedManager.getRepository(Customer)
       : this.getCustomersRepository();
 
-    let customer = await repo.findOne({
+    const customer = await repo.findOne({
       where: { phone, tenant_id: tenantId },
     });
 
@@ -184,11 +189,11 @@ export class CustomersService {
     );
 
     // Fetch the new counter value
-    const result = await manager.query(
+    const result = (await manager.query(
       `SELECT customer_counter FROM tenants WHERE id = $1`,
       [tenantId],
-    );
-    const newCode = result[0].customer_counter;
+    )) as Array<{ customer_counter: unknown }>;
+    const newCode = Number(result[0].customer_counter);
 
     const customer = manager.create(Customer, {
       phone,

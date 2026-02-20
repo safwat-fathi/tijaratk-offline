@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-object-injection */
 import { Logger } from '@nestjs/common';
 import { ZodError } from 'zod';
 import {

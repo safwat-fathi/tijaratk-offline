@@ -25,6 +25,7 @@ export function generateSlugBase(text: string): string {
       // Keep Arabic + English + numbers
       .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
       .replace(/[\s_-]+/g, '-')
+      // eslint-disable-next-line sonarjs/slow-regex
       .replace(/^-+|-+$/g, '')
   );
 }

@@ -1,10 +1,4 @@
-import {
-  Column,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  Relation,
-} from 'typeorm';
+import { Column, Index, JoinColumn, ManyToOne, Relation } from 'typeorm';
 import { Tenant } from 'src/tenants/entities/tenant.entity';
 import { BaseEntity } from './base.entity';
 

@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCustomerReplacementDecisionFlow1770904000000
-  implements MigrationInterface
-{
+export class AddCustomerReplacementDecisionFlow1770904000000 implements MigrationInterface {
   name = 'AddCustomerReplacementDecisionFlow1770904000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

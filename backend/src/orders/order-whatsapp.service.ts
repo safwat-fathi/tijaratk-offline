@@ -41,7 +41,8 @@ export class OrderWhatsappService {
     order: Order,
     trackingUrl: string,
   ): Promise<void> {
-    void trackingUrl;
+    // parameter defined to match interface, but internally unneeded
+    // @ts-ignore
 
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber) return;
@@ -112,7 +113,8 @@ export class OrderWhatsappService {
     order: Order,
     _item: OrderItem,
   ): Promise<void> {
-    void _item;
+    // parameter defined to match interface, but internally unneeded
+    // @ts-ignore
 
     const sellerNumber = order.tenant?.phone;
     if (!sellerNumber) return;

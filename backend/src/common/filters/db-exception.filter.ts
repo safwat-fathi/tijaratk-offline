@@ -19,7 +19,7 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Database operation failed';
-    let code = (exception as any).code;
+    const code = (exception as TypeORMError & { code?: string }).code;
 
     // Handle specific Postgres error codes
     if (exception instanceof QueryFailedError) {
@@ -27,7 +27,8 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
         // Unique violation
         status = HttpStatus.CONFLICT;
         // Extract the key that failed: "Key (phone)=(+20123...) already exists."
-        const detail = (exception as any).detail;
+        const detail = (exception as QueryFailedError & { detail?: string })
+          .detail;
         if (detail) {
           // Simplified message: "phone already exists"
           const match = detail.match(/Key \((.*?)\)=\(.*?\)/);

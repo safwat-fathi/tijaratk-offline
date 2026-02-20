@@ -27,13 +27,13 @@ export class AuthService {
     }
     const isMatch = await bcrypt.compare(pass, user.password);
     if (user && isMatch) {
-      const { password, ...result } = user;
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
   }
 
-  async login(user: User) {
+  login(user: Omit<User, 'password'>) {
     const payload = {
       sub: user.id,
       phone: user.phone,
@@ -95,7 +95,12 @@ export class AuthService {
   }
 
   // Helper for registering via API if needed (or seeding)
-  async register(phone: string, pass: string, tenantId: number, role: any) {
+  async register(
+    phone: string,
+    pass: string,
+    tenantId: number,
+    role: UserRole,
+  ) {
     const hashedPassword = await bcrypt.hash(pass, 10);
     // Logic here might fail if usersService.create without transaction doesn't handle tenantId correctly if passing Partial<User>.
     // But assuming legacy/seeding code, leaving as is but fixing Types if needed.

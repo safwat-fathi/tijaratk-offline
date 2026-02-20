@@ -6,6 +6,7 @@ declare global {
       facebookId: string;
       first_name?: string;
       last_name?: string;
+      tenant_id?: number;
     }
 
     interface Request {

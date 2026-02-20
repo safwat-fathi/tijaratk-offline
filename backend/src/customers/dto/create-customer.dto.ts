@@ -5,7 +5,7 @@ import { IsPhoneNumber } from 'src/common/validators/is-phone-number.validator';
 export class CreateCustomerDto {
   @ApiProperty()
   @IsString()
-	@IsPhoneNumber({allowedCountries: ['EG']})
+  @IsPhoneNumber({ allowedCountries: ['EG'] })
   phone: string;
 
   @ApiPropertyOptional()

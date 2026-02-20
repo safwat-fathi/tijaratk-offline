@@ -15,9 +15,12 @@ export class TenantMiddleware implements NestMiddleware {
       // Try to extract from JWT if header not present
       const token = req.headers.authorization.split(' ')[1];
       if (token) {
-        const decoded: any = decode(token);
+        const decoded = decode(token) as { tenant_id?: unknown } | null;
         if (decoded && decoded.tenant_id) {
-          tenantId = decoded.tenant_id;
+          tenantId =
+            typeof decoded.tenant_id === 'number'
+              ? decoded.tenant_id
+              : Number(decoded.tenant_id);
         }
       }
     }

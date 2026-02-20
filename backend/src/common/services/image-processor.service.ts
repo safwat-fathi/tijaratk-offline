@@ -7,6 +7,7 @@ import {
 import { mkdir, rm } from 'fs/promises';
 import { basename, join } from 'path';
 import sharp from 'sharp';
+import * as crypto from 'crypto';
 
 /**
  * Handles image normalization and thumbnail generation for uploaded assets.
@@ -82,7 +83,7 @@ export class ImageProcessorService {
    * Creates a unique deterministic output filename for generated thumbnails.
    */
   private createOutputFilename(): string {
-    const suffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const suffix = `${Date.now()}-${crypto.randomBytes(4).readUInt32LE(0)}`;
     return `product-${suffix}.webp`;
   }
 

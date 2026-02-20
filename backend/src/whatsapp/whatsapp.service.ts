@@ -12,7 +12,6 @@ import {
   type TemplateKey,
   type TemplatePayload,
 } from './templates/templates.registry';
-import { welcomeMerchant } from './templates/welcome-merchant';
 
 @Injectable()
 export class WhatsappService {

@@ -22,6 +22,7 @@ import CONSTANTS from 'src/common/constants';
 import { AvailabilityRequestsService } from './availability-requests.service';
 import { CreateAvailabilityRequestDto } from './dto/create-availability-request.dto';
 import { GetAvailabilitySummaryDto } from './dto/get-availability-summary.dto';
+import { Request } from 'express';
 
 @ApiTags('Availability Requests')
 @Controller('availability-requests')
@@ -56,7 +57,10 @@ export class AvailabilityRequestsController {
     status: HttpStatus.OK,
     description: 'Availability summary returned successfully',
   })
-  getMerchantSummary(@Req() req: any, @Query() query: GetAvailabilitySummaryDto) {
+  getMerchantSummary(
+    @Req() req: Request,
+    @Query() query: GetAvailabilitySummaryDto,
+  ) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');

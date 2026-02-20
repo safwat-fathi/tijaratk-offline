@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
 
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const ctx = context.switchToHttp();
     const response = ctx.getResponse();
 
@@ -18,7 +18,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
     const statusCode = response.statusCode;
 
     return next.handle().pipe(
-      map((data) => {
+      map((data: unknown) => {
         const success = statusCode >= HttpStatus.OK && statusCode < 300;
 
         // If data is already an object, add or overwrite status and message fields

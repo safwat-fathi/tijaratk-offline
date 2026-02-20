@@ -35,7 +35,10 @@ export class CustomersController {
     status: HttpStatus.CREATED,
     description: 'Customer created successfully',
   })
-  create(@Body() createCustomerDto: CreateCustomerDto, @Request() req) {
+  create(
+    @Body() createCustomerDto: CreateCustomerDto,
+    @Request() req: { user: { tenant_id: number } },
+  ) {
     return this.customersService.create(createCustomerDto, req.user.tenant_id);
   }
 
@@ -46,7 +49,7 @@ export class CustomersController {
     @Query('search') search: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
-    @Request() req,
+    @Request() req: { user: { tenant_id: number } },
   ) {
     const result = await this.customersService.findAll(
       req.user.tenant_id,
@@ -65,7 +68,10 @@ export class CustomersController {
     status: HttpStatus.NOT_FOUND,
     description: 'Customer not found',
   })
-  findOne(@Param('id') id: string, @Request() req) {
+  findOne(
+    @Param('id') id: string,
+    @Request() req: { user: { tenant_id: number } },
+  ) {
     return this.customersService.findOne(+id, req.user.tenant_id);
   }
 
@@ -75,7 +81,7 @@ export class CustomersController {
   updateLabel(
     @Param('id') id: string,
     @Body('label') label: string,
-    @Request() req,
+    @Request() req: { user: { tenant_id: number } },
   ) {
     return this.customersService.updateMerchantLabel(
       +id,

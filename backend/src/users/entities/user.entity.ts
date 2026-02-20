@@ -1,6 +1,6 @@
 import {
-	BeforeInsert,
-	BeforeUpdate,
+  BeforeInsert,
+  BeforeUpdate,
   Column,
   Entity,
   PrimaryGeneratedColumn,

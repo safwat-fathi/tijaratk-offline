@@ -66,12 +66,8 @@ export class AddTenantRlsPolicies1770925000000 implements MigrationInterface {
       $$
     `);
 
-    await queryRunner.query(
-      `ALTER TABLE "products" ENABLE ROW LEVEL SECURITY`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "products" FORCE ROW LEVEL SECURITY`,
-    );
+    await queryRunner.query(`ALTER TABLE "products" ENABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(`ALTER TABLE "products" FORCE ROW LEVEL SECURITY`);
     await queryRunner.query(
       `DROP POLICY IF EXISTS "tenant_isolation_products" ON "products"`,
     );
@@ -85,9 +81,7 @@ export class AddTenantRlsPolicies1770925000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customers" ENABLE ROW LEVEL SECURITY`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "customers" FORCE ROW LEVEL SECURITY`,
-    );
+    await queryRunner.query(`ALTER TABLE "customers" FORCE ROW LEVEL SECURITY`);
     await queryRunner.query(
       `DROP POLICY IF EXISTS "tenant_isolation_customers" ON "customers"`,
     );
@@ -165,7 +159,9 @@ export class AddTenantRlsPolicies1770925000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "day_closures" NO FORCE ROW LEVEL SECURITY`,
     );
-    await queryRunner.query(`ALTER TABLE "day_closures" DISABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(
+      `ALTER TABLE "day_closures" DISABLE ROW LEVEL SECURITY`,
+    );
 
     await queryRunner.query(
       `DROP POLICY IF EXISTS "tenant_isolation_product_price_history" ON "product_price_history"`,
@@ -192,7 +188,9 @@ export class AddTenantRlsPolicies1770925000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customers" NO FORCE ROW LEVEL SECURITY`,
     );
-    await queryRunner.query(`ALTER TABLE "customers" DISABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(
+      `ALTER TABLE "customers" DISABLE ROW LEVEL SECURITY`,
+    );
 
     await queryRunner.query(
       `DROP POLICY IF EXISTS "tenant_isolation_products" ON "products"`,
@@ -200,7 +198,9 @@ export class AddTenantRlsPolicies1770925000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "products" NO FORCE ROW LEVEL SECURITY`,
     );
-    await queryRunner.query(`ALTER TABLE "products" DISABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(
+      `ALTER TABLE "products" DISABLE ROW LEVEL SECURITY`,
+    );
 
     await queryRunner.query(
       `DROP FUNCTION IF EXISTS app.resolve_tenant_id_by_order_token(text)`,

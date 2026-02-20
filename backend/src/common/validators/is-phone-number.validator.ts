@@ -1,8 +1,5 @@
 import { registerDecorator, ValidationOptions } from 'class-validator';
-import {
-  parsePhoneNumberWithError,
-  CountryCode,
-} from 'libphonenumber-js';
+import { parsePhoneNumberWithError, CountryCode } from 'libphonenumber-js';
 
 /**
  * Options for phone number validation.
@@ -62,7 +59,7 @@ export function IsPhoneNumber(
               if (phoneNumber?.isValid() && phoneNumber.country === country) {
                 return true;
               }
-            } catch (error) {
+            } catch {
               continue;
             }
           }

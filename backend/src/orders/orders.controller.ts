@@ -33,6 +33,7 @@ import {
 } from './dto/decide-replacement.dto';
 import { RejectOrderByCustomerDto } from './dto/reject-order-by-customer.dto';
 import { ResetOrderItemReplacementDto } from './dto/reset-order-item-replacement.dto';
+import { Request } from 'express';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -53,7 +54,7 @@ export class OrdersController {
     status: HttpStatus.CREATED,
     description: 'Order created successfully',
   })
-  create(@Req() req: any, @Body() createOrderDto: CreateOrderDto) {
+  create(@Req() req: Request, @Body() createOrderDto: CreateOrderDto) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -69,7 +70,7 @@ export class OrdersController {
     description: 'Get all orders for the authenticated tenant',
   })
   @ApiResponse({ status: HttpStatus.OK, description: 'Return all orders' })
-  findAll(@Req() req: any, @Query('date') date?: string) {
+  findAll(@Req() req: Request, @Query('date') date?: string) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -90,7 +91,7 @@ export class OrdersController {
     status: HttpStatus.OK,
     description: 'Day-close status and summary preview',
   })
-  getTodayDayCloseStatus(@Req() req: any) {
+  getTodayDayCloseStatus(@Req() req: Request) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -111,7 +112,7 @@ export class OrdersController {
     status: HttpStatus.CREATED,
     description: 'Day closed successfully',
   })
-  closeDay(@Req() req: any) {
+  closeDay(@Req() req: Request) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       throw new UnauthorizedException('Tenant context is required');
@@ -213,7 +214,7 @@ export class OrdersController {
     description: 'Order item replacement proposal updated successfully',
   })
   replaceOrderItem(
-    @Req() req: any,
+    @Req() req: Request,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReplaceOrderItemDto,
   ) {
@@ -243,9 +244,8 @@ export class OrdersController {
     description: 'Order item replacement decision reset successfully',
   })
   resetOrderItemReplacement(
-    @Req() req: any,
+    @Req() req: { user?: { tenant_id: number } },
     @Param('id', ParseIntPipe) id: number,
-    @Body() _dto: ResetOrderItemReplacementDto,
   ) {
     const tenantId = req.user?.tenant_id;
     if (!tenantId) {
@@ -274,7 +274,7 @@ export class OrdersController {
     return this.ordersService.decideReplacementByPublicToken(
       token,
       itemId,
-      dto.decision as ReplacementDecisionAction,
+      dto.decision,
       dto.reason,
     );
   }
@@ -310,7 +310,7 @@ export class OrdersController {
     description: 'Order item price updated successfully',
   })
   updateOrderItemPrice(
-    @Req() req: any,
+    @Req() req: Request,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderItemPriceDto,
   ) {
@@ -319,7 +319,11 @@ export class OrdersController {
       throw new UnauthorizedException('Tenant context is required');
     }
 
-    return this.ordersService.updateOrderItemPrice(tenantId, id, dto.total_price);
+    return this.ordersService.updateOrderItemPrice(
+      tenantId,
+      id,
+      dto.total_price,
+    );
   }
 
   private toStringArray(value?: string | string[]): string[] {

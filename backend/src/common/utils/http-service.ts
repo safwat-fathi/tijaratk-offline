@@ -31,7 +31,9 @@ export class HttpService {
     if (params) {
       const query = new URLSearchParams();
       for (const key in params) {
+        // eslint-disable-next-line security/detect-object-injection
         if (params[key] !== undefined && params[key] !== null) {
+          // eslint-disable-next-line security/detect-object-injection
           query.append(key, params[key]);
         }
       }
@@ -71,7 +73,7 @@ export class HttpService {
       }
 
       // Assuming JSON response
-      const data = await response.json();
+      const data = (await response.json()) as unknown;
       return [data as T, null];
     } catch (error) {
       if (error.name === 'AbortError') {

@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProductCurrentPriceAndHistory1770603000000
-  implements MigrationInterface {
+export class AddProductCurrentPriceAndHistory1770603000000 implements MigrationInterface {
   name = 'AddProductCurrentPriceAndHistory1770603000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -68,6 +67,8 @@ export class AddProductCurrentPriceAndHistory1770603000000
       `DROP INDEX "public"."IDX_product_price_history_tenant_product_effective_from"`,
     );
     await queryRunner.query(`DROP TABLE "product_price_history"`);
-    await queryRunner.query(`ALTER TABLE "products" DROP COLUMN "current_price"`);
+    await queryRunner.query(
+      `ALTER TABLE "products" DROP COLUMN "current_price"`,
+    );
   }
 }

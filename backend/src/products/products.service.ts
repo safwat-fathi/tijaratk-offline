@@ -169,10 +169,7 @@ export class ProductsService {
       source: ProductSource.CATALOG,
       status: ProductStatus.ACTIVE,
       order_mode: ProductOrderMode.QUANTITY,
-      order_config: this.normalizeProductOrderConfig(
-        ProductOrderMode.QUANTITY,
-        undefined,
-      ),
+      order_config: this.normalizeProductOrderConfig(ProductOrderMode.QUANTITY),
       is_available: true,
     });
 
@@ -753,11 +750,9 @@ export class ProductsService {
       .replace(/[أإآ]/g, 'ا')
       .replace(/ى/g, 'ي')
       .replace(/ة/g, 'ه')
-      .replace(/\(([^)]*)\)/g, ' ')
-      .replace(
-        /(?:\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)|(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+)/gi,
-        ' ',
-      )
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)/gi, ' ')
+      .replace(/(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+/gi, ' ')
       .replace(/[^\p{L}\p{N}\s]/gu, ' ')
       .replace(/\s+/g, ' ')
       .trim();

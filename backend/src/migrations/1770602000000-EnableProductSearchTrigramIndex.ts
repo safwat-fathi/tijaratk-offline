@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class EnableProductSearchTrigramIndex1770602000000
-  implements MigrationInterface {
+export class EnableProductSearchTrigramIndex1770602000000 implements MigrationInterface {
   name = 'EnableProductSearchTrigramIndex1770602000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

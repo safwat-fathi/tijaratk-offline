@@ -178,22 +178,19 @@ export class OrdersService {
                 matchedProduct?.order_mode,
               );
               const selectionQuantity =
-                item.selection_quantity !== undefined &&
-                item.selection_quantity !== null &&
+                item.selection_quantity != null &&
                 Number.isFinite(Number(item.selection_quantity)) &&
                 Number(item.selection_quantity) > 0
                   ? Number(item.selection_quantity)
                   : null;
               const selectionGrams =
-                item.selection_grams !== undefined &&
-                item.selection_grams !== null &&
+                item.selection_grams != null &&
                 Number.isFinite(Number(item.selection_grams)) &&
                 Number(item.selection_grams) > 0
                   ? Math.round(Number(item.selection_grams))
                   : null;
               const selectionAmountEgp =
-                item.selection_amount_egp !== undefined &&
-                item.selection_amount_egp !== null &&
+                item.selection_amount_egp != null &&
                 Number.isFinite(Number(item.selection_amount_egp)) &&
                 Number(item.selection_amount_egp) > 0
                   ? this.roundCurrency(Number(item.selection_amount_egp))
@@ -262,10 +259,7 @@ export class OrdersService {
           }
         }
 
-        if (
-          createOrderDto.total !== undefined &&
-          createOrderDto.total !== null
-        ) {
+        if (createOrderDto.total != null) {
           pricingMode = PricingMode.MANUAL;
           total = Number(createOrderDto.total);
         } else if (subtotal !== undefined) {
@@ -698,8 +692,6 @@ export class OrdersService {
     return this.withTenantManager(tenantId, async (manager) => {
       const orderItemRepository = manager.getRepository(OrderItem);
       const orderRepository = manager.getRepository(Order);
-      const productsRepository = manager.getRepository(Product);
-      const priceHistoryRepository = manager.getRepository(ProductPriceHistory);
 
       const orderItem = await orderItemRepository.findOne({
         where: { id: itemId },
@@ -759,12 +751,15 @@ export class OrdersService {
           : undefined;
 
       const deliveryFee = Number(order.delivery_fee || 0);
-      const recomputedTotal =
-        subtotal !== undefined
-          ? this.roundCurrency(subtotal + deliveryFee)
-          : deliveryFee > 0
-            ? this.roundCurrency(deliveryFee)
-            : undefined;
+
+      let recomputedTotal: number | undefined;
+      if (subtotal !== undefined) {
+        recomputedTotal = this.roundCurrency(subtotal + deliveryFee);
+      } else if (deliveryFee > 0) {
+        recomputedTotal = this.roundCurrency(deliveryFee);
+      } else {
+        recomputedTotal = undefined;
+      }
 
       order.pricing_mode = PricingMode.MANUAL;
       order.subtotal = subtotal;
@@ -774,65 +769,12 @@ export class OrdersService {
       const targetProductId =
         orderItem.replaced_by_product_id ?? orderItem.product_id ?? null;
       if (targetProductId) {
-        const targetProduct = await productsRepository.findOne({
-          where: {
-            id: targetProductId,
-            tenant_id: tenantId,
-          },
-        });
-
-        if (!targetProduct) {
-          throw new NotFoundException(
-            `Product with ID ${targetProductId} not found`,
-          );
-        }
-
-        const activeHistory = await priceHistoryRepository.findOne({
-          where: {
-            tenant_id: tenantId,
-            product_id: targetProduct.id,
-            effective_to: IsNull(),
-          },
-          order: {
-            effective_from: 'DESC',
-            id: 'DESC',
-          },
-        });
-
-        const activeHistoryPrice =
-          activeHistory?.price !== undefined && activeHistory?.price !== null
-            ? this.roundCurrency(Number(activeHistory.price))
-            : null;
-
-        if (
-          activeHistory &&
-          activeHistoryPrice !== null &&
-          activeHistoryPrice === normalizedUnitPrice
-        ) {
-          targetProduct.current_price = normalizedUnitPrice;
-          await productsRepository.save(targetProduct);
-          return savedItem;
-        }
-
-        const now = new Date();
-
-        if (activeHistory) {
-          activeHistory.effective_to = now;
-          await priceHistoryRepository.save(activeHistory);
-        }
-
-        await priceHistoryRepository.save(
-          priceHistoryRepository.create({
-            tenant_id: tenantId,
-            product_id: targetProduct.id,
-            price: normalizedUnitPrice,
-            effective_from: now,
-            reason: 'manual update from order item',
-          }),
+        await this.updateProductPriceHistory(
+          manager,
+          tenantId,
+          targetProductId,
+          normalizedUnitPrice,
         );
-
-        targetProduct.current_price = normalizedUnitPrice;
-        await productsRepository.save(targetProduct);
       }
 
       return savedItem;
@@ -913,6 +855,7 @@ export class OrdersService {
     tenantId: number,
     closureDate: string,
   ): Promise<DayCloseComputationSummary> {
+    type AggregateCount = string | number | null;
     const dayAggregate = await this.getOrdersRepository()
       .createQueryBuilder('order')
       .select('COUNT(order.id)', 'orders_count')
@@ -968,11 +911,11 @@ export class OrdersService {
         completedStatus: OrderStatus.COMPLETED,
       })
       .getRawOne<{
-        orders_count?: string | number | null;
-        cancelled_count?: string | number | null;
-        completed_count?: string | number | null;
-        non_cancelled_sales_total?: string | number | null;
-        completed_sales_total?: string | number | null;
+        orders_count?: AggregateCount;
+        cancelled_count?: AggregateCount;
+        completed_count?: AggregateCount;
+        non_cancelled_sales_total?: AggregateCount;
+        completed_sales_total?: AggregateCount;
       }>();
 
     return {
@@ -1219,11 +1162,11 @@ export class OrdersService {
     unitPrice?: number,
     totalPrice?: number,
   ): number | null {
-    if (totalPrice !== undefined && totalPrice !== null) {
+    if (totalPrice != null) {
       return this.roundCurrency(Number(totalPrice));
     }
 
-    if (unitPrice === undefined || unitPrice === null) {
+    if (unitPrice == null) {
       return null;
     }
 
@@ -1239,10 +1182,9 @@ export class OrdersService {
    * Parses numeric quantity from free-text input when possible.
    */
   private parseNumericQuantity(quantityText: string): number | null {
-    const match = quantityText
-      .trim()
-      .replace(',', '.')
-      .match(/\d+(\.\d+)?/);
+    const match = /(?:\d+)(?:\.\d+)?/.exec(
+      quantityText.trim().replace(',', '.'),
+    );
     if (!match) {
       return null;
     }
@@ -1262,11 +1204,11 @@ export class OrdersService {
     explicitUnitPrice?: number,
     productCurrentPrice?: number | null,
   ): number | null {
-    if (explicitUnitPrice !== undefined && explicitUnitPrice !== null) {
+    if (explicitUnitPrice != null) {
       return this.roundCurrency(Number(explicitUnitPrice));
     }
 
-    if (productCurrentPrice !== undefined && productCurrentPrice !== null) {
+    if (productCurrentPrice != null) {
       const parsed = Number(productCurrentPrice);
       if (!Number.isNaN(parsed)) {
         return this.roundCurrency(parsed);
@@ -1281,6 +1223,79 @@ export class OrdersService {
    */
   private roundCurrency(value: number): number {
     return Math.round(value * 100) / 100;
+  }
+
+  /**
+   * Updates product price history when line item price is manually overridden.
+   */
+  private async updateProductPriceHistory(
+    manager: EntityManager,
+    tenantId: number,
+    targetProductId: number,
+    normalizedUnitPrice: number,
+  ): Promise<void> {
+    const productsRepository = manager.getRepository(Product);
+    const priceHistoryRepository = manager.getRepository(ProductPriceHistory);
+
+    const targetProduct = await productsRepository.findOne({
+      where: {
+        id: targetProductId,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!targetProduct) {
+      throw new NotFoundException(
+        `Product with ID ${targetProductId} not found`,
+      );
+    }
+
+    const activeHistory = await priceHistoryRepository.findOne({
+      where: {
+        tenant_id: tenantId,
+        product_id: targetProduct.id,
+        effective_to: IsNull(),
+      },
+      order: {
+        effective_from: 'DESC',
+        id: 'DESC',
+      },
+    });
+
+    const activeHistoryPrice =
+      activeHistory?.price != null
+        ? this.roundCurrency(Number(activeHistory.price))
+        : null;
+
+    if (
+      activeHistory &&
+      activeHistoryPrice !== null &&
+      activeHistoryPrice === normalizedUnitPrice
+    ) {
+      targetProduct.current_price = normalizedUnitPrice;
+      await productsRepository.save(targetProduct);
+      return;
+    }
+
+    const now = new Date();
+
+    if (activeHistory) {
+      activeHistory.effective_to = now;
+      await priceHistoryRepository.save(activeHistory);
+    }
+
+    await priceHistoryRepository.save(
+      priceHistoryRepository.create({
+        tenant_id: tenantId,
+        product_id: targetProduct.id,
+        price: normalizedUnitPrice,
+        effective_from: now,
+        reason: 'manual update from order item',
+      }),
+    );
+
+    targetProduct.current_price = normalizedUnitPrice;
+    await productsRepository.save(targetProduct);
   }
 
   /**

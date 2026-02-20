@@ -4,7 +4,6 @@ import {
   Catch,
   ExceptionFilter,
   HttpException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Response } from 'express';
 

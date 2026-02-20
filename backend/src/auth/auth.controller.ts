@@ -6,21 +6,10 @@ import {
   HttpCode,
   HttpStatus,
   UnauthorizedException,
-  UseGuards,
-  Get,
-  Request,
   UseFilters,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
-import CONSTANTS from '../common/constants';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';

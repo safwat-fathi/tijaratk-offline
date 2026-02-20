@@ -14,19 +14,12 @@ import { QueryFailedError } from 'typeorm';
 export class AllExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionFilter.name);
 
-  catch(exception: any, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    // Handle generic JS errors that might be thrown
-    if (
-      exception instanceof TypeError ||
-      exception instanceof RangeError ||
-      exception instanceof ReferenceError ||
-      exception instanceof SyntaxError ||
-      exception instanceof EvalError
-    ) {
+    if (this.isCriticalError(exception)) {
       this.logger.error(
         `Critical Error: ${exception.message}`,
         exception.stack,
@@ -39,61 +32,27 @@ export class AllExceptionFilter implements ExceptionFilter {
       });
     }
 
-    // Check if the exception is a validation error (class-validator)
-    if (Array.isArray(exception) && exception[0] instanceof ValidationError) {
+    if (this.isValidationError(exception)) {
       return response.status(HttpStatus.BAD_REQUEST).json({
         success: false,
-        message: `Validation error for ${(exception[0] as ValidationError).property}`,
+        message: `Validation error for ${exception[0].property}`,
         errors: exception,
         timestamp: new Date().toISOString(),
         path: request.url,
       });
     }
 
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
-    let errorDetails = null;
+    const { status, message, errorDetails } =
+      this.resolveErrorDetails(exception);
 
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
-
-      if (typeof exceptionResponse === 'string') {
-        message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === 'object' &&
-        (exceptionResponse as any).message
-      ) {
-        message = Array.isArray((exceptionResponse as any).message)
-          ? (exceptionResponse as any).message.join(', ')
-          : (exceptionResponse as any).message;
-        errorDetails = (exceptionResponse as any).error;
-      }
-    } else if (
-      exception instanceof QueryFailedError ||
-      (exception as any).code
-    ) {
-      // Handle TypeORM / Postgres errors
-      const code = (exception as any).code;
-      if (code === '22P02') {
-        status = HttpStatus.BAD_REQUEST;
-        message = 'Invalid input syntax for database query';
-      } else if (code === '23505') {
-        status = HttpStatus.CONFLICT;
-        message = 'Duplicate entry violation';
-      } else {
-        this.logger.error(
-          `Database Error [${code}]: ${exception.message}`,
-          (exception as any).stack,
-        );
-        message = 'Database operation failed';
-      }
-    } else {
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      const errMsg = exception instanceof Error ? exception.message : 'Unknown';
       this.logger.error(
-        `Unexpected Error: ${exception.message}`,
-        typeof exception === 'object' ? JSON.stringify(exception) : exception,
+        `Unexpected Error: ${errMsg}`,
+        typeof exception === 'object'
+          ? JSON.stringify(exception)
+          : String(exception),
       );
-      message = 'An unexpected error occurred';
     }
 
     return response.status(status).json({
@@ -103,5 +62,81 @@ export class AllExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+
+  private isCriticalError(exception: unknown): exception is Error {
+    return (
+      exception instanceof TypeError ||
+      exception instanceof RangeError ||
+      exception instanceof ReferenceError ||
+      exception instanceof SyntaxError ||
+      exception instanceof EvalError
+    );
+  }
+
+  private isValidationError(
+    exception: unknown,
+  ): exception is [ValidationError, ...ValidationError[]] {
+    return (
+      Array.isArray(exception) &&
+      exception.length > 0 &&
+      exception[0] instanceof ValidationError
+    );
+  }
+
+  private resolveErrorDetails(exception: unknown): {
+    status: number;
+    message: string;
+    errorDetails: unknown;
+  } {
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Internal server error';
+    let errorDetails: unknown = null;
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const exceptionResponse = exception.getResponse();
+
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else if (
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null &&
+        'message' in exceptionResponse
+      ) {
+        const resMessage = (exceptionResponse as Record<string, unknown>)
+          .message;
+        message = Array.isArray(resMessage)
+          ? resMessage.join(', ')
+          : String(resMessage);
+        errorDetails = (exceptionResponse as Record<string, unknown>).error;
+      }
+    } else if (
+      exception instanceof QueryFailedError ||
+      (typeof exception === 'object' &&
+        exception !== null &&
+        'code' in exception)
+    ) {
+      const code = (exception as Record<string, unknown>).code;
+      if (code === '22P02') {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Invalid input syntax for database query';
+      } else if (code === '23505') {
+        status = HttpStatus.CONFLICT;
+        message = 'Duplicate entry violation';
+      } else {
+        const errMsg =
+          exception instanceof Error ? exception.message : 'Unknown';
+        const errStack =
+          exception instanceof Error ? exception.stack : undefined;
+        this.logger.error(
+          `Database Error [${String(code)}]: ${errMsg}`,
+          errStack,
+        );
+        message = 'Database operation failed';
+      }
+    }
+
+    return { status, message, errorDetails };
   }
 }

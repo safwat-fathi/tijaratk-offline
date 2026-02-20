@@ -1,4 +1,10 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Match } from 'src/common/decorators/match.decorator';
 import { IsPhoneNumber } from 'src/common/validators/is-phone-number.validator';
@@ -16,14 +22,14 @@ export class SignupDto {
   @IsString()
   storeName: string;
 
-	@ApiProperty({
-		example: 'Ahmed Mohamed',
-		description: 'The name of the owner',
-	})
-	@IsNotEmpty()
-	@IsString()
-	name: string;
-	
+  @ApiProperty({
+    example: 'Ahmed Mohamed',
+    description: 'The name of the owner',
+  })
+  @IsNotEmpty()
+  @IsString()
+  name: string;
+
   @ApiProperty({
     example: '+201112223334',
     description: 'The phone number of the owner',
