@@ -1059,6 +1059,7 @@ export class OrdersService {
       [OrderStatus.REJECTED_BY_CUSTOMER]: [],
     };
 
+    // eslint-disable-next-line security/detect-object-injection
     const allowedNext = allowedTransitions[current] || [];
     if (!allowedNext.includes(next)) {
       throw new BadRequestException(
@@ -1182,6 +1183,7 @@ export class OrdersService {
    * Parses numeric quantity from free-text input when possible.
    */
   private parseNumericQuantity(quantityText: string): number | null {
+    // eslint-disable-next-line security/detect-unsafe-regex
     const match = /(?:\d+)(?:\.\d+)?/.exec(
       quantityText.trim().replace(',', '.'),
     );

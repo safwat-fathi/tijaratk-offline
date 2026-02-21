@@ -21,34 +21,10 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
     let message = 'Database operation failed';
     const code = (exception as TypeORMError & { code?: string }).code;
 
-    // Handle specific Postgres error codes
     if (exception instanceof QueryFailedError) {
-      if (code === '23505') {
-        // Unique violation
-        status = HttpStatus.CONFLICT;
-        // Extract the key that failed: "Key (phone)=(+20123...) already exists."
-        const detail = (exception as QueryFailedError & { detail?: string })
-          .detail;
-        if (detail) {
-          // Simplified message: "phone already exists"
-          const match = detail.match(/Key \((.*?)\)=\(.*?\)/);
-          if (match && match[1]) {
-            message = `${match[1]} already exists`;
-          } else {
-            message = detail;
-          }
-        } else {
-          message = 'Duplicate entry';
-        }
-      } else if (code === '23503') {
-        // Foreign key violation
-        status = HttpStatus.BAD_REQUEST;
-        message = 'Foreign key constraint violation';
-      } else if (code === '22P02') {
-        // Invalid text representation
-        status = HttpStatus.BAD_REQUEST;
-        message = 'Invalid input syntax for database query';
-      }
+      const result = this.handleQueryFailedError(exception, code as string);
+      status = result.status;
+      message = result.message;
     }
 
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
@@ -64,5 +40,33 @@ export class TypeOrmExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+
+  private handleQueryFailedError(
+    exception: QueryFailedError,
+    code?: string,
+  ): { status: number; message: string } {
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Database operation failed';
+
+    if (code === '23505') {
+      status = HttpStatus.CONFLICT;
+      const detail = (exception as QueryFailedError & { detail?: string })
+        .detail;
+      if (detail) {
+        const match = /Key \((.*?)\)=\(.*?\)/.exec(detail);
+        message = match && match[1] ? `${match[1]} already exists` : detail;
+      } else {
+        message = 'Duplicate entry';
+      }
+    } else if (code === '23503') {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Foreign key constraint violation';
+    } else if (code === '22P02') {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Invalid input syntax for database query';
+    }
+
+    return { status, message };
   }
 }

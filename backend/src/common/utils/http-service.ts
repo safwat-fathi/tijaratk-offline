@@ -34,7 +34,7 @@ export class HttpService {
         // eslint-disable-next-line security/detect-object-injection
         if (params[key] !== undefined && params[key] !== null) {
           // eslint-disable-next-line security/detect-object-injection
-          query.append(key, params[key]);
+          query.append(key, String(params[key]));
         }
       }
       url += `?${query.toString()}`;
@@ -76,7 +76,7 @@ export class HttpService {
       const data = (await response.json()) as unknown;
       return [data as T, null];
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         return [
           null,
           new RequestTimeoutException(

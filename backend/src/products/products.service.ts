@@ -745,17 +745,21 @@ export class ProductsService {
   }
 
   private normalizeArabic(input: string): string {
-    return input
-      .toLowerCase()
-      .replace(/[أإآ]/g, 'ا')
-      .replace(/ى/g, 'ي')
-      .replace(/ة/g, 'ه')
-      .replace(/\([^)]*\)/g, ' ')
-      .replace(/\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)/gi, ' ')
-      .replace(/(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+/gi, ' ')
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return (
+      input
+        .toLowerCase()
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .replace(/\([^)]*\)/g, ' ')
+        // eslint-disable-next-line sonarjs/slow-regex
+        .replace(/\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)/gi, ' ')
+        // eslint-disable-next-line sonarjs/slow-regex
+        .replace(/(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+/gi, ' ')
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   private buildComparableProductNameExpression(columnName: string): string {

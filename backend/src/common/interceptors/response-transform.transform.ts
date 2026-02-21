@@ -7,19 +7,21 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { Response } from 'express';
 
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const ctx = context.switchToHttp();
-    const response = ctx.getResponse();
+    const response = ctx.getResponse<Response>();
 
     // The status code can be derived from the response or hard-coded as needed.
     const statusCode = response.statusCode;
 
     return next.handle().pipe(
       map((data: unknown) => {
-        const success = statusCode >= HttpStatus.OK && statusCode < 300;
+        const success =
+          statusCode >= (HttpStatus.OK as number) && statusCode < 300;
 
         // If data is already an object, add or overwrite status and message fields
         const transformedResponse = {
@@ -35,7 +37,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 
   private getMessageFromStatus(status: number): string {
     // You can customize messages based on the status code
-    if (status >= HttpStatus.OK && status < 300) {
+    if (status >= (HttpStatus.OK as number) && status < 300) {
       return 'Success';
     } else if (status >= 400 && status < 500) {
       return 'Client error';

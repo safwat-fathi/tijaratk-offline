@@ -189,10 +189,10 @@ export class CustomersService {
     );
 
     // Fetch the new counter value
-    const result = (await manager.query(
+    const result: Array<{ customer_counter: unknown }> = await manager.query(
       `SELECT customer_counter FROM tenants WHERE id = $1`,
       [tenantId],
-    )) as Array<{ customer_counter: unknown }>;
+    );
     const newCode = Number(result[0].customer_counter);
 
     const customer = manager.create(Customer, {

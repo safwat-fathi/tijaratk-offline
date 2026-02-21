@@ -5,8 +5,11 @@ import { NextFunction, Request, Response } from 'express';
 @Injectable()
 export class SessionMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    let sessionId = (req as Request & { cookies?: Record<string, string> })
-      .cookies?.session_id;
+    const cookies = (req as Request & { cookies?: Record<string, string> })
+      .cookies;
+    let sessionId: string | undefined = cookies
+      ? cookies['session_id']
+      : undefined;
 
     if (!sessionId) {
       sessionId = randomUUID();
@@ -20,7 +23,7 @@ export class SessionMiddleware implements NestMiddleware {
     }
 
     // Attach to request object
-    (req as Request & { sessionId?: string }).sessionId = sessionId;
+    req.sessionId = sessionId;
 
     next();
   }

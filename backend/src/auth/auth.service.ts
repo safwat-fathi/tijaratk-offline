@@ -17,7 +17,10 @@ export class AuthService {
     private tenantsService: TenantsService,
   ) {}
 
-  async validateUser(phone: string, pass: string): Promise<any> {
+  async validateUser(
+    phone: string,
+    pass: string,
+  ): Promise<Omit<User, 'password'> | null> {
     const normalizedPhone = formatPhoneNumber(phone);
 
     const user =
@@ -27,8 +30,10 @@ export class AuthService {
     }
     const isMatch = await bcrypt.compare(pass, user.password);
     if (user && isMatch) {
-      const { password: _password, ...result } = user;
-      return result;
+      // Create a copy and remove password to safely satisfy strict typing
+      const result = { ...user } as Partial<User>;
+      delete result.password;
+      return result as Omit<User, 'password'>;
     }
     return null;
   }

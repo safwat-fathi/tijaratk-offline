@@ -49,9 +49,9 @@ export class AllExceptionFilter implements ExceptionFilter {
       const errMsg = exception instanceof Error ? exception.message : 'Unknown';
       this.logger.error(
         `Unexpected Error: ${errMsg}`,
-        typeof exception === 'object'
+        typeof exception === 'object' && exception !== null
           ? JSON.stringify(exception)
-          : String(exception),
+          : String(exception as string),
       );
     }
 
@@ -89,54 +89,67 @@ export class AllExceptionFilter implements ExceptionFilter {
     message: string;
     errorDetails: unknown;
   } {
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Internal server error';
     let errorDetails: unknown = null;
 
     if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      const exceptionResponse = exception.getResponse();
-
-      if (typeof exceptionResponse === 'string') {
-        message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === 'object' &&
-        exceptionResponse !== null &&
-        'message' in exceptionResponse
-      ) {
-        const resMessage = (exceptionResponse as Record<string, unknown>)
-          .message;
-        message = Array.isArray(resMessage)
-          ? resMessage.join(', ')
-          : String(resMessage);
-        errorDetails = (exceptionResponse as Record<string, unknown>).error;
-      }
+      const details = this.handleHttpException(exception);
+      status = details.status;
+      message = details.message;
+      errorDetails = details.errorDetails;
     } else if (
       exception instanceof QueryFailedError ||
-      (typeof exception === 'object' &&
-        exception !== null &&
-        'code' in exception)
+      (typeof exception === 'object' && exception !== null && 'code' in exception)
     ) {
-      const code = (exception as Record<string, unknown>).code;
-      if (code === '22P02') {
-        status = HttpStatus.BAD_REQUEST;
-        message = 'Invalid input syntax for database query';
-      } else if (code === '23505') {
-        status = HttpStatus.CONFLICT;
-        message = 'Duplicate entry violation';
-      } else {
-        const errMsg =
-          exception instanceof Error ? exception.message : 'Unknown';
-        const errStack =
-          exception instanceof Error ? exception.stack : undefined;
-        this.logger.error(
-          `Database Error [${String(code)}]: ${errMsg}`,
-          errStack,
-        );
-        message = 'Database operation failed';
-      }
+      const details = this.handleDbException(exception);
+      status = details.status;
+      message = details.message;
     }
 
     return { status, message, errorDetails };
+  }
+
+  private handleHttpException(exception: HttpException) {
+    const status = exception.getStatus();
+    const exceptionResponse = exception.getResponse();
+    let message = 'Internal server error';
+    let errorDetails: unknown = null;
+
+    if (typeof exceptionResponse === 'string') {
+      message = exceptionResponse;
+    } else if (
+      typeof exceptionResponse === 'object' &&
+      'message' in exceptionResponse
+    ) {
+      const resMessage = (exceptionResponse as Record<string, unknown>).message;
+      message = Array.isArray(resMessage)
+        ? resMessage.join(', ')
+        : String(resMessage);
+      errorDetails = (exceptionResponse as Record<string, unknown>).error;
+    }
+    return { status, message, errorDetails };
+  }
+
+  private handleDbException(exception: unknown) {
+    let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'Database operation failed';
+    const code = (exception as Record<string, unknown>).code;
+
+    if (code === '22P02') {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Invalid input syntax for database query';
+    } else if (code === '23505') {
+      status = HttpStatus.CONFLICT;
+      message = 'Duplicate entry violation';
+    } else {
+      const errMsg = exception instanceof Error ? exception.message : 'Unknown';
+      const errStack = exception instanceof Error ? exception.stack : undefined;
+      this.logger.error(
+        `Database Error [${String(code)}]: ${errMsg}`,
+        errStack,
+      );
+    }
+    return { status, message };
   }
 }

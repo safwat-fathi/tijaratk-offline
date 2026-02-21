@@ -62,7 +62,7 @@ export class UsersController {
 
 ```typescript
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
+export class JwtAuthGuard extends AuthGuard(CONSTANTS.AUTH.JWT) {
   canActivate(context: ExecutionContext) {
     return super.canActivate(context);
   }

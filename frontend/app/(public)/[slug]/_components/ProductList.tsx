@@ -100,14 +100,15 @@ const resolveQuantityOptions = (product: Product): QuantityOption[] => {
 		return [];
 	}
 
-	return options.filter(
-		(option: any): option is QuantityOption =>
-			option !== null &&
-			typeof option === "object" &&
-			typeof option.id === "string" &&
-			typeof option.label === "string" &&
-			Number(option.multiplier) > 0,
-	);
+	return options.filter((option: unknown): option is QuantityOption => {
+		if (!option || typeof option !== "object") return false;
+		const record = option as Record<string, unknown>;
+		return (
+			typeof record.id === "string" &&
+			typeof record.label === "string" &&
+			Number(record.multiplier) > 0
+		);
+	});
 };
 
 type ProductListCardProps = {
