@@ -45,6 +45,10 @@ export default function CategoryProductsView({
 }: CategoryProductsViewProps) {
 	const activeLabel =
 		categoryTabs.find(item => item.key === activeCategory)?.label || "المنتجات";
+	const hasProducts = activeProducts.length > 0;
+	const isInitialCategoryLoading = activePagination.isLoading && !hasProducts;
+	const shouldShowEmptyState =
+		!activePagination.isLoading && !activePagination.error && !hasProducts;
 
 	return (
 		<div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -99,7 +103,7 @@ export default function CategoryProductsView({
 				))}
 			</div>
 
-			{activeProducts.length > 0 ? (
+			{hasProducts && (
 				<ProductList
 					products={activeProducts}
 					selections={cartSelections}
@@ -111,7 +115,34 @@ export default function CategoryProductsView({
 					}
 					setLoadMoreTarget={setLoadMoreTarget}
 				/>
-			) : (
+			)}
+
+			{isInitialCategoryLoading && (
+				<div className="flex justify-center py-6">
+					<svg
+						className="h-6 w-6 animate-spin text-gray-400"
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+					>
+						<circle
+							className="opacity-25"
+							cx="12"
+							cy="12"
+							r="10"
+							stroke="currentColor"
+							strokeWidth="4"
+						></circle>
+						<path
+							className="opacity-75"
+							fill="currentColor"
+							d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+						></path>
+					</svg>
+				</div>
+			)}
+
+			{shouldShowEmptyState && (
 				<div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
 					لا توجد منتجات في هذا القسم حالياً.
 				</div>
@@ -123,7 +154,7 @@ export default function CategoryProductsView({
 				</div>
 			)}
 
-			{activePagination.isLoading && (
+			{activePagination.isLoading && hasProducts && (
 				<div className="mt-4 flex justify-center">
 					<svg
 						className="h-6 w-6 animate-spin text-gray-400"
