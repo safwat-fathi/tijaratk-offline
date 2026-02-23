@@ -127,6 +127,7 @@ export default function OrderForm({
 	);
 
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
+	const prefetchTriggeredRef = useRef<Set<string>>(new Set());
 	const categoryPillRefs = useRef<Map<string, HTMLButtonElement | null>>(
 		new Map(),
 	);
@@ -269,6 +270,29 @@ export default function OrderForm({
 			handleCategoryChange(categoryKey);
 		},
 		[handleCategoryChange],
+	);
+
+	const handleCategoryInViewPrefetch = useCallback(
+		(categoryKey: string) => {
+			if (categoryKey === ALL_PRODUCTS_CATEGORY) {
+				return;
+			}
+
+			if (prefetchTriggeredRef.current.has(categoryKey)) {
+				return;
+			}
+
+			const hasData = (productsByCategoryMap.get(categoryKey) || []).length > 0;
+			const categoryState =
+				paginationByCategoryMap.get(categoryKey) || DEFAULT_PAGINATION_STATE;
+			if (hasData || categoryState.isLoading) {
+				return;
+			}
+
+			prefetchTriggeredRef.current.add(categoryKey);
+			void fetchProductsPage(categoryKey, 1, true);
+		},
+		[fetchProductsPage, paginationByCategoryMap, productsByCategoryMap],
 	);
 
 	const scrollActiveCategoryPillIntoView = useCallback((categoryKey: string) => {
@@ -625,6 +649,7 @@ export default function OrderForm({
 								categoryCards={categoryCards}
 								onSelectCategory={handleCategoryEntry}
 								onShowAll={() => handleCategoryEntry(ALL_PRODUCTS_CATEGORY)}
+								onCategoryInView={handleCategoryInViewPrefetch}
 							/>
 						)}
 
