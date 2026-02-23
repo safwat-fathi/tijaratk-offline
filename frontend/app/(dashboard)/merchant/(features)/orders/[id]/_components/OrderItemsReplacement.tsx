@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useDebounce } from 'use-debounce';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
   replaceOrderItemAction,
   resetOrderItemReplacementAction,
@@ -124,6 +124,7 @@ export default function OrderItemsReplacement({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [debouncedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(Boolean(activeSheet));
 
   useEffect(() => {
@@ -299,6 +300,14 @@ export default function OrderItemsReplacement({
   const replacementOptions = isTextSearchActive
     ? searchResults
     : suggestedResults;
+
+  const handleClearReplacementSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError(null);
+    setIsSearching(false);
+    searchInputRef.current?.focus();
+  };
 
   const closeSheet = () => {
     setActiveItemId(null);
@@ -683,12 +692,34 @@ export default function OrderItemsReplacement({
                       ReplacementDecisionStatus.REJECTED && (
                       <>
                         <div className="mt-3 rounded-xl border border-gray-200 p-3">
-                          <input
-                            value={searchQuery}
-                            onChange={(event) => setSearchQuery(event.target.value)}
-                            placeholder="ابحث بالاسم"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                          />
+                          <div className="relative">
+                            <input
+                              ref={searchInputRef}
+                              value={searchQuery}
+                              onChange={(event) => setSearchQuery(event.target.value)}
+                              placeholder="ابحث بالاسم"
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 pe-10 text-sm outline-none focus:border-indigo-500"
+                            />
+                            {searchQuery && (
+                              <button
+                                type="button"
+                                onClick={handleClearReplacementSearch}
+                                aria-label="مسح البحث"
+                                className="absolute inset-y-0 end-0 pe-3 text-gray-400 transition-colors hover:text-gray-600"
+                              >
+                                <svg
+                                  className="h-4 w-4"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                           <p className="mt-1 text-xs text-gray-500">
                             اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
                           </p>

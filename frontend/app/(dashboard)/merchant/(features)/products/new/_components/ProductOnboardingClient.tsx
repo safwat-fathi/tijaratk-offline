@@ -184,6 +184,10 @@ export default function ProductOnboardingClient({
 	const normalizedSearchInput = searchQuery.trim();
 	const normalizedDebouncedSearch = debouncedSearchQuery.trim();
 	const isSearchActive = normalizedDebouncedSearch.length >= MIN_SEARCH_CHARS;
+	const isSearchSettling =
+		normalizedSearchInput.length >= MIN_SEARCH_CHARS &&
+		normalizedSearchInput !== normalizedDebouncedSearch;
+	const isSearchLoading = isSearchSettling || isSearching;
 	const needsMoreSearchChars =
 		normalizedSearchInput.length > 0 &&
 		normalizedSearchInput.length < MIN_SEARCH_CHARS;
@@ -301,6 +305,25 @@ export default function ProductOnboardingClient({
 		}
 
 		setSearchRefreshKey(prev => prev + 1);
+	};
+
+	const handleSearchQueryChange = (value: string) => {
+		setSearchQuery(value);
+
+		if (value.trim().length >= MIN_SEARCH_CHARS) {
+			return;
+		}
+
+		setSearchResults([]);
+		setSearchError(null);
+		setIsSearching(false);
+	};
+
+	const handleClearSearchQuery = () => {
+		setSearchQuery("");
+		setSearchResults([]);
+		setSearchError(null);
+		setIsSearching(false);
 	};
 
 	const addCategoryOption = (category: string | null | undefined) => {
@@ -840,9 +863,10 @@ export default function ProductOnboardingClient({
 				active={activeSection === "my-products"}
 				displayedProductsCountLabel={displayedProductsCountLabel}
 				searchQuery={searchQuery}
-				onSearchQueryChange={setSearchQuery}
+				onSearchQueryChange={handleSearchQueryChange}
+				onClearSearchQuery={handleClearSearchQuery}
 				needsMoreSearchChars={needsMoreSearchChars}
-				isSearching={isSearching}
+				isSearchLoading={isSearchLoading}
 				searchError={searchError}
 				isSearchActive={isSearchActive}
 				displayedProducts={displayedProducts}

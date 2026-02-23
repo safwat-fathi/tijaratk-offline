@@ -12,6 +12,8 @@ interface CustomerDetailsSheetProps {
   onClose: () => void;
 }
 
+const customerDetailsCache = new Map<number, Customer>();
+
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
 
@@ -151,8 +153,13 @@ export default function CustomerDetailsSheet({
   customerId,
   onClose,
 }: CustomerDetailsSheetProps) {
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialCachedCustomer = customerId
+    ? customerDetailsCache.get(customerId) ?? null
+    : null;
+  const [customer, setCustomer] = useState<Customer | null>(initialCachedCustomer);
+  const [loading, setLoading] = useState(
+    customerId ? !initialCachedCustomer : false,
+  );
   const [error, setError] = useState<string | null>(null);
   useBodyScrollLock(Boolean(customerId));
 
@@ -165,6 +172,8 @@ export default function CustomerDetailsSheet({
       };
     }
 
+    const hasCachedCustomer = customerDetailsCache.has(customerId);
+
     void (async () => {
       try {
         const response = await getCustomerDetailsAction(customerId);
@@ -174,12 +183,15 @@ export default function CustomerDetailsSheet({
         }
 
         if (!response.success || !response.data) {
-          setCustomer(null);
-          setError(response.message || "تعذر تحميل بيانات العميل");
+          if (!hasCachedCustomer) {
+            setCustomer(null);
+            setError(response.message || "تعذر تحميل بيانات العميل");
+          }
           setLoading(false);
           return;
         }
 
+        customerDetailsCache.set(customerId, response.data);
         setCustomer(response.data);
         setError(null);
         setLoading(false);
@@ -188,8 +200,10 @@ export default function CustomerDetailsSheet({
           return;
         }
 
-        setCustomer(null);
-        setError("تعذر تحميل بيانات العميل");
+        if (!hasCachedCustomer) {
+          setCustomer(null);
+          setError("تعذر تحميل بيانات العميل");
+        }
         setLoading(false);
       }
     })();

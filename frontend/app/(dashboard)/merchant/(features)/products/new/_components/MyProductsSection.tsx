@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { useRef } from 'react';
 import type { Product } from '@/types/models/product';
 import { SECTION_MY_PRODUCTS } from '../_utils/product-onboarding.constants';
 import {
@@ -12,8 +13,9 @@ type MyProductsSectionProps = {
   displayedProductsCountLabel: string;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
+  onClearSearchQuery: () => void;
   needsMoreSearchChars: boolean;
-  isSearching: boolean;
+  isSearchLoading: boolean;
   searchError: string | null;
   isSearchActive: boolean;
   displayedProducts: Product[];
@@ -34,8 +36,9 @@ export default function MyProductsSection({
   displayedProductsCountLabel,
   searchQuery,
   onSearchQueryChange,
+  onClearSearchQuery,
   needsMoreSearchChars,
-  isSearching,
+  isSearchLoading,
   searchError,
   isSearchActive,
   displayedProducts,
@@ -50,6 +53,13 @@ export default function MyProductsSection({
   onCancelRemove,
   setProductRowRef,
 }: MyProductsSectionProps) {
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleClearSearch = () => {
+    onClearSearchQuery();
+    searchInputRef.current?.focus();
+  };
+
   return (
     <section
       id={`section-panel-${SECTION_MY_PRODUCTS}`}
@@ -62,22 +72,44 @@ export default function MyProductsSection({
         <p className="mt-1 text-sm text-gray-500">{displayedProductsCountLabel}</p>
 
         <div className="mt-3">
-          <input
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            placeholder="ابحث بالاسم"
-            inputMode="search"
-            className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-indigo-500"
-          />
+          <div className="relative">
+            <input
+              ref={searchInputRef}
+              value={searchQuery}
+              onChange={(event) => onSearchQueryChange(event.target.value)}
+              placeholder="ابحث بالاسم"
+              inputMode="search"
+              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 pe-10 text-sm outline-none focus:border-indigo-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="مسح البحث"
+                className="absolute inset-y-0 end-0 pe-3 text-gray-400 transition-colors hover:text-gray-600"
+              >
+                <svg
+                  className="h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           {needsMoreSearchChars && (
             <p className="mt-2 text-xs text-gray-500">اكتب حرفين أو أكثر لبدء البحث</p>
           )}
-          {isSearching && <p className="mt-2 text-xs text-gray-500">جاري البحث...</p>}
-          {!isSearching && searchError && <p className="mt-2 text-xs text-red-600">{searchError}</p>}
+          {isSearchLoading && <p className="mt-2 text-xs text-gray-500">جاري البحث...</p>}
+          {!isSearchLoading && searchError && <p className="mt-2 text-xs text-red-600">{searchError}</p>}
         </div>
 
         <div className="lg:max-h-[58vh] lg:overflow-y-auto lg:pe-1">
-          {displayedProducts.length === 0 ? (
+          {displayedProducts.length === 0 && !isSearchLoading ? (
             <p className="mt-4 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500">
               {isSearchActive ? 'لا توجد نتائج مطابقة.' : 'لا توجد منتجات حتى الآن.'}
             </p>

@@ -109,6 +109,17 @@ export default function CustomersView({
 		debouncedSearch(value);
 	};
 
+	const handleSearchClear = () => {
+		debouncedSearch.cancel();
+		setSearchQuery("");
+		setActiveSearch("");
+		void loadCustomers({
+			pageNumber: 1,
+			search: "",
+			reset: true,
+		});
+	};
+
 	useEffect(() => {
 		return () => debouncedSearch.cancel();
 	}, [debouncedSearch]);
@@ -144,7 +155,11 @@ export default function CustomersView({
       <CustomerHeader count={customers.length} />
       
       <div className="sticky top-[57px] z-10 bg-white shadow-sm pb-1">
-        <CustomerSearch value={searchQuery} onChange={handleSearchChange} />
+        <CustomerSearch
+					value={searchQuery}
+					onChange={handleSearchChange}
+					onClear={handleSearchClear}
+				/>
       </div>
 
 			{listError && (
