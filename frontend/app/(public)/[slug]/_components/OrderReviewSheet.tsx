@@ -379,17 +379,21 @@ export default function OrderReviewSheet({
 
 			<div className="absolute inset-x-0 bottom-0">
 				<div className="mx-auto flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl">
-					<div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 pb-3 pt-3">
-						<div className="h-1.5 w-10 rounded-full bg-gray-300" />
-						<h2 className="text-sm font-bold text-gray-900">راجع الطلب قبل التأكيد</h2>
-						<button
-							ref={closeButtonRef}
-							type="button"
-							onClick={onClose}
-							className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-300 text-gray-600"
-						>
-							×
-						</button>
+					<div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-3">
+						<div className="mb-2 h-1.5 w-10 rounded-full bg-gray-300 mx-auto" />
+						<div className="relative flex items-center justify-center min-h-11">
+							<h2 className="text-sm font-bold text-gray-900">
+								راجع الطلب قبل التأكيد
+							</h2>
+							<button
+								ref={closeButtonRef}
+								type="button"
+								onClick={onClose}
+								className="absolute left-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl border border-gray-300 text-gray-600"
+							>
+								×
+							</button>
+						</div>
 					</div>
 
 					<div
