@@ -41,6 +41,7 @@ export default function OrderNotesSection({
 			</div>
 
 			<textarea
+				id="order-request-textarea"
 				name="order_request"
 				placeholder="مثال: 1 كجم طماطم، 2 باكو سكر...&#10;عيش، لبن، زيت&#10;أي نوع مكرونة ينفع"
 				className="w-full p-4 border border-gray-200 rounded-2xl h-22 text-base resize-none focus:border-indigo-500 focus:ring-0 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50"

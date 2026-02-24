@@ -8,7 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { InvalidEvent } from "react";
+import type { FormEvent, InvalidEvent } from "react";
 import type { Product, PublicProductCategory, PublicProductsMeta } from "@/types/models/product";
 import type { Order } from "@/types/models/order";
 import { createOrderAction, type CreateOrderState } from "@/actions/order-actions";
@@ -30,6 +30,7 @@ import OrderSuccessView from "./OrderSuccessView";
 import OrderNotesSection from "./OrderNotesSection";
 import DeliveryDetailsSection from "./DeliveryDetailsSection";
 import OrderSubmitBar from "./OrderSubmitBar";
+import OrderReviewSheet from "./OrderReviewSheet";
 import {
 	ALL_PRODUCTS_CATEGORY,
 	buildInitialCartSelections,
@@ -102,6 +103,7 @@ export default function OrderForm({
 	);
 	const [activeCategory, setActiveCategory] = useState(ALL_PRODUCTS_CATEGORY);
 	const [isCategoryProductsView, setIsCategoryProductsView] = useState(false);
+	const [isReviewSheetOpen, setIsReviewSheetOpen] = useState(false);
 	const [toastState, setToastState] = useState<ToastState | null>(null);
 	const [productsByCategory, setProductsByCategory] = useState<
 		Record<string, Product[]>
@@ -132,6 +134,8 @@ export default function OrderForm({
 		new Map(),
 	);
 	const hasHandledInvalidRef = useRef(false);
+	const formRef = useRef<HTMLFormElement | null>(null);
+	const reviewTriggerButtonRef = useRef<HTMLButtonElement | null>(null);
 
 	const categoryTabs = useMemo(
 		() =>
@@ -401,9 +405,18 @@ export default function OrderForm({
 				return next;
 			}
 
+			const previousItemNote = prev[product.id]?.item_note;
+			const nextItemNote =
+				selection.item_note !== undefined
+					? selection.item_note
+					: previousItemNote;
+
 			return {
 				...prev,
-				[product.id]: selection,
+				[product.id]: {
+					...selection,
+					item_note: nextItemNote,
+				},
 			};
 		});
 	};
@@ -455,23 +468,56 @@ export default function OrderForm({
 		[getViewportOffsets],
 	);
 
-	const scrollToDeliveryDetails = useCallback(() => {
-		const section = document.getElementById("delivery-details-section");
-		if (!section) {
+	const closeReviewSheet = useCallback((restoreFocus = true) => {
+		setIsReviewSheetOpen(false);
+		if (!restoreFocus) {
 			return;
 		}
 
-		const { safeTop } = getViewportOffsets();
-		const sectionTop = window.scrollY + section.getBoundingClientRect().top;
-		window.scrollTo({
-			top: Math.max(0, sectionTop - safeTop),
-			behavior: "smooth",
+		requestAnimationFrame(() => {
+			reviewTriggerButtonRef.current?.focus();
 		});
-	}, [getViewportOffsets]);
-
-	const handleFormSubmitCapture = useCallback(() => {
-		hasHandledInvalidRef.current = false;
 	}, []);
+
+	const openReviewSheet = useCallback(() => {
+		if (isPending) {
+			return;
+		}
+
+		hasHandledInvalidRef.current = false;
+		const formNode = formRef.current;
+		if (!formNode) {
+			return;
+		}
+
+		const isValid = formNode.reportValidity();
+		if (!isValid) {
+			return;
+		}
+
+		setIsReviewSheetOpen(true);
+	}, [isPending]);
+
+	const handleFormSubmitCapture = useCallback(
+		(event: FormEvent<HTMLFormElement>) => {
+		hasHandledInvalidRef.current = false;
+
+		const nativeEvent = event.nativeEvent;
+		const submitter =
+			nativeEvent instanceof SubmitEvent ? nativeEvent.submitter : null;
+		const isReviewConfirm =
+			submitter instanceof HTMLElement &&
+			submitter.hasAttribute("data-review-confirm-submit");
+
+		if (isReviewConfirm) {
+			return;
+		}
+
+		event.preventDefault();
+		openReviewSheet();
+	},
+		[openReviewSheet],
+	);
 
 	const handleFormInvalidCapture = useCallback(
 		(event: InvalidEvent<HTMLFormElement>) => {
@@ -554,6 +600,31 @@ export default function OrderForm({
 		[tenantSlug],
 	);
 
+	const handleReviewSelectionUpdate = useCallback(
+		(productId: number, nextSelection: ProductCartSelection | null) => {
+			setCartSelections((prev) => {
+				const nextMap = new Map<number, ProductCartSelection>(
+					Object.entries(prev).map(([id, selection]) => [Number(id), selection]),
+				);
+
+				if (!nextSelection) {
+					nextMap.delete(productId);
+					return Object.fromEntries(nextMap) as Record<
+						number,
+						ProductCartSelection
+					>;
+				}
+
+				nextMap.set(productId, nextSelection);
+				return Object.fromEntries(nextMap) as Record<
+					number,
+					ProductCartSelection
+				>;
+			});
+		},
+		[],
+	);
+
 	const knownProductsByIdMap = useMemo(
 		() =>
 			new Map(
@@ -600,6 +671,33 @@ export default function OrderForm({
 		[effectiveCartSelections, knownProductsById, knownProductsByIdMap],
 	);
 
+	const handleEditManualRequestFromSheet = useCallback(() => {
+		closeReviewSheet(false);
+
+		requestAnimationFrame(() => {
+			const targetSection = document.getElementById("order-notes");
+			if (targetSection) {
+				const { safeTop } = getViewportOffsets();
+				const sectionTop =
+					window.scrollY + targetSection.getBoundingClientRect().top;
+				window.scrollTo({
+					top: Math.max(0, sectionTop - safeTop),
+					behavior: "smooth",
+				});
+			}
+
+			const textarea = document.getElementById(
+				"order-request-textarea",
+			) as HTMLTextAreaElement | null;
+			if (!textarea) {
+				return;
+			}
+
+			textarea.focus({ preventScroll: true });
+			keepElementVisibleInViewport(textarea, "smooth");
+		});
+	}, [closeReviewSheet, getViewportOffsets, keepElementVisibleInViewport]);
+
 	const copyToken = () => {
 		if (orderToken) {
 			const url = `${window.location.origin}/track-order/${orderToken}`;
@@ -636,6 +734,7 @@ export default function OrderForm({
 				/>
 			)}
 			<form
+				ref={formRef}
 				action={formAction}
 				onSubmitCapture={handleFormSubmitCapture}
 				onInvalidCapture={handleFormInvalidCapture}
@@ -696,7 +795,22 @@ export default function OrderForm({
 					estimatedTotal={estimatedTotal}
 					orderRequest={orderRequest}
 					isPending={isPending}
-					onSubmitClick={scrollToDeliveryDetails}
+					onSubmitClick={openReviewSheet}
+					triggerButtonRef={reviewTriggerButtonRef}
+				/>
+
+				<OrderReviewSheet
+					isOpen={isReviewSheetOpen}
+					isPending={isPending}
+					totalItems={totalItems}
+					estimatedTotal={estimatedTotal}
+					hasPricedItems={hasPricedItems}
+					orderRequest={orderRequest}
+					selections={effectiveCartSelections}
+					knownProductsById={knownProductsById}
+					onClose={() => closeReviewSheet(true)}
+					onEditManualRequest={handleEditManualRequestFromSheet}
+					onUpdateSelection={handleReviewSelectionUpdate}
 				/>
 			</form>
 		</>

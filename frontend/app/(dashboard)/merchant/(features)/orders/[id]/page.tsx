@@ -63,14 +63,17 @@ export default async function OrderDetailsPage({
 	return (
 		<div className="flex min-h-screen flex-col bg-gray-50">
 			<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-3">
-				<Link href="/merchant/orders" className="-ml-2 p-2 text-gray-600">
+				<Link
+					href="/merchant/orders"
+					className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						fill="none"
 						viewBox="0 0 24 24"
 						strokeWidth={2}
 						stroke="currentColor"
-						className="h-5 w-5"
+						className="h-5 w-5 rtl:rotate-180"
 					>
 						<path
 							strokeLinecap="round"
@@ -78,12 +81,13 @@ export default async function OrderDetailsPage({
 							d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
 						/>
 					</svg>
+					<span className="whitespace-nowrap">الرجوع الى الطلبات</span>
 				</Link>
 
 				<h1 className="text-lg font-bold">الطلب #{order.id}</h1>
 
 				<span
-					className={`ml-auto rounded-full px-2 py-1 text-xs font-medium tracking-wide
+					className={`ms-auto rounded-full px-2 py-1 text-xs font-medium tracking-wide
             ${order.status === OrderStatus.DRAFT ? "bg-blue-100 text-blue-800" : ""}
             ${order.status === OrderStatus.CONFIRMED ? "bg-indigo-100 text-indigo-800" : ""}
             ${order.status === OrderStatus.OUT_FOR_DELIVERY ? "bg-amber-100 text-amber-800" : ""}

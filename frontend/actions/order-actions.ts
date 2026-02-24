@@ -139,6 +139,7 @@ type CreateOrderCartItem = {
   product_id: number;
   quantity: string;
   name?: string;
+  notes?: string;
   total_price?: number;
   selection_mode?: 'quantity' | 'weight' | 'price';
   selection_quantity?: number;

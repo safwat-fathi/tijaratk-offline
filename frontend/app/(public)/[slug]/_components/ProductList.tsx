@@ -16,6 +16,7 @@ export type ProductCartSelection = {
 	selection_grams?: number;
 	selection_amount_egp?: number;
 	unit_option_id?: string;
+	item_note?: string;
 };
 
 export type AvailabilityRequestOutcome =
@@ -599,6 +600,8 @@ export default function ProductList({
 		}
 
 		const selection = selections[product.id];
+		const itemNote =
+			selection?.item_note !== undefined ? selection.item_note : undefined;
 		const currentQty =
 			selection?.selection_mode === "quantity"
 				? Number(selection.selection_quantity || 0)
@@ -622,6 +625,7 @@ export default function ProductList({
 			selection_mode: "quantity",
 			selection_quantity: nextQty,
 			unit_option_id: unitOptionId,
+			item_note: itemNote,
 		});
 
 		if (delta > 0) {
@@ -662,6 +666,10 @@ export default function ProductList({
 		if (mode === "weight") {
 			const nextGrams = Math.round(value);
 			const currentSelection = selections[product.id];
+			const itemNote =
+				currentSelection?.item_note !== undefined
+					? currentSelection.item_note
+					: undefined;
 			const currentGrams =
 				currentSelection?.selection_mode === "weight"
 					? Number(currentSelection.selection_grams || 0)
@@ -675,11 +683,18 @@ export default function ProductList({
 			onUpdateSelection(product, {
 				selection_mode: "weight",
 				selection_grams: nextGrams,
+				item_note: itemNote,
 			});
 		} else {
+			const currentSelection = selections[product.id];
+			const itemNote =
+				currentSelection?.item_note !== undefined
+					? currentSelection.item_note
+					: undefined;
 			onUpdateSelection(product, {
 				selection_mode: "price",
 				selection_amount_egp: Number(value.toFixed(2)),
+				item_note: itemNote,
 			});
 		}
 
@@ -697,14 +712,26 @@ export default function ProductList({
 		}
 
 		if (customSheet.mode === "weight") {
+			const currentSelection = selections[selectedProduct.id];
+			const itemNote =
+				currentSelection?.item_note !== undefined
+					? currentSelection.item_note
+					: undefined;
 			onUpdateSelection(selectedProduct, {
 				selection_mode: "weight",
 				selection_grams: Math.round(parsed),
+				item_note: itemNote,
 			});
 		} else {
+			const currentSelection = selections[selectedProduct.id];
+			const itemNote =
+				currentSelection?.item_note !== undefined
+					? currentSelection.item_note
+					: undefined;
 			onUpdateSelection(selectedProduct, {
 				selection_mode: "price",
 				selection_amount_egp: Number(parsed.toFixed(2)),
+				item_note: itemNote,
 			});
 		}
 

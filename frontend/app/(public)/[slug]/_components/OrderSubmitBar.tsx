@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatArabicInteger } from "@/lib/utils/number";
 
@@ -8,6 +9,7 @@ type OrderSubmitBarProps = {
 	orderRequest: string;
 	isPending: boolean;
 	onSubmitClick?: () => void;
+	triggerButtonRef?: Ref<HTMLButtonElement>;
 };
 
 export default function OrderSubmitBar({
@@ -17,6 +19,7 @@ export default function OrderSubmitBar({
 	orderRequest,
 	isPending,
 	onSubmitClick,
+	triggerButtonRef,
 }: OrderSubmitBarProps) {
 	if (!(totalItems > 0 || orderRequest.trim())) {
 		return null;
@@ -53,7 +56,8 @@ export default function OrderSubmitBar({
 					</div>
 
 					<button
-						type="submit"
+						type="button"
+						ref={triggerButtonRef}
 						onClick={onSubmitClick}
 						disabled={isPending || (totalItems === 0 && !orderRequest.trim())}
 						className="w-full bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all"

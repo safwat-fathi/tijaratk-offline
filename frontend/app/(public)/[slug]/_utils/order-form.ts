@@ -132,6 +132,7 @@ export const buildInitialCartSelections = (
 					acc[item.product_id] = {
 						selection_mode: "weight",
 						selection_grams: Math.round(grams),
+						item_note: item.notes || undefined,
 					};
 				}
 				return acc;
@@ -143,6 +144,7 @@ export const buildInitialCartSelections = (
 					acc[item.product_id] = {
 						selection_mode: "price",
 						selection_amount_egp: Number(amount.toFixed(2)),
+						item_note: item.notes || undefined,
 					};
 				}
 				return acc;
@@ -156,6 +158,7 @@ export const buildInitialCartSelections = (
 					selection_mode: "quantity",
 					selection_quantity: parsedQty,
 					unit_option_id: item.unit_option_id || undefined,
+					item_note: item.notes || undefined,
 				};
 			}
 			return acc;
@@ -255,6 +258,7 @@ export const buildCartItems = (
 			name: product?.name || "منتج",
 			quantity: resolveSelectionQuantityText(selection, product),
 			total_price: resolveSelectionLineTotal(selection, product) || undefined,
+			notes: selection.item_note?.trim() || undefined,
 			selection_mode: selection.selection_mode,
 			selection_quantity: selection.selection_quantity,
 			selection_grams: selection.selection_grams,
