@@ -66,7 +66,10 @@ export const resolveSelectionLineTotal = (
 ): number | null => {
 	if (selection.selection_mode === "price") {
 		const amount = Number(selection.selection_amount_egp || 0);
-		return Number.isFinite(amount) && amount > 0 ? Number(amount.toFixed(2)) : null;
+
+		return Number.isFinite(amount) && amount > 0
+			? Number(amount.toFixed(2))
+			: null;
 	}
 
 	const productPrice = parseProductPrice(product);
