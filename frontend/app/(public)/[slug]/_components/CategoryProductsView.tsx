@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
+import { formatArabicInteger } from "@/lib/utils/number";
 import type { Product } from "@/types/models/product";
 import ProductList, {
 	type AvailabilityRequestOutcome,
@@ -96,7 +97,7 @@ export default function CategoryProductsView({
 								{category.label}
 							</span>
 							<span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
-								{category.count}
+								{formatArabicInteger(category.count) || category.count}
 							</span>
 						</span>
 					</button>

@@ -1,5 +1,6 @@
 import { Customer } from "@/types/models/customer";
 import { buildWhatsAppLink } from "@/lib/utils/phone";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 interface CustomerCardProps {
   customer: Customer;
@@ -35,7 +36,9 @@ export default function CustomerCard({ customer }: CustomerCardProps) {
              )}
              <p className="text-gray-500 text-sm truncate font-medium mt-0.5" dir="ltr">{displayPhone}</p>
              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-               <span className="font-semibold text-gray-600">{customer.order_count} طلبات</span>
+               <span className="font-semibold text-gray-600">
+                 {formatArabicInteger(customer.order_count) || customer.order_count} طلبات
+               </span>
                <span>•</span>
                <span>آخر طلب: {lastOrderDate}</span>
              </p>

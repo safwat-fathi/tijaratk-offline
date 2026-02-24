@@ -1,6 +1,7 @@
 import React from "react";
 import { DashboardStats } from "./dashboard.types";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 interface TodaySnapshotProps {
   stats: DashboardStats;
@@ -35,7 +36,9 @@ export default function TodaySnapshot({ stats }: TodaySnapshotProps) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/70"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                 <p className="text-xs font-medium text-white/70">الطلبات</p>
               </div>
-              <p className="text-xl font-bold">{stats.ordersCount}</p>
+              <p className="text-xl font-bold">
+                {formatArabicInteger(stats.ordersCount) || stats.ordersCount}
+              </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10 relative overflow-hidden group">
@@ -46,7 +49,9 @@ export default function TodaySnapshot({ stats }: TodaySnapshotProps) {
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${stats.pendingOrdersCount > 0 ? "text-orange-200" : "text-white/70"}`}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <p className={`text-xs font-medium ${stats.pendingOrdersCount > 0 ? "text-orange-100" : "text-white/70"}`}>معلق</p>
               </div>
-              <p className="text-xl font-bold relative z-10">{stats.pendingOrdersCount}</p>
+              <p className="text-xl font-bold relative z-10">
+                {formatArabicInteger(stats.pendingOrdersCount) || stats.pendingOrdersCount}
+              </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/10">

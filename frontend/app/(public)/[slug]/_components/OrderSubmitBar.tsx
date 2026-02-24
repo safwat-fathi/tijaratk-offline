@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 type OrderSubmitBarProps = {
 	totalItems: number;
@@ -34,7 +35,7 @@ export default function OrderSubmitBar({
 							{totalItems > 0 ? (
 								<>
 									<span className="text-2xl font-bold text-gray-900">
-										{Math.round(totalItems)}
+										{formatArabicInteger(Math.round(totalItems)) || Math.round(totalItems)}
 									</span>
 									<span className="text-sm font-semibold text-gray-500">عنصر</span>
 									{hasPricedItems && (

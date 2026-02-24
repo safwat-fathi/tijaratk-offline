@@ -1,3 +1,5 @@
+import { formatArabicInteger } from "@/lib/utils/number";
+
 type ProductOnboardingHeaderProps = {
   activeSectionLabel: string;
   productsCount: number;
@@ -14,7 +16,7 @@ export default function ProductOnboardingHeader({
         <p className="text-xs text-gray-500">القسم الحالي: {activeSectionLabel}</p>
       </div>
       <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
-        {productsCount} منتج في متجرك
+        {formatArabicInteger(productsCount) || productsCount} منتج في متجرك
       </div>
     </div>
   );

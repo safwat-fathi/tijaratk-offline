@@ -5,6 +5,7 @@ import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 import { useMemo, useState } from "react";
 
 type SelectionMode = "quantity" | "weight" | "price";
@@ -222,7 +223,7 @@ const QuantitySelectionControls = ({
 						-
 					</button>
 					<span className="min-w-8 text-center text-sm font-bold text-gray-900">
-						{selectedQty}
+						{formatArabicInteger(selectedQty) || selectedQty}
 					</span>
 				</>
 			)}
@@ -272,7 +273,7 @@ const WeightSelectionControls = ({
 							: "border-gray-300 bg-white text-gray-700"
 					}`}
 				>
-					{grams} جم
+					{formatArabicInteger(grams) || grams} جم
 				</button>
 			))}
 			<button
@@ -291,9 +292,9 @@ const WeightSelectionControls = ({
 						? "border-indigo-600 bg-indigo-50 text-indigo-700"
 						: "border-gray-400 text-gray-700"
 				}`}
-			>
+				>
 				{isCustomWeightSelection
-					? `كمية مخصصة (${selectedGrams} جم)`
+					? `كمية مخصصة (${formatArabicInteger(selectedGrams) || selectedGrams} جم)`
 					: "كمية مخصصة"}
 			</button>
 		</div>
@@ -329,7 +330,7 @@ const PriceSelectionControls = ({
 							: "border-gray-300 bg-white text-gray-700"
 					}`}
 				>
-					{amount} جنيه
+					{formatArabicInteger(amount) || amount} جنيه
 				</button>
 			))}
 			<button

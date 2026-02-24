@@ -1,4 +1,5 @@
 import { MerchantAvailabilitySummaryResponse } from '@/types/services/availability-requests';
+import { formatArabicInteger } from '@/lib/utils/number';
 
 type AvailabilityRequestsCardProps = {
   summary: MerchantAvailabilitySummaryResponse;
@@ -24,7 +25,7 @@ export default function AvailabilityRequestsCard({
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-gray-900">طلبات توفير المنتجات</h2>
         <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
-          {summary.today_total_requests} اليوم
+          {formatArabicInteger(summary.today_total_requests) || summary.today_total_requests} اليوم
         </span>
       </div>
 
@@ -46,7 +47,7 @@ export default function AvailabilityRequestsCard({
                 </p>
               </div>
               <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
-                {item.requests_count} طلب
+                {formatArabicInteger(item.requests_count) || item.requests_count} طلب
               </span>
             </li>
           ))}

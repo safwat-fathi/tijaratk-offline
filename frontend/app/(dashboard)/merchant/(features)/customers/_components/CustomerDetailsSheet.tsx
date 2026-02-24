@@ -3,6 +3,7 @@
 import { getCustomerDetailsAction } from "@/actions/customer-actions";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 import { buildWhatsAppLink } from "@/lib/utils/phone";
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
@@ -108,7 +109,9 @@ const CustomerBodyContent = ({
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
           <span className="text-gray-400 text-xs font-medium uppercase">إجمالي الطلبات</span>
-          <p className="text-gray-900 text-xl font-bold mt-1">{customer.order_count}</p>
+          <p className="text-gray-900 text-xl font-bold mt-1">
+            {formatArabicInteger(customer.order_count) || customer.order_count}
+          </p>
         </div>
         <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
           <span className="text-gray-400 text-xs font-medium uppercase">آخر نشاط</span>

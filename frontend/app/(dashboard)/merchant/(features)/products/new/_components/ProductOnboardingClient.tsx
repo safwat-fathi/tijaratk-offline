@@ -10,6 +10,7 @@ import {
   searchTenantProductsAction,
   updateProductAction,
 } from '@/actions/product-actions';
+import { formatArabicInteger } from '@/lib/utils/number';
 import type { CatalogItem, Product, ProductOrderMode } from '@/types/models/product';
 import CatalogSection from './CatalogSection';
 import EditProductModal from './EditProductModal';
@@ -194,8 +195,8 @@ export default function ProductOnboardingClient({
 
 	const displayedProducts = isSearchActive ? searchResults : products;
 	const displayedProductsCountLabel = isSearchActive
-		? `نتائج البحث: ${displayedProducts.length}`
-		: `${products.length} منتج`;
+		? `نتائج البحث: ${formatArabicInteger(displayedProducts.length) || displayedProducts.length}`
+		: `${formatArabicInteger(products.length) || products.length} منتج`;
 
 	const sectionTabs = useMemo(
 		() => buildSectionTabs(catalogItems.length, products.length),

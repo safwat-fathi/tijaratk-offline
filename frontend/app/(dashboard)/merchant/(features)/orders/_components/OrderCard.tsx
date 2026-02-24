@@ -7,6 +7,7 @@ import { updateOrderStatus } from "@/actions/order-actions";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatRtlQuantityLabel } from "@/lib/utils/number";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -87,7 +88,7 @@ export default function OrderCard({ order, isHighlighted }: OrderCardProps) {
       return order.items
         .map((item) => {
           const itemName = item.replaced_by_product?.name || item.name_snapshot;
-          return `${item.quantity}× ${itemName}`;
+          return formatRtlQuantityLabel(itemName, item.quantity);
         })
         .join(", ");
     }

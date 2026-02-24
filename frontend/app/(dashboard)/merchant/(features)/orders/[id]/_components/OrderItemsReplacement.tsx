@@ -15,6 +15,7 @@ import {
 import { formatCurrency } from '@/lib/utils/currency';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { getImageUrl } from '@/lib/utils/image';
+import { formatArabicQuantity } from '@/lib/utils/number';
 import { OrderStatus, ReplacementDecisionStatus } from '@/types/enums';
 import { OrderItem } from '@/types/models/order';
 import { Product } from '@/types/models/product';
@@ -561,7 +562,9 @@ export default function OrderItemsReplacement({
                 <div className="flex justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">{item.name_snapshot}</p>
-                    <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
+                    <p className="text-sm text-gray-500">
+                      الكمية: {formatArabicQuantity(item.quantity) || item.quantity}
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-gray-800">
                       السعر: {formatLinePrice(item.total_price)}
                     </p>

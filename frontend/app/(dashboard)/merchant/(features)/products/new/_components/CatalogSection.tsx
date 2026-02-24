@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import type { CatalogItem } from '@/types/models/product';
+import { formatArabicInteger } from '@/lib/utils/number';
 import type { CategoryTab } from '../_utils/product-onboarding.types';
 import { SECTION_CATALOG } from '../_utils/product-onboarding.constants';
 import { resolveImageUrl } from "../_utils/product-onboarding";
@@ -39,7 +40,7 @@ export default function CatalogSection({
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">اختار من منتجات جاهزة</h2>
         <p className="mt-1 text-sm text-gray-500">
-          اضغط إضافة ويتم حفظ المنتج فوراً. متاح الآن {catalogItems.length} منتج من قاعدة البيانات.
+          اضغط إضافة ويتم حفظ المنتج فوراً. متاح الآن {formatArabicInteger(catalogItems.length) || catalogItems.length} منتج من قاعدة البيانات.
         </p>
 
         <div className="mb-4 mt-3 flex gap-2 overflow-x-auto pb-2">
@@ -71,7 +72,7 @@ export default function CatalogSection({
                 )}
                 <span className="whitespace-nowrap text-sm font-medium">{category.label}</span>
                 <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
-                  {category.count}
+                  {formatArabicInteger(category.count) || category.count}
                 </span>
               </span>
             </button>

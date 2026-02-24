@@ -8,6 +8,10 @@ import {
 } from '@/actions/order-tracking-actions';
 import { formatCurrency } from '@/lib/utils/currency';
 import {
+  formatArabicQuantity,
+  formatRtlQuantityLabel,
+} from '@/lib/utils/number';
+import {
   OrderStatus,
   ReplacementDecisionStatus,
 } from '@/types/enums';
@@ -138,18 +142,19 @@ export default function TrackingOrderItemsCard({
 
   const resolveSelectionText = (item: OrderItem): string => {
     if (item.selection_mode === 'weight' && item.selection_grams) {
-      return `${item.selection_grams} جم`;
+      return `${formatArabicQuantity(item.selection_grams) || item.selection_grams} جم`;
     }
 
     if (item.selection_mode === 'price' && item.selection_amount_egp) {
-      return `${Number(item.selection_amount_egp)} جنيه`;
+      const selectionAmount = Number(item.selection_amount_egp);
+      return `${formatArabicQuantity(selectionAmount) || selectionAmount} جنيه`;
     }
 
     if (item.selection_mode === 'quantity' && item.selection_quantity) {
-      return String(item.selection_quantity);
+      return formatArabicQuantity(item.selection_quantity) || String(item.selection_quantity);
     }
 
-    return item.quantity;
+    return formatArabicQuantity(item.quantity) || item.quantity;
   };
 
   return (
@@ -202,7 +207,7 @@ export default function TrackingOrderItemsCard({
                 <div className="flex items-center justify-between">
                   <div className="w-0 flex-1">
                     <span className="ml-2 block truncate font-medium">
-                      {displayName} x {resolveSelectionText(item)}
+                      {formatRtlQuantityLabel(displayName, resolveSelectionText(item))}
                     </span>
                   </div>
                   <div className="ml-4 shrink-0">

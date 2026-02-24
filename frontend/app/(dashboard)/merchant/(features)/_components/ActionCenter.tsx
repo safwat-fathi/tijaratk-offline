@@ -3,6 +3,7 @@ import { ActionItem } from "./dashboard.types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 interface ActionCenterProps {
   items: ActionItem[];
@@ -46,7 +47,7 @@ export default function ActionCenter({ items }: ActionCenterProps) {
       <div className="flex items-center justify-between px-1">
         <h2 className="text-lg font-semibold tracking-tight">إجراءات مطلوبة</h2>
         <span className="bg-destructive/10 text-destructive text-xs font-bold px-2.5 py-1 rounded-full animate-pulse-soft">
-           {items.length} إجراء
+           {formatArabicInteger(items.length) || items.length} إجراء
         </span>
       </div>
       

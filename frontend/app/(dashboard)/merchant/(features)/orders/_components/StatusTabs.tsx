@@ -1,4 +1,5 @@
 import { OrderStatus } from "@/types/enums";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 interface StatusTabsProps {
   currentStatus: OrderStatus;
@@ -45,7 +46,7 @@ export default function StatusTabs({ currentStatus, counts, onTabChange }: Statu
                   text-xs px-1.5 py-0.5 rounded-full
                   ${isActive ? "bg-white/50" : "bg-gray-100 text-gray-500"}
                 `}>
-                  {count}
+                  {formatArabicInteger(count) || count}
                 </span>
               )}
             </button>

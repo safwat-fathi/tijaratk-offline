@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 interface OrderStatsProps {
   count: number;
@@ -66,7 +67,9 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
         >
             <span>{getLabel()}</span>
             <span className="text-gray-300">•</span>
-            <span className="text-gray-900 font-bold">{count} طلب</span>
+            <span className="text-gray-900 font-bold">
+              {formatArabicInteger(count) || count} طلب
+            </span>
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ms-1 text-gray-400">
                 <path d="m6 9 6 6 6-6"/>
             </svg>
