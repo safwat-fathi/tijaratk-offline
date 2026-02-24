@@ -69,11 +69,14 @@ const normalizeCategory = (value?: string | null) => {
   return normalizedValue ? normalizedValue : undefined;
 };
 
-const dedupeProductsById = (products: Product[]) => {
+const dedupeAndExcludeProducts = (
+  products: Product[],
+  excludedProductIds: Set<number>,
+) => {
   const seen = new Set<number>();
 
   return products.filter((product) => {
-    if (seen.has(product.id)) {
+    if (seen.has(product.id) || excludedProductIds.has(product.id)) {
       return false;
     }
 
@@ -140,6 +143,27 @@ export default function OrderItemsReplacement({
     () => items.find((item) => item.id === activeItemId) || null,
     [activeItemId, items],
   );
+  const activeItemExcludedProductIds = useMemo(() => {
+    const excludedProductIds = new Set<number>();
+
+    if (!activeItem) {
+      return excludedProductIds;
+    }
+
+    const candidateProductIds = [
+      activeItem.product_id,
+      activeItem.pending_replacement_product_id,
+      activeItem.replaced_by_product_id,
+    ];
+
+    for (const candidateId of candidateProductIds) {
+      if (typeof candidateId === 'number') {
+        excludedProductIds.add(candidateId);
+      }
+    }
+
+    return excludedProductIds;
+  }, [activeItem]);
   const availableProductsById = useMemo(
     () => new Map(availableProducts.map((product) => [product.id, product])),
     [availableProducts],
@@ -232,7 +256,10 @@ export default function OrderItemsReplacement({
         return;
       }
 
-      const rankedResults = dedupeProductsById(response.data.data);
+      const rankedResults = dedupeAndExcludeProducts(
+        response.data.data,
+        activeItemExcludedProductIds,
+      );
       setSuggestedResults(rankedResults);
       setSuggestedError(null);
       setIsLoadingSuggested(false);
@@ -244,6 +271,7 @@ export default function OrderItemsReplacement({
   }, [
     activeItem,
     activeItemCategory,
+    activeItemExcludedProductIds,
     activeItemInitialSuggestionQuery,
     activeSheet,
   ]);
@@ -283,7 +311,9 @@ export default function OrderItemsReplacement({
         return;
       }
 
-      setSearchResults(dedupeProductsById(response.data.data));
+      setSearchResults(
+        dedupeAndExcludeProducts(response.data.data, activeItemExcludedProductIds),
+      );
       setIsSearching(false);
     })();
 
@@ -292,6 +322,7 @@ export default function OrderItemsReplacement({
     };
   }, [
     activeItemCategory,
+    activeItemExcludedProductIds,
     activeItemId,
     activeSheet,
     isTextSearchActive,
