@@ -1,4 +1,4 @@
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatArabicInteger } from "@/lib/utils/number";
 import type { Product } from "@/types/models/product";
@@ -79,20 +79,19 @@ export default function CategoryProductsView({
 						}`}
 					>
 						<span className="flex items-center gap-2">
-							{category.image_url ? (
-								<Image
-									src={getImageUrl(category.image_url)}
-									alt={category.label}
-									width={40}
-									height={40}
-									className="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
-									unoptimized
-								/>
-							) : (
-								<span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
-									🛒
-								</span>
-							)}
+							<SafeImage
+								src={category.image_url ? getImageUrl(category.image_url) : null}
+								alt={category.label}
+								width={40}
+								height={40}
+								unoptimized
+								imageClassName="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
+								fallback={
+									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
+										🛒
+									</span>
+								}
+							/>
 							<span className="whitespace-nowrap text-sm font-medium">
 								{category.label}
 							</span>

@@ -77,6 +77,16 @@ type TenantProductsSearchResult = {
   };
 };
 
+type TenantProductsSearchOptions = {
+  rankAll?: boolean;
+  excludeProductIds?: number[];
+};
+
+type StrictMatchThresholds = {
+  strictSimilarityThreshold: number;
+  strictWordSimilarityThreshold: number;
+};
+
 /**
  * Products service handles product lifecycle for each tenant.
  */
@@ -203,6 +213,7 @@ export class ProductsService {
     category?: string,
     page = 1,
     limit = 20,
+    options?: TenantProductsSearchOptions,
   ): Promise<TenantProductsSearchResult> {
     const normalizedSearch = this.normalizeSearchTerm(search);
     if (normalizedSearch.length < 2) {
@@ -216,8 +227,14 @@ export class ProductsService {
       ? Math.min(50, Math.max(1, limit))
       : 20;
     const normalizedCategory = this.normalizeOptionalCategory(category);
+    const rankAll = options?.rankAll ?? false;
+    const normalizedExcludedProductIds = this.normalizeExcludedProductIds(
+      options?.excludeProductIds,
+    );
     const similarityThreshold =
       this.resolveSimilarityThreshold(normalizedSearch);
+    const strictMatchThresholds =
+      this.resolveStrictMatchThresholds(normalizedSearch);
 
     const searchVersion = await this.getTenantSearchCacheVersion(tenantId);
     const cacheKey = this.buildTenantSearchCacheKey(
@@ -225,6 +242,9 @@ export class ProductsService {
       normalizedSearch,
       normalizedCategory,
       similarityThreshold,
+      strictMatchThresholds,
+      rankAll,
+      normalizedExcludedProductIds,
       normalizedPage,
       normalizedLimit,
       searchVersion,
@@ -241,6 +261,9 @@ export class ProductsService {
       normalizedSearch,
       normalizedCategory,
       similarityThreshold,
+      strictMatchThresholds,
+      rankAll,
+      normalizedExcludedProductIds,
       normalizedPage,
       normalizedLimit,
     );
@@ -278,12 +301,15 @@ export class ProductsService {
     const normalizedCategory = this.normalizeOptionalCategory(category);
     const similarityThreshold =
       this.resolveSimilarityThreshold(normalizedSearch);
+    const strictMatchThresholds =
+      this.resolveStrictMatchThresholds(normalizedSearch);
 
     return this.searchWithinPublicProducts(
       slug,
       normalizedSearch,
       normalizedCategory,
       similarityThreshold,
+      strictMatchThresholds,
       normalizedPage,
       normalizedLimit,
     );
@@ -559,6 +585,9 @@ export class ProductsService {
     normalizedSearch: string,
     category: string | undefined,
     similarityThreshold: number,
+    strictMatchThresholds: StrictMatchThresholds,
+    rankAll: boolean,
+    excludedProductIds: number[],
     page: number,
     limit: number,
   ): Promise<TenantProductsSearchResult> {
@@ -567,11 +596,29 @@ export class ProductsService {
       .where('product.tenant_id = :tenantId', { tenantId })
       .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
 
-    if (category) {
+    // When rankAll=true, category is a hard filter (suggested similar products).
+    // When rankAll=false (text search), category is a ranking boost instead.
+    const useCategoryAsFilter = rankAll && !!category;
+    const useCategoryAsBoost = !rankAll && !!category;
+
+    if (useCategoryAsFilter) {
       query.andWhere('product.category = :category', { category });
     }
 
-    this.applySimilarityRanking(query, normalizedSearch, similarityThreshold);
+    if (excludedProductIds.length > 0) {
+      query.andWhere('product.id NOT IN (:...excludedProductIds)', {
+        excludedProductIds,
+      });
+    }
+
+    this.applySimilarityRanking(
+      query,
+      normalizedSearch,
+      similarityThreshold,
+      strictMatchThresholds,
+      rankAll,
+      useCategoryAsBoost ? category : undefined,
+    );
 
     query.skip((page - 1) * limit).take(limit);
 
@@ -584,6 +631,7 @@ export class ProductsService {
     normalizedSearch: string,
     category: string | undefined,
     similarityThreshold: number,
+    strictMatchThresholds: StrictMatchThresholds,
     page: number,
     limit: number,
   ): Promise<PublicProductsResult> {
@@ -597,7 +645,12 @@ export class ProductsService {
       query.andWhere('product.category = :category', { category });
     }
 
-    this.applySimilarityRanking(query, normalizedSearch, similarityThreshold);
+    this.applySimilarityRanking(
+      query,
+      normalizedSearch,
+      similarityThreshold,
+      strictMatchThresholds,
+    );
 
     query.skip((page - 1) * limit).take(limit);
 
@@ -609,6 +662,9 @@ export class ProductsService {
     query: SelectQueryBuilder<Product>,
     normalizedSearch: string,
     similarityThreshold: number,
+    strictMatchThresholds: StrictMatchThresholds,
+    rankAll = false,
+    boostCategory?: string,
   ): void {
     const comparableNameSql =
       this.buildComparableProductNameExpression('product.name');
@@ -620,9 +676,21 @@ export class ProductsService {
       .setParameter('prefixPattern', prefixPattern)
       .setParameter('containsPattern', containsPattern)
       .setParameter('similarityThreshold', similarityThreshold)
+      .setParameter(
+        'strictSimilarityThreshold',
+        strictMatchThresholds.strictSimilarityThreshold,
+      )
+      .setParameter(
+        'strictWordSimilarityThreshold',
+        strictMatchThresholds.strictWordSimilarityThreshold,
+      )
       .addSelect(
         `similarity(${comparableNameSql}, :normalizedSearch)`,
         'name_similarity',
+      )
+      .addSelect(
+        `word_similarity(${comparableNameSql}, :normalizedSearch)`,
+        'word_sim',
       )
       .addSelect(
         `CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END`,
@@ -631,20 +699,39 @@ export class ProductsService {
       .addSelect(
         `CASE WHEN ${comparableNameSql} LIKE :containsPattern THEN 1 ELSE 0 END`,
         'contains_score',
-      )
-      .addSelect(
-        `(similarity(${comparableNameSql}, :normalizedSearch) * 0.85) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15`,
-        'search_rank',
-      )
-      .andWhere(
-        `(${comparableNameSql} LIKE :prefixPattern OR ${comparableNameSql} LIKE :containsPattern OR LOWER(product.name) % :normalizedSearch)`,
-      )
-      .andWhere(
-        `(${comparableNameSql} LIKE :prefixPattern OR ${comparableNameSql} LIKE :containsPattern OR similarity(${comparableNameSql}, :normalizedSearch) >= :similarityThreshold)`,
       );
+
+    // Category boost: add +0.10 to search_rank for products matching the boost category
+    if (boostCategory) {
+      query
+        .setParameter('boostCategory', boostCategory)
+        .addSelect(
+          `(word_similarity(${comparableNameSql}, :normalizedSearch) * 0.50) + (similarity(${comparableNameSql}, :normalizedSearch) * 0.25) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15 + (CASE WHEN product.category = :boostCategory THEN 0.10 ELSE 0 END)`,
+          'search_rank',
+        );
+    } else {
+      query.addSelect(
+        `(word_similarity(${comparableNameSql}, :normalizedSearch) * 0.55) + (similarity(${comparableNameSql}, :normalizedSearch) * 0.30) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15`,
+        'search_rank',
+      );
+    }
+
+    if (!rankAll) {
+      query.andWhere(
+        `(
+          ${comparableNameSql} LIKE :prefixPattern
+          OR ${comparableNameSql} LIKE :containsPattern
+          OR (
+            similarity(${comparableNameSql}, :normalizedSearch) >= :strictSimilarityThreshold
+            AND word_similarity(${comparableNameSql}, :normalizedSearch) >= :strictWordSimilarityThreshold
+          )
+        )`,
+      );
+    }
 
     query
       .orderBy('search_rank', 'DESC')
+      .addOrderBy('word_sim', 'DESC')
       .addOrderBy('name_similarity', 'DESC')
       .addOrderBy('contains_score', 'DESC')
       .addOrderBy('product.created_at', 'DESC')
@@ -735,6 +822,30 @@ export class ProductsService {
     return 0.22;
   }
 
+  private resolveStrictMatchThresholds(
+    normalizedSearch: string,
+  ): StrictMatchThresholds {
+    const length = normalizedSearch.length;
+    if (length <= 3) {
+      return {
+        strictSimilarityThreshold: 0.32,
+        strictWordSimilarityThreshold: 0.58,
+      };
+    }
+
+    if (length <= 5) {
+      return {
+        strictSimilarityThreshold: 0.28,
+        strictWordSimilarityThreshold: 0.5,
+      };
+    }
+
+    return {
+      strictSimilarityThreshold: 0.24,
+      strictWordSimilarityThreshold: 0.42,
+    };
+  }
+
   private normalizeOptionalCategory(category?: string): string | undefined {
     const normalizedCategory = category?.trim();
     if (!normalizedCategory) {
@@ -748,15 +859,22 @@ export class ProductsService {
     return (
       input
         .toLowerCase()
+        // Strip Arabic diacritics (tashkeel/harakat)
+        .replace(
+          /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g,
+          '',
+        )
         .replace(/[أإآ]/g, 'ا')
         .replace(/ى/g, 'ي')
         .replace(/ة/g, 'ه')
+        // eslint-disable-next-line sonarjs/slow-regex -- false positive: negated char class [^)]* is O(n)
         .replace(/\([^)]*\)/g, ' ')
         // eslint-disable-next-line sonarjs/slow-regex
         .replace(/\d+\s*(?:جم|جرام|كجم|كيلو|ك|g|kg)/gi, ' ')
-        // eslint-disable-next-line sonarjs/slow-regex
         .replace(/(?:جم|جرام|كجم|كيلو|ك|g|kg)\s*\d+/gi, ' ')
         .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        // Strip Arabic definite article "ال" at word boundaries
+        .replace(/\bال/g, '')
         .replace(/\s+/g, ' ')
         .trim()
     );
@@ -771,26 +889,36 @@ export class ProductsService {
               REGEXP_REPLACE(
                 REGEXP_REPLACE(
                   REGEXP_REPLACE(
-                    LOWER(${columnName}),
-                    '[أإآ]',
-                    'ا',
+                    REGEXP_REPLACE(
+                      REGEXP_REPLACE(
+                        LOWER(${columnName}),
+                        '[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]',
+                        '',
+                        'g'
+                      ),
+                      '[أإآ]',
+                      'ا',
+                      'g'
+                    ),
+                    'ى',
+                    'ي',
                     'g'
                   ),
-                  'ى',
-                  'ي',
+                  'ة',
+                  'ه',
                   'g'
                 ),
-                'ة',
-                'ه',
+                '\\\\([^\\\\)]*\\\\)',
+                ' ',
                 'g'
               ),
-              '\\\\([^\\\\)]*\\\\)',
+              '(\\\\m\\\\d+\\\\s*(جم|جرام|كجم|كيلو|ك|g|kg)\\\\M)|(\\\\m(جم|جرام|كجم|كيلو|ك|g|kg)\\\\s*\\\\d+\\\\M)',
               ' ',
-              'g'
+              'gi'
             ),
-            '(\\\\m\\\\d+\\\\s*(جم|جرام|كجم|كيلو|ك|g|kg)\\\\M)|(\\\\m(جم|جرام|كجم|كيلو|ك|g|kg)\\\\s*\\\\d+\\\\M)',
-            ' ',
-            'gi'
+            '\\mال',
+            '',
+            'g'
           ),
           '\\\\s+',
           ' ',
@@ -1016,12 +1144,33 @@ export class ProductsService {
     normalizedSearch: string,
     category: string | undefined,
     similarityThreshold: number,
+    strictMatchThresholds: StrictMatchThresholds,
+    rankAll: boolean,
+    excludedProductIds: number[],
     page: number,
     limit: number,
     version: string,
   ): string {
     const normalizedCategory = category || 'all';
-    return `merchant:products:search:${tenantId}:${version}:${normalizedCategory}:${normalizedSearch}:${similarityThreshold}:${page}:${limit}`;
+    const normalizedExcludedIds =
+      excludedProductIds.length > 0 ? excludedProductIds.join(',') : 'none';
+    const rankingMode = rankAll ? 'rank_all' : 'strict';
+    return `merchant:products:search:${tenantId}:${version}:${normalizedCategory}:${normalizedSearch}:${similarityThreshold}:${strictMatchThresholds.strictSimilarityThreshold}:${strictMatchThresholds.strictWordSimilarityThreshold}:${rankingMode}:${normalizedExcludedIds}:${page}:${limit}`;
+  }
+
+  private normalizeExcludedProductIds(rawIds?: number[]): number[] {
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(
+        rawIds.filter(
+          (id): id is number =>
+            Number.isInteger(id) && Number.isFinite(id) && id > 0,
+        ),
+      ),
+    ).sort((left, right) => left - right);
   }
 
   private async getTenantSearchCacheVersion(tenantId: number): Promise<string> {

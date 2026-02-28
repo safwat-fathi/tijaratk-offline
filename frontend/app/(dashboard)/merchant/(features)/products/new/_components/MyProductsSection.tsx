@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import { useRef } from 'react';
+import SafeImage from '@/components/ui/SafeImage';
 import type { Product } from '@/types/models/product';
 import { SECTION_MY_PRODUCTS } from '../_utils/product-onboarding.constants';
 import {
@@ -22,8 +22,6 @@ type MyProductsSectionProps = {
   confirmRemoveProductId: number | null;
   removingProductId: number | null;
   highlightedProductId: number | null;
-  failedProductImageIds: Record<number, boolean>;
-  onProductImageError: (productId: number) => void;
   onStartEdit: (product: Product) => void;
   onRequestRemove: (productId: number) => void;
   onRemoveProduct: (product: Product) => void;
@@ -45,8 +43,6 @@ export default function MyProductsSection({
   confirmRemoveProductId,
   removingProductId,
   highlightedProductId,
-  failedProductImageIds,
-  onProductImageError,
   onStartEdit,
   onRequestRemove,
   onRemoveProduct,
@@ -132,15 +128,19 @@ export default function MyProductsSection({
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {resolveImageUrl(product.image_url) && !failedProductImageIds[product.id] ? (
-                        <Image
-                          src={resolveImageUrl(product.image_url)!}
+                      {resolveImageUrl(product.image_url) ? (
+                        <SafeImage
+                          src={resolveImageUrl(product.image_url)}
                           alt={product.name}
                           width={40}
                           height={40}
                           unoptimized
-                          onError={() => onProductImageError(product.id)}
-                          className="h-10 w-10 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                          imageClassName="h-10 w-10 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                          fallback={
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-500">
+                              صورة
+                            </div>
+                          }
                         />
                       ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-[10px] text-gray-500">

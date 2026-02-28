@@ -1,11 +1,17 @@
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 
 export default function LandingPage() {
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-white">
 			<div className="flex flex-col items-center">
-				<Image src="/logo.png" alt="الشعار" width={100} height={100} />
+				<SafeImage
+					src="/logo.png"
+					alt="الشعار"
+					width={100}
+					height={100}
+					fallback={<div className="h-[100px] w-[100px] rounded-md bg-gray-100" />}
+				/>
 				<h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
 					تجارتك
 				</h1>

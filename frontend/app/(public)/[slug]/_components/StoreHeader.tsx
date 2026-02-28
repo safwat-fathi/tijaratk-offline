@@ -1,7 +1,7 @@
 import { TENANT_CATEGORIES, type TenantCategory } from "@/constants";
 import { Tenant } from "@/types/models/tenant";
 import Link from "next/link";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 
 type TenantCategoryMeta =
 	(typeof TENANT_CATEGORIES)[keyof typeof TENANT_CATEGORIES];
@@ -37,13 +37,14 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 				{/* Left: Branding */}
 					<div className="flex items-center gap-3">
 						<div className="bg-white/20 backdrop-blur-sm p-1 rounded-xl shadow-inner border border-white/10 shrink-0">
-							<Image
+							<SafeImage
 								src="/logo.png"
 								alt={tenant.name}
-							width={40}
-							height={40}
-							className="rounded-lg"
-						/>
+								width={40}
+								height={40}
+								imageClassName="rounded-lg"
+								fallback={<div className="h-10 w-10 rounded-lg bg-white/20" />}
+							/>
 					</div>
 					<div className="flex flex-col">
 						<h1 className="text-lg font-bold tracking-tight leading-tight line-clamp-1">

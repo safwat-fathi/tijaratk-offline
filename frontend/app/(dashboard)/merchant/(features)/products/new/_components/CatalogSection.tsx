@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import SafeImage from '@/components/ui/SafeImage';
 import type { CatalogItem } from '@/types/models/product';
 import { formatArabicInteger } from '@/lib/utils/number';
 import type { CategoryTab } from '../_utils/product-onboarding.types';
@@ -13,8 +13,6 @@ type CatalogSectionProps = {
   onCategoryChange: (category: string) => void;
   filteredCatalogItems: CatalogItem[];
   pendingCatalogIds: Record<number, boolean>;
-  failedImageIds: Record<number, boolean>;
-  onCatalogImageError: (itemId: number) => void;
   onAddFromCatalog: (item: CatalogItem) => void;
 };
 
@@ -26,8 +24,6 @@ export default function CatalogSection({
   onCategoryChange,
   filteredCatalogItems,
   pendingCatalogIds,
-  failedImageIds,
-  onCatalogImageError,
   onAddFromCatalog,
 }: CatalogSectionProps) {
   return (
@@ -56,20 +52,19 @@ export default function CatalogSection({
               }`}
             >
               <span className="flex items-center gap-2">
-                {category.imageUrl ? (
-                  <Image
-                    src={category.imageUrl}
-                    alt={category.label}
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
-                  />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
-                    🛒
-                  </span>
-                )}
+                <SafeImage
+                  src={category.imageUrl}
+                  alt={category.label}
+                  width={40}
+                  height={40}
+                  unoptimized
+                  imageClassName="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
+                  fallback={
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
+                      🛒
+                    </span>
+                  }
+                />
                 <span className="whitespace-nowrap text-sm font-medium">{category.label}</span>
                 <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
                   {formatArabicInteger(category.count) || category.count}
@@ -93,15 +88,19 @@ export default function CatalogSection({
                   <div key={item.id} className="rounded-xl border border-gray-200 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        {catalogItemImageUrl && !failedImageIds[item.id] ? (
-                          <Image
+                        {catalogItemImageUrl ? (
+                          <SafeImage
                             src={catalogItemImageUrl}
                             alt={item.name}
                             width={56}
                             height={56}
                             unoptimized
-                            onError={() => onCatalogImageError(item.id)}
-                            className="h-14 w-14 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                            imageClassName="h-14 w-14 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                            fallback={
+                              <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-1 text-center text-[10px] leading-4 text-gray-500">
+                                لا توجد صورة
+                              </div>
+                            }
                           />
                         ) : (
                           <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 px-1 text-center text-[10px] leading-4 text-gray-500">

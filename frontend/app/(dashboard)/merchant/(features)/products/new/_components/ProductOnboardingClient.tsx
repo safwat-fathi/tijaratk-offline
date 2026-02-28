@@ -104,12 +104,6 @@ export default function ProductOnboardingClient({
 	const [pendingCatalogIds, setPendingCatalogIds] = useState<
 		Record<number, boolean>
 	>({});
-	const [failedImageIds, setFailedImageIds] = useState<Record<number, boolean>>(
-		{},
-	);
-	const [failedProductImageIds, setFailedProductImageIds] = useState<
-		Record<number, boolean>
-	>({});
 
 	const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 	const [editName, setEditName] = useState("");
@@ -850,13 +844,6 @@ export default function ProductOnboardingClient({
 				onCategoryChange={setActiveCategory}
 				filteredCatalogItems={filteredCatalogItems}
 				pendingCatalogIds={pendingCatalogIds}
-				failedImageIds={failedImageIds}
-				onCatalogImageError={itemId =>
-					setFailedImageIds(prev => ({
-						...prev,
-						[itemId]: true,
-					}))
-				}
 				onAddFromCatalog={handleAddFromCatalog}
 			/>
 
@@ -874,13 +861,6 @@ export default function ProductOnboardingClient({
 				confirmRemoveProductId={confirmRemoveProductId}
 				removingProductId={removingProductId}
 				highlightedProductId={highlightedProductId}
-				failedProductImageIds={failedProductImageIds}
-				onProductImageError={productId =>
-					setFailedProductImageIds(prev => ({
-						...prev,
-						[productId]: true,
-					}))
-				}
 				onStartEdit={handleStartEdit}
 				onRequestRemove={handleRequestRemove}
 				onRemoveProduct={handleRemoveProduct}

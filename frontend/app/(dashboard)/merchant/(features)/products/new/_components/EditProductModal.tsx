@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import type { ChangeEvent, FormEvent } from 'react';
+import SafeImage from '@/components/ui/SafeImage';
 import type { Product, ProductOrderMode } from '@/types/models/product';
 import type { CategoryMode } from '../_utils/product-onboarding.types';
 import { resolveImageUrl } from "../_utils/product-onboarding";
@@ -176,13 +176,18 @@ export default function EditProductModal({
           <div className="rounded-xl border border-dashed border-gray-300 p-3">
             <p className="mb-2 text-xs text-gray-500">معاينة الصورة</p>
             {editImagePreview || resolveImageUrl(editingProduct.image_url) ? (
-              <Image
+              <SafeImage
                 src={editImagePreview || resolveImageUrl(editingProduct.image_url)!}
                 alt={editingProduct.name}
                 width={96}
                 height={96}
                 unoptimized
-                className="h-24 w-24 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                imageClassName="h-24 w-24 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                fallback={
+                  <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500">
+                    لا توجد صورة
+                  </div>
+                }
               />
             ) : (
               <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500">

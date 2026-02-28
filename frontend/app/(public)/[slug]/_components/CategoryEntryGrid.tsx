@@ -1,5 +1,5 @@
-import Image from "next/image";
 import { useCallback, useEffect, useRef } from "react";
+import SafeImage from "@/components/ui/SafeImage";
 import { getImageUrl } from "@/lib/utils/image";
 import type { CategoryTab } from "../_utils/order-form";
 
@@ -101,18 +101,15 @@ export default function CategoryEntryGrid({
 							onClick={() => onSelectCategory(category.key)}
 							className="flex min-h-[120px] flex-col items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 px-2 py-3 text-center shadow-sm active:scale-[0.97]"
 						>
-							{category.image_url ? (
-								<Image
-									src={getImageUrl(category.image_url)}
-									alt={category.label}
-									width={54}
-									height={54}
-									className="h-14 w-14 rounded-xl object-cover ring-1 ring-gray-200"
-									unoptimized
-								/>
-							) : (
-								<span className="text-2xl">🛒</span>
-							)}
+							<SafeImage
+								src={category.image_url ? getImageUrl(category.image_url) : null}
+								alt={category.label}
+								width={54}
+								height={54}
+								unoptimized
+								imageClassName="h-14 w-14 rounded-xl object-cover ring-1 ring-gray-200"
+								fallback={<span className="text-2xl">🛒</span>}
+							/>
 							<span className="mt-2 text-sm font-semibold text-gray-800">
 								{category.label}
 							</span>

@@ -25,6 +25,8 @@ class ProductsService extends HttpService {
     category?: string;
     page?: number;
     limit?: number;
+    rank_all?: boolean;
+    exclude_product_ids?: string;
   }) {
     return this.get<TenantProductsSearchResponse>('', params, {
       cache: 'no-store',

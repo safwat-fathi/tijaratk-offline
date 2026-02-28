@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import { logoutAction } from "@/actions/auth-server";
+import SafeImage from "@/components/ui/SafeImage";
 
 const navigation = [
 	{
@@ -144,12 +144,13 @@ export default function MerchantLayout({
 				</div>
 				<Link href="#">
 					<span className="sr-only">الملف الشخصي</span>
-					<Image
-						className="h-8 w-8 rounded-full bg-gray-50"
+					<SafeImage
 						src="/logo-no-bg.png"
 						alt=""
 						width={32}
 						height={32}
+						imageClassName="h-8 w-8 rounded-full bg-gray-50"
+						fallback={<div className="h-8 w-8 rounded-full bg-gray-100" />}
 					/>
 				</Link>
 			</div>
@@ -158,12 +159,13 @@ export default function MerchantLayout({
 			<div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col lg:start-0">
 				<div className="flex grow flex-col gap-y-5 overflow-y-auto border-e border-gray-200 bg-white px-6">
 					<div className="flex h-16 shrink-0 items-center">
-						<Image
-							className="h-8 w-auto"
+						<SafeImage
 							src="/logo-no-bg.png"
 							alt="Tijaratk"
 							width={150}
 							height={40}
+							imageClassName="h-8 w-auto"
+							fallback={<div className="h-8 w-[150px] rounded bg-gray-100" />}
 						/>
 					</div>
 					<nav className="flex flex-1 flex-col">
@@ -256,12 +258,13 @@ export default function MerchantLayout({
 							</div>
 							<div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
 								<div className="flex h-16 shrink-0 items-center">
-									<Image
-										className="h-8 w-auto"
+									<SafeImage
 										src="/logo-no-bg.png"
 										alt="Tijaratk"
 										width={120}
 										height={32}
+										imageClassName="h-8 w-auto"
+										fallback={<div className="h-8 w-[120px] rounded bg-gray-100" />}
 									/>
 								</div>
 								<nav className="flex flex-1 flex-col">

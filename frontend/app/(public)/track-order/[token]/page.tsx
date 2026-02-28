@@ -1,6 +1,6 @@
 import { ordersService } from "@/services/api/orders.service";
 import { formatCurrency } from "@/lib/utils/currency";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import Link from "next/link";
 import { OrderStatus } from "@/types/enums";
 import TrackingOrderItemsCard from "./_components/TrackingOrderItemsCard";
@@ -217,7 +217,13 @@ export default async function TrackOrder({ params }: Props) {
   return (
 		<div className="bg-white shadow overflow-hidden sm:rounded-lg">
 			<div className="flex items-center gap-2 px-2">
-				<Image src="/logo.png" alt="Tijaratk" width={80} height={80} />
+				<SafeImage
+					src="/logo.png"
+					alt="Tijaratk"
+					width={80}
+					height={80}
+					fallback={<div className="h-20 w-20 rounded-lg bg-gray-100" />}
+				/>
 				<div className="px-4 py-5 sm:px-6">
 					<h3 className="text-lg leading-6 font-medium text-gray-900">
 						تفاصيل الطلب {order.tenant?.name && `من ${order.tenant.name}`}

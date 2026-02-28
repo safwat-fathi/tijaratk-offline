@@ -2,7 +2,7 @@
 
 import { Product } from "@/types/models/product";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
-import Image from "next/image";
+import SafeImage from "@/components/ui/SafeImage";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatArabicInteger } from "@/lib/utils/number";
@@ -479,14 +479,19 @@ const ProductListCard = ({
 					}`}
 				>
 					{product.image_url ? (
-						<Image
+						<SafeImage
 							src={getImageUrl(product.image_url)}
 							alt={product.name}
-							className={`h-full w-full object-cover ${isUnavailable ? "grayscale" : ""}`}
 							width={56}
 							height={56}
 							loading="lazy"
 							unoptimized
+							imageClassName={`h-full w-full object-cover ${isUnavailable ? "grayscale" : ""}`}
+							fallback={
+								<div className="flex h-full w-full items-center justify-center text-base">
+									🛒
+								</div>
+							}
 						/>
 					) : (
 						<div className="flex h-full w-full items-center justify-center text-base">

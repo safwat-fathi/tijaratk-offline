@@ -237,7 +237,13 @@ export async function searchTenantProductsAction(
   search: string,
   page = 1,
   limit = 20,
-  category?: string,
+  categoryOrOptions?:
+    | string
+    | {
+        category?: string;
+        rankAll?: boolean;
+        excludeProductIds?: number[];
+      },
 ) {
   try {
     const normalizedSearch = search.trim();
@@ -257,17 +263,39 @@ export async function searchTenantProductsAction(
       };
     }
 
+    const searchOptions =
+      typeof categoryOrOptions === 'string'
+        ? { category: categoryOrOptions }
+        : categoryOrOptions || {};
+    const normalizedExcludedProductIds = Array.from(
+      new Set(
+        (searchOptions.excludeProductIds || []).filter(
+          (id): id is number =>
+            Number.isInteger(id) && Number.isFinite(id) && id > 0,
+        ),
+      ),
+    );
+
     const response = await productsService.searchProducts({
       search: normalizedSearch,
-      category: category?.trim() || undefined,
+      category: searchOptions.category?.trim() || undefined,
       page,
       limit,
+      rank_all: searchOptions.rankAll,
+      exclude_product_ids:
+        normalizedExcludedProductIds.length > 0
+          ? normalizedExcludedProductIds.join(',')
+          : undefined,
     });
 
     if (!response.success || !response.data) {
+      const message = response.message || 'تعذر تحميل نتائج البحث';
+      const isThrottled = /(too many requests|throttl|rate limit)/i.test(message);
       return {
         success: false,
-        message: response.message || 'تعذر تحميل نتائج البحث',
+        message: isThrottled
+          ? 'طلبات كثيرة، يرجى الانتظار قليلاً قبل البحث مرة أخرى'
+          : message,
       };
     }
 

@@ -147,6 +147,10 @@ export class ProductsController {
         query.category,
         query.page,
         query.limit,
+        {
+          rankAll: query.rank_all ?? false,
+          excludeProductIds: query.exclude_product_ids ?? [],
+        },
       );
     }
 

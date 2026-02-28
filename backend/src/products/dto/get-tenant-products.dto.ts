@@ -1,6 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -8,6 +10,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { parseBooleanLike } from '../utils/parse-boolean-like';
 
 export class GetTenantProductsDto {
   @ApiPropertyOptional({
@@ -27,6 +30,62 @@ export class GetTenantProductsDto {
   @IsString()
   @MaxLength(64)
   category?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'When true, keeps all matched-scope products and orders by similarity score without similarity cutoff filtering',
+    example: true,
+    default: false,
+  })
+  @IsOptional()
+  @Transform(
+    ({ obj, value }: { obj?: Record<string, unknown>; value: unknown }) => {
+      const fromRawObject = parseBooleanLike(obj?.rank_all);
+      if (fromRawObject !== undefined) {
+        return fromRawObject;
+      }
+      const parsedValue = parseBooleanLike(value);
+      return parsedValue !== undefined ? parsedValue : value;
+    },
+    { toClassOnly: true },
+  )
+  @IsBoolean()
+  rank_all?: boolean = false;
+
+  @ApiPropertyOptional({
+    description: 'Comma-separated product IDs to exclude from results',
+    example: '12,15,22',
+  })
+  @IsOptional()
+  @Transform(
+    ({ value }: { value: unknown }) => {
+      if (typeof value !== 'string' && !Array.isArray(value)) {
+        return undefined;
+      }
+
+      const rawValue = Array.isArray(value)
+        ? value
+            .filter((item): item is string => typeof item === 'string')
+            .join(',')
+        : value;
+
+      const parsedIds = rawValue
+        .split(',')
+        .map((item) => Number(item.trim()))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+      if (parsedIds.length === 0) {
+        return undefined;
+      }
+
+      return Array.from(new Set(parsedIds));
+    },
+    { toClassOnly: true },
+  )
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  exclude_product_ids?: number[];
 
   @ApiPropertyOptional({
     description: 'Page number for search results',
