@@ -9,34 +9,34 @@ export class AddCustomerReplacementDecisionFlow1770904000000 implements Migratio
     );
 
     await queryRunner.query(
-      `CREATE TYPE "public"."order_items_replacement_decision_status_enum" AS ENUM('none', 'pending', 'approved', 'rejected')`,
+      `DO $$ BEGIN CREATE TYPE "public"."order_items_replacement_decision_status_enum" AS ENUM('none', 'pending', 'approved', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
 
     await queryRunner.query(
-      `ALTER TABLE "order_items" ADD "pending_replacement_product_id" integer`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_items' AND column_name='pending_replacement_product_id') THEN ALTER TABLE "order_items" ADD "pending_replacement_product_id" integer; END IF; END $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "order_items" ADD "replacement_decision_status" "public"."order_items_replacement_decision_status_enum" NOT NULL DEFAULT 'none'`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_items' AND column_name='replacement_decision_status') THEN ALTER TABLE "order_items" ADD "replacement_decision_status" "public"."order_items_replacement_decision_status_enum" NOT NULL DEFAULT 'none'; END IF; END $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "order_items" ADD "replacement_decision_reason" text`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_items' AND column_name='replacement_decision_reason') THEN ALTER TABLE "order_items" ADD "replacement_decision_reason" text; END IF; END $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "order_items" ADD "replacement_decided_at" TIMESTAMP WITH TIME ZONE`,
-    );
-
-    await queryRunner.query(
-      `ALTER TABLE "order_items" ADD CONSTRAINT "FK_order_items_pending_replacement_product" FOREIGN KEY ("pending_replacement_product_id") REFERENCES "products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_order_items_pending_replacement_product" ON "order_items" ("pending_replacement_product_id")`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_items' AND column_name='replacement_decided_at') THEN ALTER TABLE "order_items" ADD "replacement_decided_at" TIMESTAMP WITH TIME ZONE; END IF; END $$;`,
     );
 
     await queryRunner.query(
-      `ALTER TABLE "orders" ADD "customer_rejection_reason" text`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'FK_order_items_pending_replacement_product') THEN ALTER TABLE "order_items" ADD CONSTRAINT "FK_order_items_pending_replacement_product" FOREIGN KEY ("pending_replacement_product_id") REFERENCES "products"("id") ON DELETE NO ACTION ON UPDATE NO ACTION; END IF; END $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "orders" ADD "customer_rejected_at" TIMESTAMP WITH TIME ZONE`,
+      `CREATE INDEX IF NOT EXISTS "IDX_order_items_pending_replacement_product" ON "order_items" ("pending_replacement_product_id")`,
+    );
+
+    await queryRunner.query(
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='customer_rejection_reason') THEN ALTER TABLE "orders" ADD "customer_rejection_reason" text; END IF; END $$;`,
+    );
+    await queryRunner.query(
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='customer_rejected_at') THEN ALTER TABLE "orders" ADD "customer_rejected_at" TIMESTAMP WITH TIME ZONE; END IF; END $$;`,
     );
   }
 
