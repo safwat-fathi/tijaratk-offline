@@ -217,14 +217,24 @@ export const calculateCartSummary = (
 	cartSelections: Record<number, ProductCartSelection>,
 	knownProductsById: Record<number, Product>,
 ) => {
-	const totalItems = Object.entries(cartSelections).reduce((sum, [, selection]) => {
+	const isValidSelection = (selection: ProductCartSelection): boolean => {
 		if (selection.selection_mode === "quantity") {
 			const quantity = Number(selection.selection_quantity || 0);
-			if (!Number.isFinite(quantity) || quantity <= 0) {
-				return sum;
-			}
+			return Number.isFinite(quantity) && quantity > 0;
+		}
 
-			return sum + quantity;
+		if (selection.selection_mode === "weight") {
+			const grams = Number(selection.selection_grams || 0);
+			return Number.isFinite(grams) && grams > 0;
+		}
+
+		const amount = Number(selection.selection_amount_egp || 0);
+		return Number.isFinite(amount) && amount > 0;
+	};
+
+	const totalItems = Object.entries(cartSelections).reduce((sum, [, selection]) => {
+		if (!isValidSelection(selection)) {
+			return sum;
 		}
 
 		return sum + 1;
