@@ -20,7 +20,7 @@ import { getCustomerProfileBySlugFromCookie } from "@/lib/tracking/customer-trac
 
 type Props = {
 	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ reorder?: string }>;
+	searchParams: Promise<{ reorder?: string; category?: string }>;
 };
 
 // Fetch data
@@ -39,11 +39,12 @@ const EMPTY_PRODUCTS_META: PublicProductsMeta = {
 	has_next: false,
 };
 
-async function getInitialProducts(slug: string): Promise<{
+async function getInitialProducts(slug: string, category?: string): Promise<{
 	products: Product[];
 	meta: PublicProductsMeta;
 }> {
 	const response = await productsService.getPublicProducts(slug, {
+		category,
 		page: 1,
 		limit: 20,
 	});
@@ -105,7 +106,7 @@ export async function generateMetadata(
 
 export default async function StorePage({ params, searchParams }: Props) {
 	const { slug } = await params;
-	const { reorder } = await searchParams;
+	const { reorder, category } = await searchParams;
 
 	const tenant = await getTenant(slug);
 	if (!tenant || !tenant.id) {
@@ -114,7 +115,7 @@ export default async function StorePage({ params, searchParams }: Props) {
 
 	const [{ products, meta }, categories, initialOrder, savedCustomerProfile] =
 		await Promise.all([
-			getInitialProducts(slug),
+			getInitialProducts(slug, category),
 			getPublicCategories(slug),
 			getOrder(reorder),
 			getCustomerProfileBySlugFromCookie(tenant.slug),
@@ -135,6 +136,7 @@ export default async function StorePage({ params, searchParams }: Props) {
 
 				<OrderForm
 					tenantSlug={tenant.slug}
+					initialCategory={category}
 					initialProducts={products}
 					initialProductsMeta={meta}
 					initialCategories={categories}

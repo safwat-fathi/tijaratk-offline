@@ -67,6 +67,7 @@ type ToastState = {
 
 type OrderFormProps = {
 	tenantSlug: string;
+	initialCategory?: string;
 	initialProducts: Product[];
 	initialProductsMeta: PublicProductsMeta;
 	initialCategories: PublicProductCategory[];
@@ -82,6 +83,7 @@ type OrderFormProps = {
 
 export default function OrderForm({
 	tenantSlug,
+	initialCategory,
 	initialProducts,
 	initialProductsMeta,
 	initialCategories,
@@ -101,19 +103,26 @@ export default function OrderForm({
 		createOrderAction.bind(null, tenantSlug),
 		initialState,
 	);
-	const [activeCategory, setActiveCategory] = useState(ALL_PRODUCTS_CATEGORY);
-	const [isCategoryProductsView, setIsCategoryProductsView] = useState(false);
+	
+	const resolvedInitialCategory = initialCategory && initialCategories.some(c => c.category === initialCategory) 
+		? initialCategory 
+		: ALL_PRODUCTS_CATEGORY;
+
+	const [activeCategory, setActiveCategory] = useState(resolvedInitialCategory);
+	const [isCategoryProductsView, setIsCategoryProductsView] = useState(
+		resolvedInitialCategory !== ALL_PRODUCTS_CATEGORY
+	);
 	const [isReviewSheetOpen, setIsReviewSheetOpen] = useState(false);
 	const [toastState, setToastState] = useState<ToastState | null>(null);
 	const [productsByCategory, setProductsByCategory] = useState<
 		Record<string, Product[]>
 	>({
-		[ALL_PRODUCTS_CATEGORY]: initialProducts,
+		[resolvedInitialCategory]: initialProducts,
 	});
 	const [paginationByCategory, setPaginationByCategory] = useState<
 		Record<string, PaginationState>
 	>({
-		[ALL_PRODUCTS_CATEGORY]: {
+		[resolvedInitialCategory]: {
 			page: initialProductsMeta.page,
 			lastPage: initialProductsMeta.last_page,
 			isLoading: false,
@@ -380,6 +389,21 @@ export default function OrderForm({
 
 		return () => cancelAnimationFrame(raf);
 	}, [activeCategory, isCategoryProductsView, scrollActiveCategoryPillIntoView]);
+
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
+
+		const url = new URL(window.location.href);
+		if (!isCategoryProductsView || activeCategory === ALL_PRODUCTS_CATEGORY) {
+			url.searchParams.delete("category");
+		} else {
+			url.searchParams.set("category", activeCategory);
+		}
+
+		window.history.replaceState(null, "", url.toString());
+	}, [activeCategory, isCategoryProductsView]);
 
 	const orderToken =
 		state.success &&

@@ -5,10 +5,11 @@ import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import SafeImage from "@/components/ui/SafeImage";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatArabicInteger } from "@/lib/utils/number";
-import { useMemo, useState } from "react";
+import { formatArabicInteger, formatArabicQuantity } from "@/lib/utils/number";
+import { useState } from "react";
 
 type SelectionMode = "quantity" | "weight" | "price";
+type InlineEditorMode = "weight" | "price";
 
 export type ProductCartSelection = {
 	selection_mode: SelectionMode;
@@ -34,13 +35,6 @@ type ProductListProps = {
 	setLoadMoreTarget?: (node: HTMLDivElement | null) => void;
 };
 
-type CustomSheetState =
-	| {
-			product: Product;
-			mode: "weight" | "price";
-	  }
-	| null;
-
 type AvailabilitySheetState =
 	| {
 			product: Product;
@@ -49,6 +43,8 @@ type AvailabilitySheetState =
 
 const DEFAULT_WEIGHT_PRESETS = [250, 500, 1000];
 const DEFAULT_PRICE_PRESETS = [100, 200, 300];
+const resolveInlineEditorKey = (productId: number, mode: InlineEditorMode) =>
+	`${productId}:${mode}`;
 
 const parseProductPrice = (product: Product): number | null => {
 	if (
@@ -87,7 +83,7 @@ const resolveModeLabel = (mode: SelectionMode) => {
 	return "بالمبلغ";
 };
 
-const resolveQuantityUnitLabel = (product: Product) =>
+const resolveBaseQuantityUnitLabel = (product: Product) =>
 	product.order_config?.quantity?.unit_label || "قطعة";
 
 export type QuantityOption = {
@@ -113,6 +109,11 @@ const resolveQuantityOptions = (product: Product): QuantityOption[] => {
 	});
 };
 
+const resolveSelectedQuantityOption = (
+	quantityOptions: QuantityOption[],
+	selectedUnitId?: string,
+) => quantityOptions.find((option) => option.id === selectedUnitId) || quantityOptions[0];
+
 type ProductListCardProps = {
 	product: Product;
 	selection?: ProductCartSelection;
@@ -121,8 +122,17 @@ type ProductListCardProps = {
 	onQuantityDelta: (product: Product, delta: number) => void;
 	onQuantityUnitChange: (product: Product, unitOptionId: string) => void;
 	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
-	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
-	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	activeInlineEditor: { productId: number; mode: InlineEditorMode } | null;
+	inlineDraftByKey: Record<string, string>;
+	inlineErrorByKey: Record<string, string>;
+	onOpenInlineEditor: (product: Product, mode: InlineEditorMode) => void;
+	onInlineDraftChange: (
+		product: Product,
+		mode: InlineEditorMode,
+		value: string,
+	) => void;
+	onApplyInlineValue: (product: Product, mode: InlineEditorMode) => void;
+	onCancelInlineValue: (product: Product, mode: InlineEditorMode) => void;
 	onOpenAvailabilitySheet: (product: Product) => void;
 };
 
@@ -192,53 +202,71 @@ const QuantitySelectionControls = ({
 	selectedQty,
 	onQuantityDelta,
 	onQuantityUnitChange,
-}: QuantitySelectionControlsProps) => (
-	<div className="space-y-2">
-		{quantityOptions.length > 0 && (
-			<div className="flex flex-wrap gap-2">
-				{quantityOptions.map((option) => (
-					<button
-						key={option.id}
-						type="button"
-						onClick={() => onQuantityUnitChange(product, option.id)}
-						className={`rounded-full border px-3 py-1 text-xs font-medium ${
-							selectedUnitId === option.id
-								? "border-indigo-600 bg-indigo-50 text-indigo-700"
-								: "border-gray-300 bg-white text-gray-700"
-						}`}
-					>
-						{option.label}
-					</button>
-				))}
-			</div>
-		)}
+}: QuantitySelectionControlsProps) => {
+	const baseUnitLabel = resolveBaseQuantityUnitLabel(product);
+	const selectedOption = resolveSelectedQuantityOption(quantityOptions, selectedUnitId);
+	const selectedUnitLabel = selectedOption?.label || baseUnitLabel;
+	const selectedMultiplier = Number(selectedOption?.multiplier);
+	const hasMultiplierHint =
+		Number.isFinite(selectedMultiplier) && selectedMultiplier > 1;
+	const formattedMultiplier =
+		formatArabicQuantity(selectedMultiplier) || String(selectedMultiplier);
 
-		<div className="flex items-center gap-2">
-			{selectedQty > 0 && (
-				<>
-					<button
-						type="button"
-						onClick={() => onQuantityDelta(product, -1)}
-						className="h-10 w-10 rounded-full border border-gray-300 text-lg text-gray-700 active:scale-[0.97]"
-					>
-						-
-					</button>
-					<span className="min-w-8 text-center text-sm font-bold text-gray-900">
-						{formatArabicInteger(selectedQty) || selectedQty}
-					</span>
-				</>
+	return (
+		<div className="space-y-2">
+			{quantityOptions.length > 0 && (
+				<div className="flex flex-wrap gap-2">
+					{quantityOptions.map((option) => (
+						<button
+							key={option.id}
+							type="button"
+							onClick={() => onQuantityUnitChange(product, option.id)}
+							className={`rounded-full border px-3 py-1 text-xs font-medium ${
+								selectedUnitId === option.id
+									? "border-indigo-600 bg-indigo-50 text-indigo-700"
+									: "border-gray-300 bg-white text-gray-700"
+							}`}
+						>
+							{option.label}
+						</button>
+					))}
+				</div>
 			)}
-			<button
-				type="button"
-				onClick={() => onQuantityDelta(product, 1)}
-				className="h-10 w-10 rounded-full bg-indigo-600 text-lg text-white active:scale-[0.97]"
-			>
-				+
-			</button>
-			<span className="text-xs text-gray-500">{resolveQuantityUnitLabel(product)}</span>
+
+			<div className="flex items-center gap-2">
+				{selectedQty > 0 && (
+					<>
+						<button
+							type="button"
+							onClick={() => onQuantityDelta(product, -1)}
+							className="h-10 w-10 rounded-full border border-gray-300 text-lg text-gray-700 active:scale-[0.97]"
+						>
+							-
+						</button>
+						<span className="min-w-8 text-center text-sm font-bold text-gray-900">
+							{formatArabicInteger(selectedQty) || selectedQty}
+						</span>
+					</>
+				)}
+				<button
+					type="button"
+					onClick={() => onQuantityDelta(product, 1)}
+					className="h-10 w-10 rounded-full bg-indigo-600 text-lg text-white active:scale-[0.97]"
+				>
+					+
+				</button>
+				<div className="text-xs leading-tight text-gray-500">
+					<div>{selectedUnitLabel}</div>
+					{hasMultiplierHint && (
+						<div className="text-[11px] text-gray-400">
+							{`${baseUnitLabel} × ${formattedMultiplier}`}
+						</div>
+					)}
+				</div>
+			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 type WeightSelectionControlsProps = {
 	product: Product;
@@ -246,9 +274,87 @@ type WeightSelectionControlsProps = {
 	selectedGrams: number;
 	isCustomWeightSelection: boolean;
 	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
-	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
-	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	isInlineEditorOpen: boolean;
+	inlineDraftValue: string;
+	inlineError?: string;
+	onInlineDraftChange: (value: string) => void;
+	onOpenInlineEditor: () => void;
+	onApplyInlineValue: () => void;
+	onCancelInlineValue: () => void;
 };
+
+type InlineCustomEditorProps = {
+	mode: InlineEditorMode;
+	value: string;
+	error?: string;
+	onChange: (value: string) => void;
+	onApply: () => void;
+	onCancel: () => void;
+};
+
+const InlineCustomEditor = ({
+	mode,
+	value,
+	error,
+	onChange,
+	onApply,
+	onCancel,
+}: InlineCustomEditorProps) => (
+	<div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2.5">
+		<div className="flex items-center gap-2">
+			<input
+				type="text"
+				inputMode="decimal"
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+				placeholder={mode === "weight" ? "مثال: 750" : "مثال: 150"}
+				className="h-10 w-full rounded-lg border border-indigo-200 bg-white px-3 text-sm outline-none focus:border-indigo-500"
+			/>
+			<button
+				type="button"
+				onClick={onApply}
+				className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white active:scale-[0.97]"
+				aria-label={mode === "weight" ? "تأكيد الكمية المخصصة" : "تأكيد المبلغ المخصص"}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2.25"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="m20 6-11 11-5-5" />
+				</svg>
+			</button>
+			<button
+				type="button"
+				onClick={onCancel}
+				className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 active:scale-[0.97]"
+				aria-label="إلغاء وإرجاع للقيمة السابقة"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2.25"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="M18 6 6 18" />
+					<path d="m6 6 12 12" />
+				</svg>
+			</button>
+		</div>
+		{error && <p className="text-[11px] font-medium text-red-600">{error}</p>}
+	</div>
+);
 
 const WeightSelectionControls = ({
 	product,
@@ -256,8 +362,13 @@ const WeightSelectionControls = ({
 	selectedGrams,
 	isCustomWeightSelection,
 	onPresetSelection,
-	onUpdateSelection,
-	onOpenCustomSheet,
+	isInlineEditorOpen,
+	inlineDraftValue,
+	inlineError,
+	onInlineDraftChange,
+	onOpenInlineEditor,
+	onApplyInlineValue,
+	onCancelInlineValue,
 }: WeightSelectionControlsProps) => (
 	<div className="space-y-2">
 		<p className="text-xs font-semibold text-gray-700">اختار الكمية:</p>
@@ -279,14 +390,7 @@ const WeightSelectionControls = ({
 			))}
 			<button
 				type="button"
-				onClick={() => {
-					if (isCustomWeightSelection) {
-						onUpdateSelection(product, null);
-						return;
-					}
-
-					onOpenCustomSheet(product, "weight");
-				}}
+				onClick={onOpenInlineEditor}
 				aria-pressed={isCustomWeightSelection}
 				className={`rounded-full border border-dashed px-3 py-1 text-xs font-medium active:scale-[0.97] ${
 					isCustomWeightSelection
@@ -299,6 +403,16 @@ const WeightSelectionControls = ({
 					: "كمية مخصصة"}
 			</button>
 		</div>
+		{isInlineEditorOpen && (
+			<InlineCustomEditor
+				mode="weight"
+				value={inlineDraftValue}
+				error={inlineError}
+				onChange={onInlineDraftChange}
+				onApply={onApplyInlineValue}
+				onCancel={onCancelInlineValue}
+			/>
+		)}
 	</div>
 );
 
@@ -307,7 +421,13 @@ type PriceSelectionControlsProps = {
 	pricePresets: number[];
 	selectedAmount: number;
 	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
-	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	isInlineEditorOpen: boolean;
+	inlineDraftValue: string;
+	inlineError?: string;
+	onInlineDraftChange: (value: string) => void;
+	onOpenInlineEditor: () => void;
+	onApplyInlineValue: () => void;
+	onCancelInlineValue: () => void;
 };
 
 const PriceSelectionControls = ({
@@ -315,7 +435,13 @@ const PriceSelectionControls = ({
 	pricePresets,
 	selectedAmount,
 	onPresetSelection,
-	onOpenCustomSheet,
+	isInlineEditorOpen,
+	inlineDraftValue,
+	inlineError,
+	onInlineDraftChange,
+	onOpenInlineEditor,
+	onApplyInlineValue,
+	onCancelInlineValue,
 }: PriceSelectionControlsProps) => (
 	<div className="space-y-2">
 		<p className="text-xs font-semibold text-gray-700">اختار المبلغ:</p>
@@ -336,12 +462,22 @@ const PriceSelectionControls = ({
 			))}
 			<button
 				type="button"
-				onClick={() => onOpenCustomSheet(product, "price")}
+				onClick={onOpenInlineEditor}
 				className="rounded-full border border-dashed border-gray-400 px-3 py-1 text-xs font-medium text-gray-700 active:scale-[0.97]"
 			>
 				مبلغ مخصص
 			</button>
 		</div>
+		{isInlineEditorOpen && (
+			<InlineCustomEditor
+				mode="price"
+				value={inlineDraftValue}
+				error={inlineError}
+				onChange={onInlineDraftChange}
+				onApply={onApplyInlineValue}
+				onCancel={onCancelInlineValue}
+			/>
+		)}
 	</div>
 );
 
@@ -360,8 +496,20 @@ type ProductSelectionControlsProps = {
 	onQuantityDelta: (product: Product, delta: number) => void;
 	onQuantityUnitChange: (product: Product, unitOptionId: string) => void;
 	onPresetSelection: (product: Product, mode: "weight" | "price", value: number) => void;
-	onUpdateSelection: (product: Product, selection: ProductCartSelection | null) => void;
-	onOpenCustomSheet: (product: Product, mode: "weight" | "price") => void;
+	isWeightInlineEditorOpen: boolean;
+	inlineWeightDraftValue: string;
+	inlineWeightError?: string;
+	isPriceInlineEditorOpen: boolean;
+	inlinePriceDraftValue: string;
+	inlinePriceError?: string;
+	onOpenInlineEditor: (product: Product, mode: InlineEditorMode) => void;
+	onInlineDraftChange: (
+		product: Product,
+		mode: InlineEditorMode,
+		value: string,
+	) => void;
+	onApplyInlineValue: (product: Product, mode: InlineEditorMode) => void;
+	onCancelInlineValue: (product: Product, mode: InlineEditorMode) => void;
 	onOpenAvailabilitySheet: (product: Product) => void;
 };
 
@@ -380,8 +528,16 @@ const ProductSelectionControls = ({
 	onQuantityDelta,
 	onQuantityUnitChange,
 	onPresetSelection,
-	onUpdateSelection,
-	onOpenCustomSheet,
+	isWeightInlineEditorOpen,
+	inlineWeightDraftValue,
+	inlineWeightError,
+	isPriceInlineEditorOpen,
+	inlinePriceDraftValue,
+	inlinePriceError,
+	onOpenInlineEditor,
+	onInlineDraftChange,
+	onApplyInlineValue,
+	onCancelInlineValue,
 	onOpenAvailabilitySheet,
 }: ProductSelectionControlsProps) => {
 	if (isUnavailable) {
@@ -417,8 +573,15 @@ const ProductSelectionControls = ({
 				selectedGrams={selectedGrams}
 				isCustomWeightSelection={isCustomWeightSelection}
 				onPresetSelection={onPresetSelection}
-				onUpdateSelection={onUpdateSelection}
-				onOpenCustomSheet={onOpenCustomSheet}
+				isInlineEditorOpen={isWeightInlineEditorOpen}
+				inlineDraftValue={inlineWeightDraftValue}
+				inlineError={inlineWeightError}
+				onInlineDraftChange={(value) =>
+					onInlineDraftChange(product, "weight", value)
+				}
+				onOpenInlineEditor={() => onOpenInlineEditor(product, "weight")}
+				onApplyInlineValue={() => onApplyInlineValue(product, "weight")}
+				onCancelInlineValue={() => onCancelInlineValue(product, "weight")}
 			/>
 		);
 	}
@@ -429,7 +592,13 @@ const ProductSelectionControls = ({
 			pricePresets={pricePresets}
 			selectedAmount={selectedAmount}
 			onPresetSelection={onPresetSelection}
-			onOpenCustomSheet={onOpenCustomSheet}
+			isInlineEditorOpen={isPriceInlineEditorOpen}
+			inlineDraftValue={inlinePriceDraftValue}
+			inlineError={inlinePriceError}
+			onInlineDraftChange={(value) => onInlineDraftChange(product, "price", value)}
+			onOpenInlineEditor={() => onOpenInlineEditor(product, "price")}
+			onApplyInlineValue={() => onApplyInlineValue(product, "price")}
+			onCancelInlineValue={() => onCancelInlineValue(product, "price")}
 		/>
 	);
 };
@@ -442,8 +611,13 @@ const ProductListCard = ({
 	onQuantityDelta,
 	onQuantityUnitChange,
 	onPresetSelection,
-	onUpdateSelection,
-	onOpenCustomSheet,
+	activeInlineEditor,
+	inlineDraftByKey,
+	inlineErrorByKey,
+	onOpenInlineEditor,
+	onInlineDraftChange,
+	onApplyInlineValue,
+	onCancelInlineValue,
 	onOpenAvailabilitySheet,
 }: ProductListCardProps) => {
 	const mode = resolveProductMode(product);
@@ -464,6 +638,14 @@ const ProductListCard = ({
 		selection,
 		preferredQuantityUnitId,
 	});
+	const inlineWeightKey = resolveInlineEditorKey(product.id, "weight");
+	const inlinePriceKey = resolveInlineEditorKey(product.id, "price");
+	const isWeightInlineEditorOpen =
+		activeInlineEditor?.productId === product.id &&
+		activeInlineEditor.mode === "weight";
+	const isPriceInlineEditorOpen =
+		activeInlineEditor?.productId === product.id &&
+		activeInlineEditor.mode === "price";
 
 	return (
 		<div
@@ -548,8 +730,16 @@ const ProductListCard = ({
 					onQuantityDelta={onQuantityDelta}
 					onQuantityUnitChange={onQuantityUnitChange}
 					onPresetSelection={onPresetSelection}
-					onUpdateSelection={onUpdateSelection}
-					onOpenCustomSheet={onOpenCustomSheet}
+					isWeightInlineEditorOpen={isWeightInlineEditorOpen}
+					inlineWeightDraftValue={inlineDraftByKey[inlineWeightKey] || ""}
+					inlineWeightError={inlineErrorByKey[inlineWeightKey]}
+					isPriceInlineEditorOpen={isPriceInlineEditorOpen}
+					inlinePriceDraftValue={inlineDraftByKey[inlinePriceKey] || ""}
+					inlinePriceError={inlineErrorByKey[inlinePriceKey]}
+					onOpenInlineEditor={onOpenInlineEditor}
+					onInlineDraftChange={onInlineDraftChange}
+					onApplyInlineValue={onApplyInlineValue}
+					onCancelInlineValue={onCancelInlineValue}
 					onOpenAvailabilitySheet={onOpenAvailabilitySheet}
 				/>
 			</div>
@@ -568,28 +758,18 @@ export default function ProductList({
 }: ProductListProps) {
 	const [preferredQuantityUnitByProduct, setPreferredQuantityUnitByProduct] =
 		useState<Record<number, string>>({});
-	const [customSheet, setCustomSheet] = useState<CustomSheetState>(null);
-	const [customValue, setCustomValue] = useState("");
+	const [activeInlineEditor, setActiveInlineEditor] = useState<{
+		productId: number;
+		mode: InlineEditorMode;
+	} | null>(null);
+	const [inlineDraftByKey, setInlineDraftByKey] = useState<Record<string, string>>({});
+	const [lastPresetByKey, setLastPresetByKey] = useState<Record<string, number>>({});
+	const [inlineErrorByKey, setInlineErrorByKey] = useState<Record<string, string>>({});
 	const [availabilitySheet, setAvailabilitySheet] =
 		useState<AvailabilitySheetState>(null);
 	const [isAvailabilitySubmitting, setIsAvailabilitySubmitting] = useState(false);
-	useBodyScrollLock(Boolean(customSheet || availabilitySheet));
-
-	const selectedProduct = customSheet?.product ?? null;
+	useBodyScrollLock(Boolean(availabilitySheet));
 	const selectedAvailabilityProduct = availabilitySheet?.product ?? null;
-
-	const currentCustomPlaceholder = useMemo(() => {
-		if (!customSheet) {
-			return "";
-		}
-
-		return customSheet.mode === "weight" ? "مثال: 750" : "مثال: 150";
-	}, [customSheet]);
-
-	const closeCustomSheet = () => {
-		setCustomSheet(null);
-		setCustomValue("");
-	};
 
 	const closeAvailabilitySheet = (force = false) => {
 		if (!force && isAvailabilitySubmitting) {
@@ -597,6 +777,87 @@ export default function ProductList({
 		}
 
 		setAvailabilitySheet(null);
+	};
+
+	const closeInlineEditor = (
+		productId: number,
+		mode: InlineEditorMode,
+		clearDraft = false,
+	) => {
+		const editorKey = resolveInlineEditorKey(productId, mode);
+		setActiveInlineEditor((prev) =>
+			prev?.productId === productId && prev.mode === mode ? null : prev,
+		);
+		setInlineErrorByKey((prev) => {
+			if (!(editorKey in prev)) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[editorKey];
+			return next;
+		});
+		if (!clearDraft) {
+			return;
+		}
+		setInlineDraftByKey((prev) => {
+			if (!(editorKey in prev)) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[editorKey];
+			return next;
+		});
+	};
+
+	const handleOpenInlineEditor = (product: Product, mode: InlineEditorMode) => {
+		if (!product.is_available) {
+			return;
+		}
+
+		const editorKey = resolveInlineEditorKey(product.id, mode);
+		const current = selections[product.id];
+		let currentSelectionDraft = "";
+		if (mode === "weight" && current?.selection_mode === "weight") {
+			currentSelectionDraft = String(Number(current.selection_grams || 0) || "");
+		}
+		if (mode === "price" && current?.selection_mode === "price") {
+			currentSelectionDraft = String(Number(current.selection_amount_egp || 0) || "");
+		}
+		const nextDraft = currentSelectionDraft || inlineDraftByKey[editorKey] || "";
+
+		setInlineDraftByKey((prev) => ({
+			...prev,
+			[editorKey]: nextDraft,
+		}));
+		setInlineErrorByKey((prev) => {
+			if (!(editorKey in prev)) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[editorKey];
+			return next;
+		});
+		setActiveInlineEditor({ productId: product.id, mode });
+	};
+
+	const handleInlineDraftChange = (
+		product: Product,
+		mode: InlineEditorMode,
+		value: string,
+	) => {
+		const editorKey = resolveInlineEditorKey(product.id, mode);
+		setInlineDraftByKey((prev) => ({
+			...prev,
+			[editorKey]: value,
+		}));
+		setInlineErrorByKey((prev) => {
+			if (!(editorKey in prev)) {
+				return prev;
+			}
+			const next = { ...prev };
+			delete next[editorKey];
+			return next;
+		});
 	};
 
 	const handleQuantityDelta = (product: Product, delta: number) => {
@@ -668,6 +929,13 @@ export default function ProductList({
 			return;
 		}
 
+		const editorKey = resolveInlineEditorKey(product.id, mode);
+		setLastPresetByKey((prev) => ({
+			...prev,
+			[editorKey]: Number(value),
+		}));
+		closeInlineEditor(product.id, mode, true);
+
 		if (mode === "weight") {
 			const nextGrams = Math.round(value);
 			const currentSelection = selections[product.id];
@@ -706,34 +974,38 @@ export default function ProductList({
 		onAdded?.();
 	};
 
-	const submitCustomSelection = () => {
-		if (!selectedProduct || !customSheet || !selectedProduct.is_available) {
+	const handleApplyInlineValue = (product: Product, mode: InlineEditorMode) => {
+		if (!product.is_available) {
 			return;
 		}
 
-		const parsed = Number(customValue.trim().replace(",", "."));
+		const editorKey = resolveInlineEditorKey(product.id, mode);
+		const parsed = Number((inlineDraftByKey[editorKey] || "").trim().replace(",", "."));
 		if (!Number.isFinite(parsed) || parsed <= 0) {
+			setInlineErrorByKey((prev) => ({
+				...prev,
+				[editorKey]:
+					mode === "weight"
+						? "أدخل وزن صحيح أكبر من صفر"
+						: "أدخل مبلغ صحيح أكبر من صفر",
+			}));
 			return;
 		}
 
-		if (customSheet.mode === "weight") {
-			const currentSelection = selections[selectedProduct.id];
-			const itemNote =
-				currentSelection?.item_note !== undefined
-					? currentSelection.item_note
-					: undefined;
-			onUpdateSelection(selectedProduct, {
+		const currentSelection = selections[product.id];
+		const itemNote =
+			currentSelection?.item_note !== undefined
+				? currentSelection.item_note
+				: undefined;
+
+		if (mode === "weight") {
+			onUpdateSelection(product, {
 				selection_mode: "weight",
 				selection_grams: Math.round(parsed),
 				item_note: itemNote,
 			});
 		} else {
-			const currentSelection = selections[selectedProduct.id];
-			const itemNote =
-				currentSelection?.item_note !== undefined
-					? currentSelection.item_note
-					: undefined;
-			onUpdateSelection(selectedProduct, {
+			onUpdateSelection(product, {
 				selection_mode: "price",
 				selection_amount_egp: Number(parsed.toFixed(2)),
 				item_note: itemNote,
@@ -741,7 +1013,18 @@ export default function ProductList({
 		}
 
 		onAdded?.();
-		closeCustomSheet();
+		closeInlineEditor(product.id, mode, true);
+	};
+
+	const handleCancelInlineValue = (product: Product, mode: InlineEditorMode) => {
+		const editorKey = resolveInlineEditorKey(product.id, mode);
+		const fallbackPreset =
+			mode === "weight"
+				? product.order_config?.weight?.preset_grams?.[0] || DEFAULT_WEIGHT_PRESETS[0]
+				: product.order_config?.price?.preset_amounts_egp?.[0] || DEFAULT_PRICE_PRESETS[0];
+		const revertValue = lastPresetByKey[editorKey] ?? fallbackPreset;
+		handlePresetSelection(product, mode, revertValue);
+		closeInlineEditor(product.id, mode, true);
 	};
 
 	const submitAvailabilityRequest = async () => {
@@ -782,10 +1065,13 @@ export default function ProductList({
 								onQuantityDelta={handleQuantityDelta}
 								onQuantityUnitChange={handleQuantityUnitChange}
 								onPresetSelection={handlePresetSelection}
-								onUpdateSelection={onUpdateSelection}
-								onOpenCustomSheet={(selectedProduct, mode) =>
-									setCustomSheet({ product: selectedProduct, mode })
-								}
+								activeInlineEditor={activeInlineEditor}
+								inlineDraftByKey={inlineDraftByKey}
+								inlineErrorByKey={inlineErrorByKey}
+								onOpenInlineEditor={handleOpenInlineEditor}
+								onInlineDraftChange={handleInlineDraftChange}
+								onApplyInlineValue={handleApplyInlineValue}
+								onCancelInlineValue={handleCancelInlineValue}
 								onOpenAvailabilitySheet={(selectedProduct) =>
 									setAvailabilitySheet({ product: selectedProduct })
 								}
@@ -793,47 +1079,6 @@ export default function ProductList({
 						);
 					})}
 				</div>
-
-			{customSheet && selectedProduct && (
-				<div
-					className="fixed inset-0 z-70 flex items-end bg-black/35"
-					role="dialog"
-					aria-modal="true"
-				>
-					<div
-						className="max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl"
-						style={{ WebkitOverflowScrolling: "touch" }}
-					>
-						<p className="text-sm font-semibold text-gray-900">
-							{customSheet.mode === "weight" ? "أدخل الكمية بالجرام" : "أدخل المبلغ بالجنيه"}
-						</p>
-						<input
-							type="text"
-							inputMode="decimal"
-							value={customValue}
-							onChange={event => setCustomValue(event.target.value)}
-							placeholder={currentCustomPlaceholder}
-							className="mt-3 w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-indigo-500"
-						/>
-						<div className="mt-4 grid grid-cols-2 gap-2">
-							<button
-								type="button"
-								onClick={closeCustomSheet}
-								className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700"
-							>
-								إلغاء
-							</button>
-							<button
-								type="button"
-								onClick={submitCustomSelection}
-								className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white"
-							>
-								تأكيد
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
 
 			{availabilitySheet && selectedAvailabilityProduct && (
 				<div

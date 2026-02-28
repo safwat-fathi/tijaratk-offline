@@ -217,9 +217,16 @@ export const calculateCartSummary = (
 	cartSelections: Record<number, ProductCartSelection>,
 	knownProductsById: Record<number, Product>,
 ) => {
-	const totalItems = Object.values(cartSelections).reduce((sum, selection) => {
+	const totalItems = Object.entries(cartSelections).reduce((sum, [pid, selection]) => {
 		if (selection.selection_mode === "quantity") {
-			return sum + Number(selection.selection_quantity || 0);
+			const quantity = Number(selection.selection_quantity || 0);
+			if (!Number.isFinite(quantity) || quantity <= 0) {
+				return sum;
+			}
+
+			const product = knownProductsById[Number(pid)];
+			const multiplier = resolveUnitMultiplier(product, selection.unit_option_id);
+			return sum + quantity * multiplier;
 		}
 
 		return sum + 1;

@@ -1,6 +1,6 @@
 import type { Ref } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
-import { formatArabicInteger } from "@/lib/utils/number";
+import { formatArabicQuantity } from "@/lib/utils/number";
 
 type OrderSubmitBarProps = {
 	totalItems: number;
@@ -38,7 +38,7 @@ export default function OrderSubmitBar({
 							{totalItems > 0 ? (
 								<>
 									<span className="text-2xl font-bold text-gray-900">
-										{formatArabicInteger(Math.round(totalItems)) || Math.round(totalItems)}
+										{formatArabicQuantity(totalItems) || String(totalItems)}
 									</span>
 									<span className="text-sm font-semibold text-gray-500">عنصر</span>
 									{hasPricedItems && (
