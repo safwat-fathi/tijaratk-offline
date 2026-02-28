@@ -5,7 +5,7 @@ export class AddAvailabilityRequests1771030000000 implements MigrationInterface 
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "availability_requests" (
+      CREATE TABLE IF NOT EXISTS "availability_requests" (
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         "deleted_at" TIMESTAMP,
@@ -21,33 +21,35 @@ export class AddAvailabilityRequests1771030000000 implements MigrationInterface 
     `);
 
     await queryRunner.query(`
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'FK_availability_requests_tenant') THEN
       ALTER TABLE "availability_requests"
       ADD CONSTRAINT "FK_availability_requests_tenant"
       FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id")
-      ON DELETE NO ACTION ON UPDATE NO ACTION
+      ON DELETE NO ACTION ON UPDATE NO ACTION; END IF; END $$;
     `);
 
     await queryRunner.query(`
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'FK_availability_requests_product') THEN
       ALTER TABLE "availability_requests"
       ADD CONSTRAINT "FK_availability_requests_product"
       FOREIGN KEY ("product_id") REFERENCES "products"("id")
-      ON DELETE NO ACTION ON UPDATE NO ACTION
+      ON DELETE NO ACTION ON UPDATE NO ACTION; END IF; END $$;
     `);
 
     await queryRunner.query(
-      `CREATE INDEX "IDX_availability_requests_tenant_created_at" ON "availability_requests" ("tenant_id", "created_at" DESC)`,
+      `CREATE INDEX IF NOT EXISTS "IDX_availability_requests_tenant_created_at" ON "availability_requests" ("tenant_id", "created_at" DESC)`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_availability_requests_tenant_product_request_date" ON "availability_requests" ("tenant_id", "product_id", "request_date")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_availability_requests_tenant_product_request_date" ON "availability_requests" ("tenant_id", "product_id", "request_date")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_availability_requests_product_id" ON "availability_requests" ("product_id")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_availability_requests_product_id" ON "availability_requests" ("product_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_availability_requests_visitor_key" ON "availability_requests" ("visitor_key")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_availability_requests_visitor_key" ON "availability_requests" ("visitor_key")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_availability_requests_request_date" ON "availability_requests" ("request_date")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_availability_requests_request_date" ON "availability_requests" ("request_date")`,
     );
 
     await queryRunner.query(

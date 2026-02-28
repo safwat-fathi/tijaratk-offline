@@ -5,7 +5,7 @@ export class AddProductsCategory1770600000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "products" ADD "category" character varying(64) NOT NULL DEFAULT 'أخرى'`,
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='category') THEN ALTER TABLE "products" ADD "category" character varying(64) NOT NULL DEFAULT 'أخرى'; END IF; END $$;`,
     );
 
     await queryRunner.query(`
@@ -38,7 +38,7 @@ export class AddProductsCategory1770600000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(
-      `CREATE INDEX "IDX_products_tenant_status_category_created_at" ON "products" ("tenant_id", "status", "category", "created_at")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_products_tenant_status_category_created_at" ON "products" ("tenant_id", "status", "category", "created_at")`,
     );
   }
 
