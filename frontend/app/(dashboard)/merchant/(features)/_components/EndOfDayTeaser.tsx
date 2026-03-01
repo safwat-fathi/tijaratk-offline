@@ -8,6 +8,7 @@ import {
 	DayCloseTodayStatusResponse,
 } from "@/types/services/orders";
 import { formatCurrencyOrFallback } from "@/lib/utils/currency";
+import { formatArabicInteger } from "@/lib/utils/number";
 
 type EndOfDayTeaserProps = {
 	initialStatus: DayCloseTodayStatusResponse;
@@ -102,7 +103,7 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 
 	return (
 		<div className="pt-4 pb-8">
-			<div className="rounded-xl border shadow-sm bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+			<div className="rounded-xl border shadow-sm bg-linear-to-r from-primary/10 to-primary/5 border-primary/20">
 				<div className="p-4 flex flex-col gap-4">
 					<div className="flex items-center justify-between gap-3">
 						<div className="flex items-center gap-3">
@@ -133,7 +134,9 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 							</div>
 							<div>
 								<p className="font-medium text-sm text-foreground">
-									{status.is_closed ? "تم إغلاق حساب اليوم" : "إغلاق حساب اليوم؟"}
+									{status.is_closed
+										? "تم إغلاق حساب اليوم"
+										: "إغلاق حساب اليوم؟"}
 								</p>
 								<p className="text-xs text-muted-foreground">
 									{status.is_closed
@@ -156,11 +159,15 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 					<div className="grid grid-cols-3 gap-2 text-sm">
 						<div className="rounded-lg border border-primary/15 bg-white/35 p-2">
 							<p className="text-xs text-muted-foreground">الطلبات</p>
-							<p className="font-semibold">{summary.orders_count}</p>
+							<p className="font-semibold">
+								{formatArabicInteger(summary.orders_count)}
+							</p>
 						</div>
 						<div className="rounded-lg border border-primary/15 bg-white/35 p-2">
 							<p className="text-xs text-muted-foreground">الملغية</p>
-							<p className="font-semibold">{summary.cancelled_count}</p>
+							<p className="font-semibold">
+								{formatArabicInteger(summary.cancelled_count)}
+							</p>
 						</div>
 						<div className="rounded-lg border border-primary/15 bg-white/35 p-2">
 							<p className="text-xs text-muted-foreground">المبيعات</p>
