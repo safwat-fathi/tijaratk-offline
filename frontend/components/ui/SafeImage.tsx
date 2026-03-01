@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import { ComponentProps, ReactNode, useMemo, useState } from "react";
 
-type SafeImageProps = ComponentProps<typeof Image> & {
+type SafeImageProps = Omit<ComponentProps<typeof Image>, "src"> & {
+	src?: ComponentProps<typeof Image>["src"] | null;
 	fallback: ReactNode;
 	containerClassName?: string;
 	imageClassName?: string;
