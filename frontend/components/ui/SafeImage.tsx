@@ -1,20 +1,12 @@
 'use client';
 
 import Image from 'next/image';
-import { ReactNode, useMemo, useState } from 'react';
+import { ComponentProps, ReactNode, useMemo, useState } from "react";
 
-type SafeImageProps = {
-  src?: string | null;
-  alt: string;
-  width: number;
-  height: number;
-  fallback: ReactNode;
-  containerClassName?: string;
-  imageClassName?: string;
-  unoptimized?: boolean;
-  priority?: boolean;
-  sizes?: string;
-  loading?: 'lazy' | 'eager';
+type SafeImageProps = ComponentProps<typeof Image> & {
+	fallback: ReactNode;
+	containerClassName?: string;
+	imageClassName?: string;
 };
 
 export default function SafeImage({
@@ -31,7 +23,7 @@ export default function SafeImage({
   loading,
 }: SafeImageProps) {
   const normalizedSrc = useMemo(() => {
-    const trimmedSrc = src?.trim();
+    const trimmedSrc = src?.toString().trim();
     return trimmedSrc ? trimmedSrc : null;
   }, [src]);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
