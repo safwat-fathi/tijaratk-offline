@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useDragToClose } from "@/lib/hooks/useDragToClose";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatArabicInteger } from "@/lib/utils/number";
 import type { Product } from "@/types/models/product";
@@ -344,6 +345,11 @@ export default function OrderReviewSheet({
 }: OrderReviewSheetProps) {
 	useBodyScrollLock(isOpen);
 	const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+	const sheetRef = useDragToClose<HTMLDivElement>({
+		onClose,
+		dragThreshold: 80,
+		isOpen,
+	});
 
 	const selectionEntries = useMemo(
 		() =>
@@ -400,7 +406,10 @@ export default function OrderReviewSheet({
 			/>
 
 			<div className="absolute inset-x-0 bottom-0">
-				<div className="mx-auto flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl">
+				<div 
+					ref={sheetRef}
+					className="mx-auto flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-transform"
+				>
 					<div className="shrink-0 border-b border-gray-100 px-4 pb-3 pt-3">
 						<div className="mb-2 h-1.5 w-10 rounded-full bg-gray-300 mx-auto" />
 						<div className="relative flex items-center justify-center min-h-11">

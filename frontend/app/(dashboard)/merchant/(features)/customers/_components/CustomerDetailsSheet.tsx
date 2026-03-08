@@ -7,6 +7,7 @@ import { formatArabicInteger } from "@/lib/utils/number";
 import { buildWhatsAppLink } from "@/lib/utils/phone";
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
+import { useDragToClose } from "@/lib/hooks/useDragToClose";
 
 interface CustomerDetailsSheetProps {
   customerId: number | null;
@@ -165,6 +166,11 @@ export default function CustomerDetailsSheet({
   );
   const [error, setError] = useState<string | null>(null);
   useBodyScrollLock(Boolean(customerId));
+  const sheetRef = useDragToClose<HTMLDivElement>({ 
+    onClose, 
+    dragThreshold: 80,
+    isOpen: Boolean(customerId) 
+  });
 
   useEffect(() => {
     let isCancelled = false;
@@ -252,7 +258,8 @@ export default function CustomerDetailsSheet({
       aria-modal="true"
     >
       <div
-        className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl animate-slide-up"
+        ref={sheetRef}
+        className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl animate-slide-up transition-transform"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="shrink-0 flex justify-center pt-3 pb-2">

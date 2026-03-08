@@ -2,6 +2,7 @@
 
 import { Product } from "@/types/models/product";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useDragToClose } from "@/lib/hooks/useDragToClose";
 import SafeImage from "@/components/ui/SafeImage";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -779,6 +780,12 @@ export default function ProductList({
 		setAvailabilitySheet(null);
 	};
 
+	const sheetRef = useDragToClose<HTMLDivElement>({
+		onClose: () => closeAvailabilitySheet(true),
+		dragThreshold: 80,
+		isOpen: Boolean(availabilitySheet),
+	});
+
 	const closeInlineEditor = (
 		productId: number,
 		mode: InlineEditorMode,
@@ -1093,9 +1100,11 @@ export default function ProductList({
 						aria-label="إغلاق"
 					/>
 					<div
-						className="relative max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl"
+						ref={sheetRef}
+						className="relative max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl transition-transform"
 						style={{ WebkitOverflowScrolling: "touch" }}
 					>
+						<div className="mb-4 h-1.5 w-10 rounded-full bg-gray-300 mx-auto" />
 						<p className="text-base font-bold text-gray-900">العنصر غير متاح حالياً</p>
 						<p className="mt-1 text-sm text-gray-600">
 							تحب نبلغ التاجر إنك محتاجه؟

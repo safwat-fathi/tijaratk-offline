@@ -14,6 +14,7 @@ import {
 import SafeImage from "@/components/ui/SafeImage";
 import { formatCurrency } from '@/lib/utils/currency';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import { useDragToClose } from '@/lib/hooks/useDragToClose';
 import { getImageUrl } from '@/lib/utils/image';
 import { formatArabicQuantity } from '@/lib/utils/number';
 import { OrderStatus, ReplacementDecisionStatus } from '@/types/enums';
@@ -166,6 +167,27 @@ export default function OrderItemsReplacement({
   const [debouncedSearch] = useDebounce(searchQuery, SEARCH_DEBOUNCE_MS);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   useBodyScrollLock(Boolean(activeSheet));
+
+  const closeSheet = () => {
+    setActiveItemId(null);
+    setActiveSheet(null);
+    setNewProductName('');
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError(null);
+    setIsSearching(false);
+    setSuggestedResults([]);
+    setSuggestedError(null);
+    setIsLoadingSuggested(false);
+    setPriceInput('');
+    setPriceError(null);
+  };
+
+  const sheetRef = useDragToClose<HTMLDivElement>({
+    onClose: closeSheet,
+    dragThreshold: 80,
+    isOpen: Boolean(activeSheet),
+  });
 
   useEffect(() => {
     setItems(initialItems);
@@ -365,21 +387,6 @@ export default function OrderItemsReplacement({
     setSearchError(null);
     setIsSearching(false);
     searchInputRef.current?.focus();
-  };
-
-  const closeSheet = () => {
-    setActiveItemId(null);
-    setActiveSheet(null);
-    setNewProductName('');
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchError(null);
-    setIsSearching(false);
-    setSuggestedResults([]);
-    setSuggestedError(null);
-    setIsLoadingSuggested(false);
-    setPriceInput('');
-    setPriceError(null);
   };
 
   const openReplacementSheet = (itemId: number) => {
@@ -744,7 +751,10 @@ export default function OrderItemsReplacement({
 						onClick={closeSheet}
 					/>
 
-					<div className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl">
+					<div 
+						ref={sheetRef}
+						className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-transform"
+					>
 						<div className="shrink-0 px-4 pb-2 pt-4">
 							<div className="mx-auto h-1.5 w-12 rounded-full bg-gray-300" />
 						</div>

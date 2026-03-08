@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
+import { useDragToClose } from "@/lib/hooks/useDragToClose";
 import { formatArabicInteger } from "@/lib/utils/number";
 
 interface OrderStatsProps {
@@ -15,6 +16,11 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
   useBodyScrollLock(isOpen);
+  const sheetRef = useDragToClose<HTMLDivElement>({
+    onClose: () => setIsOpen(false),
+    dragThreshold: 80,
+    isOpen,
+  });
 
   // Helper to format label
   const getLabel = () => {
@@ -93,7 +99,8 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
               aria-modal="true"
             >
                 <div 
-                    className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 shadow-2xl animate-slide-up"
+                    ref={sheetRef}
+                    className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 shadow-2xl animate-slide-up transition-transform"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex justify-center mb-4">
