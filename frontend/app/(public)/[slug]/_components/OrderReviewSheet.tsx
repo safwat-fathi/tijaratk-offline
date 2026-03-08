@@ -106,6 +106,7 @@ const ReviewItemCard = ({
 		String(Number(selection.selection_amount_egp || 0) || ""),
 	);
 	const [inlineError, setInlineError] = useState<string | null>(null);
+	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
 	const lineTotal = resolveSelectionLineTotal(selection, product);
 	const name = product?.name || "منتج";
@@ -177,14 +178,35 @@ const ReviewItemCard = ({
 					)}
 				</div>
 
-				<button
-					type="button"
-					onClick={handleRemove}
-					disabled={isPending}
-					className="flex h-11 items-center rounded-xl border border-red-200 px-3 text-sm font-semibold text-red-700 disabled:opacity-60"
-				>
-					حذف
-				</button>
+				{isConfirmingDelete ? (
+					<div className="flex items-center gap-1.5 shrink-0">
+						<button
+							type="button"
+							onClick={handleRemove}
+							disabled={isPending}
+							className="flex h-11 items-center rounded-xl bg-red-600 px-3 text-sm font-bold text-white disabled:opacity-60"
+						>
+							تأكيد
+						</button>
+						<button
+							type="button"
+							onClick={() => setIsConfirmingDelete(false)}
+							disabled={isPending}
+							className="flex h-11 items-center rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold text-gray-700 disabled:opacity-60"
+						>
+							إلغاء
+						</button>
+					</div>
+				) : (
+					<button
+						type="button"
+						onClick={() => setIsConfirmingDelete(true)}
+						disabled={isPending}
+						className="flex h-11 items-center rounded-xl border border-red-200 px-3 text-sm font-semibold text-red-700 disabled:opacity-60 shrink-0"
+					>
+						حذف
+					</button>
+				)}
 			</div>
 
 			<div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2.5">
@@ -224,7 +246,7 @@ const ReviewItemCard = ({
 								step="1"
 								inputMode="numeric"
 								value={weightInput}
-								onChange={(event) => {
+								onChange={event => {
 									setWeightInput(event.target.value);
 									setInlineError(null);
 								}}
@@ -255,7 +277,7 @@ const ReviewItemCard = ({
 								step="0.01"
 								inputMode="decimal"
 								value={priceInput}
-								onChange={(event) => {
+								onChange={event => {
 									setPriceInput(event.target.value);
 									setInlineError(null);
 								}}
@@ -287,7 +309,7 @@ const ReviewItemCard = ({
 					type="text"
 					maxLength={MAX_NOTE_LENGTH}
 					value={selection.item_note || ""}
-					onChange={(event) => {
+					onChange={event => {
 						const value = event.target.value;
 						onUpdateSelection(productId, {
 							...selection,

@@ -317,7 +317,7 @@ export default function OrderForm({
 		pillNode.scrollIntoView({
 			behavior: "smooth",
 			block: "nearest",
-			inline: "center",
+			inline: "nearest",
 		});
 	}, []);
 
