@@ -346,7 +346,7 @@ export default function OrderItemsReplacement({
 		void (async () => {
 			const response = await loadReplacementOptions({
 				query: normalizedSearch,
-				category: undefined,
+				category: activeItemCategory,
 				rankAll: false,
 				excludeProductIds: activeItemExcludedProductIds,
 			});
@@ -537,7 +537,12 @@ export default function OrderItemsReplacement({
     }
 
     startTransition(async () => {
-      const createResponse = await createProductAction(trimmedName);
+      const createResponse = await createProductAction(
+        trimmedName,
+        undefined,
+        undefined,
+        activeItemCategory,
+      );
 
       if (!createResponse.success || !createResponse.data) {
         setFeedback(createResponse.message || 'تعذر إضافة المنتج');
@@ -825,9 +830,9 @@ export default function OrderItemsReplacement({
 													<p className="mt-1 text-xs text-gray-500">
 														اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
 													</p>
-													{!isTextSearchActive && activeItemCategory && (
+													{activeItemCategory && (
 														<p className="mt-1 text-xs text-indigo-600">
-															النتائج مفلترة تلقائياً حسب قسم الصنف:{" "}
+															سيتم إعطاء الأولوية للمنتجات في قسم:{" "}
 															{activeItemCategory}
 														</p>
 													)}
