@@ -156,6 +156,7 @@ export default function OrderItemsReplacement({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [suggestedResults, setSuggestedResults] = useState<Product[]>([]);
   const [isLoadingSuggested, setIsLoadingSuggested] = useState(false);
@@ -176,6 +177,7 @@ export default function OrderItemsReplacement({
     setSearchResults([]);
     setSearchError(null);
     setIsSearching(false);
+    setIsSearchFocused(false);
     setSuggestedResults([]);
     setSuggestedError(null);
     setIsLoadingSuggested(false);
@@ -758,29 +760,92 @@ export default function OrderItemsReplacement({
 
 					<div 
 						ref={sheetRef}
-						className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-transform"
+						className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-[max-height,transform] duration-300 ${
+							isSearchFocused ? "max-h-[100dvh] h-[100dvh]" : "max-h-[85dvh]"
+						}`}
 					>
-						<div className="shrink-0 px-4 pb-2 pt-4">
-							<div className="mx-auto h-1.5 w-12 rounded-full bg-gray-300" />
-						</div>
-						<div
-							className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
-							style={{ WebkitOverflowScrolling: "touch" }}
-						>
+						<div className="shrink-0 px-4 pb-2 pt-4 border-b border-gray-100">
+							<div className="mx-auto h-1.5 w-12 rounded-full bg-gray-300 mb-4" />
+							
 							{activeSheet === "replacement" && (
-								<>
-									<h3 className="text-lg font-bold text-gray-900">
+								<div className="pb-2">
+									<h3 className="text-lg font-bold text-gray-900 leading-tight">
 										اختر المنتج البديل
+									</h3>
+									<p className="text-sm text-gray-500 mb-3">
+										بديل لـ: {activeItem.name_snapshot}
+									</p>
+
+									{activeItem.replacement_decision_status !==
+										ReplacementDecisionStatus.APPROVED &&
+										activeItem.replacement_decision_status !==
+											ReplacementDecisionStatus.REJECTED && (
+											<div className="relative">
+												<input
+													ref={searchInputRef}
+													value={searchQuery}
+													onFocus={() => setIsSearchFocused(true)}
+													onBlur={() => {
+														// Small delay to allow click on results before shrinking
+														setTimeout(() => setIsSearchFocused(false), 200);
+													}}
+													onChange={event =>
+														setSearchQuery(event.target.value)
+													}
+													maxLength={MAX_SEARCH_LENGTH}
+													placeholder="ابحث بالاسم..."
+													className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 pe-10 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50/50"
+												/>
+												{searchQuery && (
+													<button
+														type="button"
+														onClick={handleClearReplacementSearch}
+														aria-label="مسح البحث"
+														className="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 transition-colors hover:text-gray-600"
+													>
+														<svg
+															className="h-5 w-5"
+															xmlns="http://www.w3.org/2000/svg"
+															fill="none"
+															viewBox="0 0 24 24"
+															stroke="currentColor"
+															strokeWidth={2}
+														>
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																d="M6 18L18 6M6 6l12 12"
+															/>
+														</svg>
+													</button>
+												)}
+											</div>
+										)}
+								</div>
+							)}
+
+							{activeSheet === "price" && (
+								<div className="pb-2">
+									<h3 className="text-lg font-bold text-gray-900 leading-tight">
+										تحديد سعر الصنف
 									</h3>
 									<p className="text-sm text-gray-500">
 										{activeItem.name_snapshot}
 									</p>
-
+								</div>
+							)}
+						</div>
+						<div
+							className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-2"
+							style={{ WebkitOverflowScrolling: "touch" }}
+						>
+							{activeSheet === "replacement" && (
+								<>
 									{(activeItem.replacement_decision_status ===
 										ReplacementDecisionStatus.APPROVED ||
 										activeItem.replacement_decision_status ===
 											ReplacementDecisionStatus.REJECTED) && (
-										<div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
+										<div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
 											قرار العميل مقفل على هذا الصنف. استخدم زر إعادة الضبط
 											لفتحه مرة أخرى.
 										</div>
@@ -791,67 +856,34 @@ export default function OrderItemsReplacement({
 										activeItem.replacement_decision_status !==
 											ReplacementDecisionStatus.REJECTED && (
 											<>
-												<div className="mt-3 rounded-xl border border-gray-200 p-3">
-													<div className="relative">
-															<input
-															ref={searchInputRef}
-															value={searchQuery}
-															onChange={event =>
-																setSearchQuery(event.target.value)
-															}
-															maxLength={MAX_SEARCH_LENGTH}
-															placeholder="ابحث بالاسم"
-															className="w-full rounded-lg border border-gray-300 px-3 py-2 pe-10 text-sm outline-none focus:border-indigo-500"
-														/>
-														{searchQuery && (
-															<button
-																type="button"
-																onClick={handleClearReplacementSearch}
-																aria-label="مسح البحث"
-																className="absolute inset-y-0 end-0 pe-3 text-gray-400 transition-colors hover:text-gray-600"
-															>
-																<svg
-																	className="h-4 w-4"
-																	xmlns="http://www.w3.org/2000/svg"
-																	fill="none"
-																	viewBox="0 0 24 24"
-																	stroke="currentColor"
-																	strokeWidth={2}
-																>
-																	<path
-																		strokeLinecap="round"
-																		strokeLinejoin="round"
-																		d="M6 18L18 6M6 6l12 12"
-																	/>
-																</svg>
-															</button>
-														)}
-													</div>
-													<p className="mt-1 text-xs text-gray-500">
+												<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+													<p className="text-xs text-gray-400">
 														اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
 													</p>
 													{activeItemCategory && (
-														<p className="mt-1 text-xs text-indigo-600">
-															سيتم إعطاء الأولوية للمنتجات في قسم:{" "}
-															{activeItemCategory}
+														<p className="text-xs font-medium text-indigo-600">
+															الأولوية لقسم: {activeItemCategory}
 														</p>
 													)}
 												</div>
 
-												<div className="mt-4 max-h-60 space-y-2 overflow-y-auto">
+												<div className="mt-4 space-y-2">
 													{!isTextSearchActive &&
 														replacementOptions.length > 0 && (
-															<p className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
+															<p className="text-xs font-bold uppercase tracking-wider text-indigo-700">
 																منتجات مشابهة مقترحة
 															</p>
 														)}
 
 													{isReplacementResultsLoading && (
-														<p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
-															{isTextSearchActive
-																? "جاري البحث..."
-																: "جاري تحميل المنتجات المشابهة..."}
-														</p>
+														<div className="flex flex-col items-center justify-center rounded-2xl bg-gray-50/50 py-8">
+															<div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+															<p className="mt-2 text-sm text-gray-500">
+																{isTextSearchActive
+																	? "جاري البحث..."
+																	: "جاري تحميل المقترحات..."}
+															</p>
+														</div>
 													)}
 
 													{!isReplacementResultsLoading &&
@@ -962,14 +994,7 @@ export default function OrderItemsReplacement({
 
 							{activeSheet === "price" && (
 								<>
-									<h3 className="text-lg font-bold text-gray-900">
-										تحديد سعر الصنف
-									</h3>
-									<p className="text-sm text-gray-500">
-										{activeItem.name_snapshot}
-									</p>
-
-									<div className="mt-4 rounded-xl border border-gray-200 p-3">
+									<div className="mt-2 rounded-xl border border-gray-200 p-3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											السعر النهائي للصنف (ج.م)
 										</label>
