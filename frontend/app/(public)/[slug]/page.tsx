@@ -85,21 +85,40 @@ async function getOrder(token?: string): Promise<Order | null> {
 
 export async function generateMetadata(
 	{ params }: Props,
-	// parent: ResolvingMetadata,
 ): Promise<Metadata> {
 	const { slug } = await params;
-
 	const tenant = await getTenant(slug);
 
-	if (!tenant) return { title: "" };
+	if (!tenant) return { title: "المتجر غير موجود" };
 
 	const categoryLabel = resolveTenantCategoryMeta(tenant.category).labels.ar;
+	const title = `${tenant.name} | ${categoryLabel}`;
+	const description = `اطلب الآن من ${tenant.name}، متخصصون في ${categoryLabel}. تصفح المنتجات واطلب بسهولة عبر تجارتك.`;
+
 	return {
-		title: tenant.name || "",
-		description: categoryLabel,
+		title,
+		description,
+		keywords: [tenant.name, categoryLabel, "تجارتك", "طلب أونلاين", "قائمة المنتجات"],
 		openGraph: {
-			title: tenant.name || "",
-			description: `متجر ${categoryLabel}`,
+			title,
+			description,
+			type: "website",
+			url: `https://tijaratk.com/${slug}`,
+			siteName: "تجارتك",
+			images: [
+				{
+					url: "/logo.png",
+					width: 800,
+					height: 600,
+					alt: tenant.name,
+				},
+			],
+		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			description,
+			images: ["/logo.png"],
 		},
 	};
 }

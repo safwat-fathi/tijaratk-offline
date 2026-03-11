@@ -18,6 +18,18 @@ const statusLabelMap: Record<OrderStatus, string> = {
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({
+	params,
+}: {
+	params: Promise<{ id: string }>;
+}) {
+	const { id } = await params;
+	return {
+		title: `تفاصيل الطلب #${id}`,
+		description: `عرض وتعديل تفاصيل الطلب رقم ${id} وإدارة حالته.`,
+	};
+}
+
 export default async function OrderDetailsPage({
 	params,
 }: {

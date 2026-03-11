@@ -3,7 +3,8 @@ import OrdersView from "./_components/OrdersView";
 import { isNextRedirectError } from "@/lib/auth/navigation-errors";
 
 export const metadata = {
-	title: "Orders",
+	title: "إدارة الطلبات",
+	description: "تتبع وإدارة جميع طلبات عملائك من مكان واحد بكل كفاءة.",
 };
 
 export const dynamic = "force-dynamic";

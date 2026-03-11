@@ -4,7 +4,8 @@ import { CatalogItem, Product } from '@/types/models/product';
 import { isNextRedirectError } from '@/lib/auth/navigation-errors';
 
 export const metadata = {
-  title: 'إضافة منتج',
+	title: "إدارة المنتجات",
+	description: "أضف منتجات جديدة لمتجرك بسهولة، اختر من الكتالوج أو أضف منتجاتك الخاصة.",
 };
 
 export const dynamic = 'force-dynamic';

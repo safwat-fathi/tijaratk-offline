@@ -13,7 +13,8 @@ import AvailabilityRequestsCard from "./_components/AvailabilityRequestsCard";
 import { DashboardStats } from "./_components/dashboard.types";
 
 export const metadata = {
-	title: "Dashboard Home",
+	title: "لوحة التحكم",
+	description: "نظرة عامة على نشاط متجرك، الطلبات اليومية، وحالة المبيعات.",
 };
 
 function isToday(dateString: string): boolean {

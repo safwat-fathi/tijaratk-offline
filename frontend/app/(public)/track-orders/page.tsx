@@ -11,8 +11,8 @@ import type { Order } from "@/types/models/order";
 import { OrderStatus } from "@/types/enums";
 
 export const metadata = {
-	title: "طلباتي",
-	description: "تابع آخر طلباتك بدون تسجيل دخول",
+	title: "تتبع طلباتي",
+	description: "تابع جميع طلباتك السابقة وحالتها الحالية من جميع المتاجر في مكان واحد بكل سهولة وبدون الحاجة لتسجيل دخول.",
 };
 
 const statusConfig: Record<

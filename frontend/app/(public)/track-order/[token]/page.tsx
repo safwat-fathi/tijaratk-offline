@@ -196,8 +196,8 @@ async function getOrder(token: string) {
 }
 
 export const metadata = {
-	title: "تتبع الطلب",
-	description: "تتبع حالة طلبك",
+	title: "تتبع حالة الطلب",
+	description: "تابع حالة طلبك وتفاصيله والمنتجات المطلوبة في الوقت الفعلي وبكل سهولة.",
 };
 
 export default async function TrackOrder({ params }: Props) {
