@@ -228,6 +228,8 @@ export default function OrderItemsReplacement({
 
   const normalizedSearch = debouncedSearch.trim();
   const isTextSearchActive = normalizedSearch.length >= MIN_SEARCH_CHARS;
+  const canEditItemReplacement =
+    orderStatus === OrderStatus.DRAFT || orderStatus === OrderStatus.CONFIRMED;
   const canEditItemPrice =
     orderStatus === OrderStatus.DRAFT || orderStatus === OrderStatus.CONFIRMED;
 
@@ -392,6 +394,11 @@ export default function OrderItemsReplacement({
   };
 
   const openReplacementSheet = (itemId: number) => {
+    if (!canEditItemReplacement) {
+      setFeedback('الاستبدال متاح في حالتي جديد ومؤكد فقط');
+      return;
+    }
+
     setActiveItemId(itemId);
     setActiveSheet('replacement');
     setSearchQuery('');
@@ -483,11 +490,16 @@ export default function OrderItemsReplacement({
   };
 
   const handleSelectReplacement = (itemId: number, product: Product) => {
+    if (!canEditItemReplacement) {
+      setFeedback('الاستبدال متاح في حالتي جديد ومؤكد فقط');
+      return;
+    }
+
     startTransition(async () => {
       const response = await replaceOrderItemAction(orderId, itemId, product.id);
 
       if (!response.success) {
-        setFeedback('تعذر تحديث البديل');
+        setFeedback(response.error || 'تعذر تحديث البديل');
         return;
       }
 
@@ -498,11 +510,16 @@ export default function OrderItemsReplacement({
   };
 
   const handleClearReplacement = (itemId: number) => {
+    if (!canEditItemReplacement) {
+      setFeedback('الاستبدال متاح في حالتي جديد ومؤكد فقط');
+      return;
+    }
+
     startTransition(async () => {
       const response = await replaceOrderItemAction(orderId, itemId, null);
 
       if (!response.success) {
-        setFeedback('تعذر إزالة البديل');
+        setFeedback(response.error || 'تعذر إزالة البديل');
         return;
       }
 
@@ -513,11 +530,16 @@ export default function OrderItemsReplacement({
   };
 
   const handleResetReplacementDecision = (itemId: number) => {
+    if (!canEditItemReplacement) {
+      setFeedback('الاستبدال متاح في حالتي جديد ومؤكد فقط');
+      return;
+    }
+
     startTransition(async () => {
       const response = await resetOrderItemReplacementAction(orderId, itemId);
 
       if (!response.success) {
-        setFeedback('تعذر إعادة ضبط قرار الاستبدال');
+        setFeedback(response.error || 'تعذر إعادة ضبط قرار الاستبدال');
         return;
       }
 
@@ -528,6 +550,11 @@ export default function OrderItemsReplacement({
   };
 
   const handleCreateAndSelect = () => {
+    if (!canEditItemReplacement) {
+      setFeedback('الاستبدال متاح في حالتي جديد ومؤكد فقط');
+      return;
+    }
+
     if (!activeItem) {
       return;
     }
@@ -560,7 +587,9 @@ export default function OrderItemsReplacement({
       );
 
       if (!replaceResponse.success) {
-        setFeedback('تم إنشاء المنتج لكن تعذر ربطه كبديل');
+        setFeedback(
+          replaceResponse.error || 'تم إنشاء المنتج لكن تعذر ربطه كبديل',
+        );
         return;
       }
 
@@ -596,7 +625,7 @@ export default function OrderItemsReplacement({
       );
 
       if (!response.success) {
-        setPriceError('تعذر تحديث السعر');
+        setPriceError(response.error || 'تعذر تحديث السعر');
         return;
       }
 
@@ -661,7 +690,7 @@ export default function OrderItemsReplacement({
 									<button
 										type="button"
 										onClick={() => openReplacementSheet(item.id)}
-										disabled={isDecisionLocked}
+										disabled={isDecisionLocked || !canEditItemReplacement}
 										className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
 									>
 										{getReplacementButtonLabel({
@@ -683,6 +712,12 @@ export default function OrderItemsReplacement({
 								{!canEditItemPrice && (
 									<p className="mt-2 text-xs text-gray-500">
 										تعديل السعر متاح في حالتي جديد ومؤكد فقط
+									</p>
+								)}
+
+								{!canEditItemReplacement && (
+									<p className="mt-2 text-xs text-gray-500">
+										الاستبدال متاح في حالتي جديد ومؤكد فقط
 									</p>
 								)}
 
@@ -725,7 +760,7 @@ export default function OrderItemsReplacement({
 									<button
 										type="button"
 										onClick={() => handleResetReplacementDecision(item.id)}
-										disabled={isPending}
+										disabled={isPending || !canEditItemReplacement}
 										className="mt-3 w-full rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-60"
 									>
 										إعادة فتح قرار الاستبدال
@@ -779,7 +814,8 @@ export default function OrderItemsReplacement({
 									{activeItem.replacement_decision_status !==
 										ReplacementDecisionStatus.APPROVED &&
 										activeItem.replacement_decision_status !==
-											ReplacementDecisionStatus.REJECTED && (
+											ReplacementDecisionStatus.REJECTED &&
+										canEditItemReplacement && (
 											<div className="relative">
 												<input
 													ref={searchInputRef}
@@ -851,10 +887,18 @@ export default function OrderItemsReplacement({
 										</div>
 									)}
 
+									{!canEditItemReplacement && (
+										<div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+											لا يمكن تعديل الاستبدال بعد خروج الطلب من حالتي جديد أو
+											مؤكد.
+										</div>
+									)}
+
 									{activeItem.replacement_decision_status !==
 										ReplacementDecisionStatus.APPROVED &&
 										activeItem.replacement_decision_status !==
-											ReplacementDecisionStatus.REJECTED && (
+											ReplacementDecisionStatus.REJECTED &&
+										canEditItemReplacement && (
 											<>
 												<div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
 													<p className="text-xs text-gray-400">
@@ -915,7 +959,9 @@ export default function OrderItemsReplacement({
 																		product,
 																	)
 																}
-																disabled={isPending}
+																disabled={
+																	isPending || !canEditItemReplacement
+																}
 																className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3 py-3 text-start"
 															>
 																<span className="flex items-center gap-3">
@@ -951,7 +997,7 @@ export default function OrderItemsReplacement({
 														<button
 															type="button"
 															onClick={handleCreateAndSelect}
-															disabled={isPending}
+															disabled={isPending || !canEditItemReplacement}
 															className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
 														>
 															حفظ
@@ -965,7 +1011,7 @@ export default function OrderItemsReplacement({
 														onClick={() =>
 															handleClearReplacement(activeItem.id)
 														}
-														disabled={isPending}
+														disabled={isPending || !canEditItemReplacement}
 														className="mt-3 w-full rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-700 disabled:opacity-60"
 													>
 														إلغاء طلب الاستبدال
@@ -983,7 +1029,7 @@ export default function OrderItemsReplacement({
 											onClick={() =>
 												handleResetReplacementDecision(activeItem.id)
 											}
-											disabled={isPending}
+											disabled={isPending || !canEditItemReplacement}
 											className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
 										>
 											إعادة فتح قرار الاستبدال

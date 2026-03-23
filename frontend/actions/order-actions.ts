@@ -38,6 +38,13 @@ export async function replaceOrderItemAction(
       replaced_by_product_id: replacedByProductId,
     });
 
+    if (!response.success) {
+      return {
+        success: false,
+        error: response.message || 'Failed to replace order item',
+      };
+    }
+
     revalidatePath(`/merchant/orders/${orderId}`);
     revalidatePath('/merchant/orders');
 
@@ -57,6 +64,13 @@ export async function resetOrderItemReplacementAction(
 ) {
   try {
     const response = await ordersService.resetOrderItemReplacement(itemId);
+
+    if (!response.success) {
+      return {
+        success: false,
+        error: response.message || 'Failed to reset order item replacement',
+      };
+    }
 
     revalidatePath(`/merchant/orders/${orderId}`);
     revalidatePath('/merchant/orders');
@@ -80,6 +94,13 @@ export async function updateOrderItemPriceAction(
     const response = await ordersService.updateOrderItemPrice(itemId, {
       total_price: totalPrice,
     });
+
+    if (!response.success) {
+      return {
+        success: false,
+        error: response.message || 'Failed to update order item price',
+      };
+    }
 
     revalidatePath(`/merchant/orders/${orderId}`);
     revalidatePath('/merchant/orders');
