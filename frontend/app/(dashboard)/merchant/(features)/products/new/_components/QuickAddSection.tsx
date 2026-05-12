@@ -94,14 +94,14 @@ export default function QuickAddSection({
 						value={manualName}
 						onChange={event => onManualNameChange(event.target.value)}
 						placeholder="مثال: زيت عباد الشمس"
-						className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-indigo-500"
+						className="w-full rounded-md border border-brand-border px-4 py-3 text-base focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 					/>
 					<input
 						value={manualPrice}
 						onChange={event => onManualPriceChange(event.target.value)}
 						placeholder="السعر (اختياري)"
 						inputMode="decimal"
-						className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base outline-none focus:border-indigo-500"
+						className="w-full rounded-md border border-brand-border px-4 py-3 text-base focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 					/>
 
 					<OrderModeFields
@@ -134,7 +134,7 @@ export default function QuickAddSection({
 					<button
 						type="submit"
 						disabled={isPending}
-						className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
+						className="w-full rounded-md bg-brand-primary px-4 py-3 text-base font-semibold text-white disabled:opacity-60"
 					>
 						حفظ
 					</button>

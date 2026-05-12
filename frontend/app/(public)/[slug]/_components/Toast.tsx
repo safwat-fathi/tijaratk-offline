@@ -22,10 +22,7 @@ export default function Toast({
 	const closeAnimationClass =
 		position === "bottom" ? "translate-y-4 opacity-0" : "-translate-y-4 opacity-0";
 	const visibilityClass = isClosing ? closeAnimationClass : "translate-y-0 opacity-100";
-	const toneClass =
-		type === "error"
-			? "bg-white border-red-100 text-red-600"
-			: "bg-white border-green-100 text-green-600";
+	const toneClass = "border-brand-text bg-brand-text text-white";
 
 	useEffect(() => {
 		if (!isClosing) {
@@ -45,10 +42,11 @@ export default function Toast({
 
 		return (
 			<div
-				className={`fixed ${positionClass} left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border transition-all duration-300 transform ${visibilityClass} ${toneClass}`}
+				className={`fixed ${positionClass} left-1/2 z-[60] flex -translate-x-1/2 transform items-center gap-3 rounded-md border px-4 py-3 shadow-float transition-[opacity,transform] duration-200 ${visibilityClass} ${toneClass}`}
+				aria-live="polite"
 			>
 			<div
-				className={`p-1 rounded-full ${type === "error" ? "bg-red-50" : "bg-green-50"}`}
+				className="rounded-full bg-white/10 p-1"
 			>
 				{type === "error" ? (
 					<svg
@@ -86,7 +84,8 @@ export default function Toast({
 			<p className="font-medium text-sm">{message}</p>
 			<button
 				onClick={() => setIsClosing(true)}
-				className="text-gray-400 hover:text-gray-600 ml-2"
+				aria-label="إغلاق التنبيه"
+				className="ml-2 text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"

@@ -36,8 +36,8 @@ export default function WriteOrderFAB() {
 	return (
 		<button
 			onClick={scrollToOrderNotes}
-			className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white font-bold py-4 px-6 rounded-full shadow-xl hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2 animate-slide-up"
-			aria-label="Write Order"
+			className="fixed bottom-6 right-6 z-50 flex animate-slide-up items-center gap-2 rounded-full bg-brand-primary px-6 py-4 font-bold text-white shadow-float transition-[background-color,transform] hover:bg-brand-primary-hover active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
+			aria-label="اكتب طلبك"
 		>
 			<span className="text-xl">✍️</span>
 			<span className="text-sm">اكتب طلبك</span>

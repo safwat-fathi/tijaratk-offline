@@ -29,7 +29,7 @@ export default function ProductSectionsTabs({
             aria-selected={isActive}
             aria-controls={`section-panel-${section.key}`}
             onClick={() => onSectionChange(section.key)}
-            className={`rounded-lg px-2 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            className={`rounded-md px-2 py-2 text-center transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
               isActive
                 ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'
                 : 'text-gray-600 hover:bg-white'

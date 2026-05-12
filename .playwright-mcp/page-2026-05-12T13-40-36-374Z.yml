@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]: بدون تسجيل دخول
+        - heading "طلباتي" [level=1] [ref=e9]
+        - paragraph [ref=e10]: كل طلب جديد ترسله من هذا الجهاز يظهر هنا تلقائياً.
+      - link "المتاجر" [ref=e12] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e14]:
+      - img [ref=e16]
+      - paragraph [ref=e18]: لا توجد طلبات محفوظة بعد
+      - paragraph [ref=e19]: بعد إرسال أول طلب من أي متجر، ستجده هنا مباشرة لتتبع حالته.
+  - contentinfo [ref=e20]:
+    - generic [ref=e21]:
+      - img "Tijaratk" [ref=e22]
+      - generic:
+        - link "فيسبوك":
+          - /url: "#"
+          - generic [ref=e23] [cursor=pointer]: فيسبوك
+      - paragraph [ref=e24]: © 2026 تجارتك. جميع الحقوق محفوظة.
+  - button "Open Next.js Dev Tools" [ref=e30] [cursor=pointer]:
+    - img [ref=e31]
+  - alert [ref=e34]

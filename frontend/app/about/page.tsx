@@ -102,33 +102,33 @@ const whatsappHighlights = [
 
 export default function AboutPage() {
 	return (
-		<main className="relative isolate min-h-screen overflow-hidden bg-slate-50 px-4 py-10 sm:px-6 sm:py-14">
-			<div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-indigo-100/80 via-sky-50/70 to-transparent" />
-			<div className="pointer-events-none absolute -left-16 top-24 -z-10 h-56 w-56 rounded-full bg-emerald-100/40 blur-3xl" />
-			<div className="pointer-events-none absolute -right-16 bottom-20 -z-10 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl" />
+		<main className="relative isolate min-h-screen overflow-hidden bg-background px-4 py-10 sm:px-6 sm:py-14">
+			<div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-brand-soft/70" />
+			<div className="pointer-events-none absolute -left-16 top-24 -z-10 h-56 w-56 rounded-full bg-brand-accent/10 blur-3xl" />
+			<div className="pointer-events-none absolute -right-16 bottom-20 -z-10 h-56 w-56 rounded-full bg-brand-primary/10 blur-3xl" />
 
 			<div className="mx-auto w-full max-w-5xl space-y-8 sm:space-y-10">
-				<section className="animate-fade-in rounded-3xl border border-slate-200/90 bg-white/90 p-6 shadow-sm backdrop-blur-sm sm:p-8">
-					<p className="text-xs font-bold tracking-[0.16em] text-slate-500">
+				<section className="animate-fade-in rounded-xl border border-brand-border/90 bg-white/90 p-6 shadow-soft backdrop-blur-sm sm:p-8">
+					<p className="text-xs font-bold tracking-[0.16em] text-muted-foreground">
 						عن تجارتك
 					</p>
-					<h1 className="mt-3 max-w-2xl text-3xl font-black leading-tight text-slate-900 sm:text-4xl">
+					<h1 className="mt-3 max-w-2xl text-3xl font-black leading-tight text-brand-text sm:text-4xl">
 						تجارتك منصة تساعدك تدير متجرك اليومي من مكان واحد.
 					</h1>
-					<p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+					<p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
 						تنظيم الطلبات، متابعة المنتجات، والتواصل مع العميل بشكل واضح من
 						أول يوم.
 					</p>
 					<div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
 						<Link
 							href="/merchant/register"
-							className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+							className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-5 py-3 text-sm font-bold text-white shadow-soft transition-colors hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 						>
 							سجل متجرك الآن
 						</Link>
 						<Link
 							href="/merchant/login"
-							className="inline-flex items-center justify-center text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+							className="inline-flex min-h-11 items-center justify-center rounded-md px-4 py-3 text-sm font-semibold text-brand-primary transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 						>
 							عندك حساب؟ سجل دخول
 						</Link>
@@ -137,15 +137,15 @@ export default function AboutPage() {
 
 				<section
 					aria-labelledby="about-store-types"
-					className="animate-slide-up rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+					className="animate-slide-up rounded-xl border border-brand-border bg-white p-5 shadow-soft sm:p-7"
 				>
 					<h2
 						id="about-store-types"
-						className="text-xl font-extrabold text-slate-900 sm:text-2xl"
+						className="text-xl font-extrabold text-brand-text sm:text-2xl"
 					>
 						هل متجرك مناسب؟
 					</h2>
-					<p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+					<p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
 						تقدر تسجل إذا كان متجرك ضمن الأنشطة التالية، ولو نشاطك مختلف لكنه
 						محلي وتستقبل طلبات مباشرة، ابدأ تحت فئة أخرى.
 					</p>
@@ -153,7 +153,7 @@ export default function AboutPage() {
 						{supportedStoreTypes.map(type => (
 							<li
 								key={type}
-								className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700"
+								className="inline-flex items-center rounded-full border border-brand-border bg-brand-soft px-3 py-1.5 text-sm font-semibold text-brand-primary"
 							>
 								{type}
 							</li>
@@ -167,7 +167,7 @@ export default function AboutPage() {
 				>
 					<h2
 						id="about-value-points"
-						className="text-xl font-extrabold text-slate-900 sm:text-2xl"
+						className="text-xl font-extrabold text-brand-text sm:text-2xl"
 					>
 						المهم لك كصاحب متجر
 					</h2>
@@ -175,13 +175,13 @@ export default function AboutPage() {
 						{valuePoints.map(point => (
 							<article
 								key={point.title}
-								className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+								className="rounded-lg border border-brand-border bg-white p-4 shadow-soft transition-transform hover:-translate-y-0.5"
 							>
-								<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-700">
+								<div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand-soft text-brand-primary">
 									{point.icon}
 								</div>
-								<h3 className="text-base font-bold text-slate-900">{point.title}</h3>
-								<p className="mt-1 text-sm leading-6 text-slate-600">
+								<h3 className="text-base font-bold text-brand-text">{point.title}</h3>
+								<p className="mt-1 text-sm leading-6 text-muted-foreground">
 									{point.description}
 								</p>
 							</article>
@@ -191,11 +191,11 @@ export default function AboutPage() {
 
 				<section
 					aria-labelledby="about-how-it-works"
-					className="animate-slide-up rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7"
+					className="animate-slide-up rounded-xl border border-brand-border bg-white p-5 shadow-soft sm:p-7"
 				>
 					<h2
 						id="about-how-it-works"
-						className="text-xl font-extrabold text-slate-900 sm:text-2xl"
+						className="text-xl font-extrabold text-brand-text sm:text-2xl"
 					>
 						كيف تبدأ بسرعة
 					</h2>
@@ -203,12 +203,12 @@ export default function AboutPage() {
 						{steps.map((step, index) => (
 							<li
 								key={step}
-								className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+								className="rounded-lg border border-brand-border bg-brand-soft/60 p-4"
 							>
-								<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+								<span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-primary text-xs font-bold text-white">
 									{index + 1}
 								</span>
-								<p className="mt-3 text-sm leading-6 text-slate-700">{step}</p>
+								<p className="mt-3 text-sm leading-6 text-brand-text">{step}</p>
 							</li>
 						))}
 					</ol>
@@ -216,25 +216,25 @@ export default function AboutPage() {
 
 				<section
 					aria-labelledby="about-whatsapp-flow"
-					className="animate-fade-in rounded-3xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm sm:p-6"
+					className="animate-fade-in rounded-xl border border-brand-accent/20 bg-brand-soft/70 p-5 shadow-soft sm:p-6"
 				>
 					<h2
 						id="about-whatsapp-flow"
-						className="text-lg font-extrabold text-slate-900 sm:text-xl"
+						className="text-lg font-extrabold text-brand-text sm:text-xl"
 					>
 						واتساب في التشغيل اليومي
 					</h2>
-					<p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">
+					<p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">
 						واتساب هنا جزء عملي من التشغيل، ليس مجرد قناة إضافية.
 					</p>
 					<ul className="mt-4 space-y-2">
 						{whatsappHighlights.map(item => (
 							<li
 								key={item}
-								className="flex items-start gap-2 text-sm leading-6 text-slate-700"
+								className="flex items-start gap-2 text-sm leading-6 text-brand-text"
 							>
 								<span
-									className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600"
+									className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-accent"
 									aria-hidden="true"
 								/>
 								<span>{item}</span>
@@ -243,17 +243,17 @@ export default function AboutPage() {
 					</ul>
 				</section>
 
-				<section className="animate-fade-in rounded-3xl border border-indigo-100 bg-gradient-to-l from-indigo-50 to-sky-50 p-6 shadow-sm sm:p-8">
-					<h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl">
+				<section className="animate-fade-in rounded-xl border border-brand-border bg-brand-soft p-6 shadow-soft sm:p-8">
+					<h2 className="text-xl font-extrabold text-brand-text sm:text-2xl">
 						ابدأ بخطوة واضحة اليوم
 					</h2>
-					<p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
+					<p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
 						سجل متجرك وابدأ استقبال الطلبات وتنبيهات واتساب من أول يوم تشغيل.
 					</p>
 					<div className="mt-5">
 						<Link
 							href="/merchant/register"
-							className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+							className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-5 py-3 text-sm font-bold text-white shadow-soft transition-colors hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 						>
 							ابدأ التسجيل
 						</Link>

@@ -1,0 +1,20 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "تسجيل الدخول" [level=2] [ref=e5]
+      - paragraph [ref=e6]: الدخول إلى لوحة التحكم
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: رقم الهاتف
+        - textbox "رقم الهاتف" [ref=e11]
+      - generic [ref=e12]:
+        - generic [ref=e13]: كلمة المرور
+        - textbox "كلمة المرور" [ref=e15]
+      - button "دخول" [ref=e16]
+    - generic [ref=e20]:
+      - text: ليس لديك حساب؟
+      - link "إنشاء حساب" [ref=e21] [cursor=pointer]:
+        - /url: /merchant/register
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]

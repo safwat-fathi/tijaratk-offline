@@ -64,19 +64,19 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
 
   return (
     <>
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
-        <h1 className="text-xl font-bold text-gray-900">الطلبات</h1>
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-brand-border bg-white px-4 py-3 shadow-soft">
+        <h1 className="text-xl font-bold text-brand-text">الطلبات</h1>
         
         <button 
             onClick={() => setIsOpen(true)}
-            className="text-sm font-medium text-gray-500 bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1 active:bg-gray-100 transition-colors"
+            className="flex min-h-10 items-center gap-1 rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-muted-foreground transition-colors active:bg-brand-soft/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
         >
             <span>{getLabel()}</span>
-            <span className="text-gray-300">•</span>
-            <span className="text-gray-900 font-bold">
+            <span className="text-brand-border">•</span>
+            <span className="font-bold text-brand-text">
               {formatArabicInteger(count) || count} طلب
             </span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ms-1 text-gray-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ms-1 text-muted-foreground">
                 <path d="m6 9 6 6 6-6"/>
             </svg>
         </button>
@@ -100,43 +100,43 @@ export default function OrderStats({ count, selectedDate }: OrderStatsProps) {
             >
                 <div 
                     ref={sheetRef}
-                    className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 shadow-2xl animate-slide-up transition-transform"
+                    className="absolute bottom-0 left-0 right-0 animate-slide-up rounded-t-xl bg-white p-4 shadow-float transition-transform"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex justify-center mb-4">
-                        <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
+                        <div className="h-1 w-12 rounded-full bg-brand-border"></div>
                     </div>
                     
-                    <h3 className="text-gray-500 font-medium mb-4 px-2">طلبات</h3>
+                    <h3 className="mb-4 px-2 font-medium text-muted-foreground">طلبات</h3>
 
                     <div className="space-y-1">
                         <button 
                             onClick={() => handleSelect("today")}
-                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                            className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-left hover:bg-brand-soft active:bg-brand-soft/80"
                         >
-                            <span className={`w-2 h-2 rounded-full ${!selectedDate || getLabel() === "اليوم" ? "bg-blue-600" : "bg-transparent border border-gray-300"}`}></span>
-                            <span className="text-gray-900 font-medium">اليوم</span>
+                            <span className={`h-2 w-2 rounded-full ${!selectedDate || getLabel() === "اليوم" ? "bg-brand-primary" : "border border-brand-border bg-transparent"}`}></span>
+                            <span className="font-medium text-brand-text">اليوم</span>
                         </button>
 
                         <button 
                             onClick={() => handleSelect("yesterday")}
-                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                            className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-left hover:bg-brand-soft active:bg-brand-soft/80"
                         >
-                             <span className={`w-2 h-2 rounded-full ${getLabel() === "أمس" ? "bg-blue-600" : "bg-transparent border border-gray-300"}`}></span>
-                            <span className="text-gray-900 font-medium">أمس</span>
+                             <span className={`h-2 w-2 rounded-full ${getLabel() === "أمس" ? "bg-brand-primary" : "border border-brand-border bg-transparent"}`}></span>
+                            <span className="font-medium text-brand-text">أمس</span>
                         </button>
 
                         <button 
                             onClick={() => handleSelect("older")}
-                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 active:bg-gray-100 flex items-center gap-3"
+                            className="flex w-full items-center gap-3 rounded-md px-4 py-3 text-left hover:bg-brand-soft active:bg-brand-soft/80"
                         >
-                             <span className={`w-2 h-2 rounded-full ${getLabel() !== "اليوم" && getLabel() !== "أمس" ? "bg-blue-600" : "bg-transparent border border-gray-300"}`}></span>
-                            <span className="text-gray-900 font-medium">طلبات أقدم...</span>
+                             <span className={`h-2 w-2 rounded-full ${getLabel() !== "اليوم" && getLabel() !== "أمس" ? "bg-brand-primary" : "border border-brand-border bg-transparent"}`}></span>
+                            <span className="font-medium text-brand-text">طلبات أقدم…</span>
                         </button>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                         <button onClick={() => setIsOpen(false)} className="w-full py-3 text-center text-gray-500 font-medium">
+                    <div className="mt-4 border-t border-brand-border pt-4">
+                         <button onClick={() => setIsOpen(false)} className="w-full py-3 text-center font-medium text-muted-foreground">
                             إلغاء
                          </button>
                     </div>

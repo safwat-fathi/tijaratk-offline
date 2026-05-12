@@ -75,7 +75,7 @@ export default function MyProductsSection({
               onChange={(event) => onSearchQueryChange(event.target.value)}
               placeholder="ابحث بالاسم"
               inputMode="search"
-              className="w-full rounded-xl border border-gray-300 px-4 py-2.5 pe-10 text-sm outline-none focus:border-indigo-500"
+              className="w-full rounded-md border border-brand-border px-4 py-2.5 pe-10 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
             />
             {searchQuery && (
               <button
@@ -154,14 +154,14 @@ export default function MyProductsSection({
                           <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
                             {product.source === 'catalog' ? 'كتالوج' : 'يدوي'}
                           </span>
-                          <span className="rounded-full bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-700">
+                          <span className="rounded-full bg-brand-soft px-2 py-1 text-xs font-semibold text-brand-primary">
                             {resolveProductPriceText(product.current_price) || 'السعر غير محدد'}
                           </span>
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                          <span className="rounded-full bg-status-success/15 px-2 py-1 text-xs font-semibold text-status-success">
                             {normalizeModeBadge(product.order_mode)}
                           </span>
                           {!product.is_available && (
-                            <span className="rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700">
+                            <span className="rounded-full bg-status-error/15 px-2 py-1 text-xs font-semibold text-status-error">
                               غير متاح
                             </span>
                           )}

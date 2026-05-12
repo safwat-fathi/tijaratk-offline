@@ -35,10 +35,10 @@ export default function DeliveryDetailsSection({
 	return (
 		<div
 			id="delivery-details-section"
-			className="scroll-mt-24 bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-8"
+			className="mt-8 scroll-mt-24 rounded-lg border border-brand-border bg-white p-5 shadow-soft"
 		>
-			<div className="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
-				<div className="bg-blue-100 p-2.5 rounded-xl text-blue-600">
+			<div className="mb-4 flex items-center gap-3 border-b border-brand-border pb-4">
+				<div className="rounded-md bg-brand-soft p-2.5 text-brand-primary">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="22"
@@ -54,24 +54,24 @@ export default function DeliveryDetailsSection({
 						<path d="M12 6v6l4 2" />
 					</svg>
 				</div>
-				<h2 className="text-xl font-bold text-gray-900">تفاصيل التوصيل</h2>
+				<h2 className="text-xl font-bold text-brand-text">تفاصيل التوصيل</h2>
 			</div>
 
 			<div className="space-y-5">
 				<div>
-					<label className="block text-sm font-bold text-gray-700 mb-2">
+					<label className="mb-2 block text-sm font-bold text-brand-text">
 						الاسم بالكامل
 					</label>
 					<div className="relative">
 						<input
 							name="customer_name"
 							type="text"
-							placeholder="الاسم"
-							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
+							placeholder="مثال: أحمد محمد…"
+							className="w-full rounded-md border border-brand-border bg-brand-soft/30 p-4 pl-12 text-base transition-colors focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 							required
 							defaultValue={defaultName}
 						/>
-						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="20"
@@ -89,14 +89,14 @@ export default function DeliveryDetailsSection({
 						</div>
 					</div>
 					{errors?.customer_name && (
-						<p className="text-sm text-red-600 mt-1">
+						<p className="mt-1 text-sm text-status-error">
 							{errors.customer_name[0]}
 						</p>
 					)}
 				</div>
 
 				<div>
-					<label className="block text-sm font-bold text-gray-700 mb-2">
+					<label className="mb-2 block text-sm font-bold text-brand-text">
 						رقم الهاتف
 					</label>
 					<div className="relative">
@@ -105,12 +105,12 @@ export default function DeliveryDetailsSection({
 							type="tel"
 							inputMode="numeric"
 							dir="ltr"
-							placeholder="01xxxxxxxxx"
-							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
+							placeholder="مثال: 01012345678…"
+							className="w-full rounded-md border border-brand-border bg-brand-soft/30 p-4 pl-12 text-base transition-colors focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 							required
 							defaultValue={defaultPhone}
 						/>
-						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="20"
@@ -127,26 +127,26 @@ export default function DeliveryDetailsSection({
 						</div>
 					</div>
 					{errors?.customer_phone && (
-						<p className="text-sm text-red-600 mt-1">
+						<p className="mt-1 text-sm text-status-error">
 							{errors.customer_phone[0]}
 						</p>
 					)}
 				</div>
 
 				<div>
-					<label className="block text-sm font-bold text-gray-700 mb-2">
+					<label className="mb-2 block text-sm font-bold text-brand-text">
 						عنوان التوصيل
 					</label>
 					<div className="relative">
 						<input
 							name="delivery_address"
 							type="text"
-							placeholder="العمارة، الشارع، الدور..."
-							className="w-full pl-12 p-4 border border-gray-200 rounded-xl text-base outline-none focus:border-indigo-500 transition-colors bg-gray-50/30"
+							placeholder="مثال: العمارة، الشارع، الدور…"
+							className="w-full rounded-md border border-brand-border bg-brand-soft/30 p-4 pl-12 text-base transition-colors focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 							required
 							defaultValue={defaultAddress}
 						/>
-						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+						<div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="20"
@@ -164,31 +164,31 @@ export default function DeliveryDetailsSection({
 						</div>
 					</div>
 					{errors?.delivery_address && (
-						<p className="text-sm text-red-600 mt-1">
+						<p className="mt-1 text-sm text-status-error">
 							{errors.delivery_address[0]}
 						</p>
 					)}
 				</div>
 
 				<div>
-					<label className="block text-sm font-bold text-gray-700 mb-2">
+					<label className="mb-2 block text-sm font-bold text-brand-text">
 						ملاحظات التوصيل (اختياري)
 					</label>
 					<textarea
 						name="notes"
-						placeholder="مثال: اضرب الجرس، سيب الطلب عند الباب..."
-						className="w-full p-4 border border-gray-200 rounded-xl h-24 text-base resize-none focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50"
+						placeholder="مثال: اضرب الجرس، سيب الطلب عند الباب…"
+						className="h-24 w-full resize-none rounded-md border border-brand-border bg-brand-soft/40 p-4 text-base transition-colors placeholder:text-muted-foreground focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 						value={notes}
 						onChange={e => onNotesChange(e.target.value)}
 					/>
 					{errors?.notes && (
-						<p className="text-sm text-red-600 mt-1">{errors.notes[0]}</p>
+						<p className="mt-1 text-sm text-status-error">{errors.notes[0]}</p>
 					)}
 				</div>
 			</div>
 
 			{message && !success && (
-				<div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium mt-4">
+				<div className="mt-4 rounded-md border border-status-error/20 bg-status-error/10 p-4 text-sm font-medium text-status-error">
 					{message}
 				</div>
 			)}

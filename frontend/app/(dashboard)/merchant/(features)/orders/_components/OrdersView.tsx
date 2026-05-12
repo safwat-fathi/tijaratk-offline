@@ -7,6 +7,7 @@ import { OrderStatus } from "@/types/enums";
 import OrderStats from "./OrderStats";
 import StatusTabs from "./StatusTabs";
 import OrderCard from "./OrderCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface OrdersViewProps {
   initialOrders: Order[];
@@ -62,34 +63,26 @@ export default function OrdersView({ initialOrders, selectedDate }: OrdersViewPr
     switch (activeStatus) {
       case OrderStatus.DRAFT:
         return (
-          <div className="text-center py-12 px-4">
-            <p className="text-gray-500">لا توجد طلبات جديدة.</p>
-            <p className="text-sm text-gray-400 mt-1">ستظهر الطلبات هنا تلقائياً.</p>
-          </div>
+          <EmptyState title="لا توجد طلبات جديدة." description="ستظهر الطلبات هنا تلقائياً." />
         );
       case OrderStatus.COMPLETED:
         return (
-          <div className="text-center py-12 px-4">
-             <p className="text-gray-500">لا توجد طلبات مكتملة.</p>
-             <p className="text-sm text-gray-400 mt-1">ستظهر الطلبات المكتملة هنا.</p>
-          </div>
+          <EmptyState title="لا توجد طلبات مكتملة." description="ستظهر الطلبات المكتملة هنا." />
         );
       default:
         return (
-          <div className="text-center py-12 px-4">
-            <p className="text-gray-500">لا توجد طلبات في هذه الحالة.</p>
-          </div>
+          <EmptyState title="لا توجد طلبات في هذه الحالة." />
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-background pb-20">
       {/* 1. Sticky Header */}
       <OrderStats count={totalCount} selectedDate={selectedDate} />
 
       {/* 2. Status Tabs */}
-      <div className="sticky top-[57px] z-10 bg-white shadow-sm">
+      <div className="sticky top-[57px] z-10 bg-white shadow-soft">
         <StatusTabs 
           currentStatus={activeStatus} 
           counts={statusCounts} 
@@ -98,7 +91,7 @@ export default function OrdersView({ initialOrders, selectedDate }: OrdersViewPr
       </div>
 
       {/* 3. Orders List */}
-      <div className="bg-gray-50 min-h-[calc(100vh-120px)]">
+      <div className="min-h-[calc(100vh-120px)] bg-background">
         {filteredOrders.length > 0 ? (
           filteredOrders.map((order) => (
             <OrderCard 

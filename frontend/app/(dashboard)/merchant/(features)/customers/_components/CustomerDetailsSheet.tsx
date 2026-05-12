@@ -1,13 +1,14 @@
 "use client";
 
 import { getCustomerDetailsAction } from "@/actions/customer-actions";
-import { useBodyScrollLock } from "@/lib/hooks/useBodyScrollLock";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatArabicInteger } from "@/lib/utils/number";
 import { buildWhatsAppLink } from "@/lib/utils/phone";
 import { Customer } from "@/types/models/customer";
 import { useEffect, useState } from "react";
-import { useDragToClose } from "@/lib/hooks/useDragToClose";
+import BottomSheet from "@/components/ui/BottomSheet";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 interface CustomerDetailsSheetProps {
   customerId: number | null;
@@ -18,22 +19,6 @@ const customerDetailsCache = new Map<number, Customer>();
 
 const formatDate = (date: string) =>
   new Date(date).toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
-
-const resolveOrderStatusClasses = (status: string) => {
-  if (status === "completed") {
-    return "bg-green-100 text-green-700";
-  }
-
-  if (status === "cancelled") {
-    return "bg-red-100 text-red-700";
-  }
-
-  if (status === "rejected_by_customer") {
-    return "bg-rose-100 text-rose-700";
-  }
-
-  return "bg-blue-50 text-blue-700";
-};
 
 const resolveOrderStatusLabel = (status: string) => {
   if (status === "completed") {
@@ -73,16 +58,17 @@ const CustomerBodyContent = ({
   const waLink = buildWhatsAppLink(customer.phone);
 
   return (
-    <div className="px-5 pb-8">
-      <div className="flex justify-between items-start mb-6">
+    <div className="pb-4">
+      <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
-          <p className="text-gray-500 font-medium">{customer.phone}</p>
+          <h2 className="text-xl font-bold text-brand-text">{displayName}</h2>
+          <p className="font-medium text-muted-foreground">{customer.phone}</p>
         </div>
         <div className="flex gap-2">
           <a
             href={`tel:${customer.phone}`}
-            className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"
+            aria-label="اتصال بالعميل"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-soft text-brand-primary transition-colors hover:bg-brand-soft/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
           </a>
@@ -91,15 +77,16 @@ const CustomerBodyContent = ({
             target={waLink ? "_blank" : undefined}
             rel={waLink ? "noreferrer" : undefined}
             aria-disabled={!waLink}
+            aria-label="مراسلة العميل على واتساب"
             onClick={(event) => {
               if (!waLink) {
                 event.preventDefault();
               }
             }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
               waLink
-                ? "bg-green-50 text-green-600"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                ? "bg-brand-soft text-brand-accent hover:bg-brand-soft/80"
+                : "cursor-not-allowed bg-muted text-muted-foreground"
             }`}
           >
             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
@@ -107,46 +94,42 @@ const CustomerBodyContent = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-          <span className="text-gray-400 text-xs font-medium uppercase">إجمالي الطلبات</span>
-          <p className="text-gray-900 text-xl font-bold mt-1">
+      <div className="mb-6 grid grid-cols-2 gap-4">
+        <div className="rounded-md border border-brand-border bg-brand-soft/50 p-3">
+          <span className="text-xs font-medium uppercase text-muted-foreground">إجمالي الطلبات</span>
+          <p className="mt-1 text-xl font-bold text-brand-text">
             {formatArabicInteger(customer.order_count) || customer.order_count}
           </p>
         </div>
-        <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-          <span className="text-gray-400 text-xs font-medium uppercase">آخر نشاط</span>
-          <p className="text-gray-900 text-xl font-bold mt-1">
+        <div className="rounded-md border border-brand-border bg-brand-soft/50 p-3">
+          <span className="text-xs font-medium uppercase text-muted-foreground">آخر نشاط</span>
+          <p className="mt-1 text-xl font-bold text-brand-text">
             {customer.last_order_at ? formatDate(customer.last_order_at) : "غير متوفر"}
           </p>
         </div>
       </div>
 
       <div>
-        <h3 className="font-bold text-gray-900 mb-3 text-sm">أحدث الطلبات</h3>
+        <h3 className="mb-3 text-sm font-bold text-brand-text">أحدث الطلبات</h3>
         {customer.orders && customer.orders.length > 0 ? (
           <div className="space-y-2">
             {customer.orders.slice(0, 5).map((order) => (
-              <div key={order.id} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
+              <div key={order.id} className="flex items-center justify-between border-b border-brand-border/60 py-3 last:border-0">
                 <div>
-                  <p className="text-gray-900 font-medium text-sm">طلب رقم {order.id}#</p>
-                  <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
+                  <p className="text-sm font-medium text-brand-text">طلب رقم {order.id}#</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-gray-900 font-bold text-sm">
+                  <p className="text-sm font-bold text-brand-text">
                     {formatCurrency(order.total) || "غير محدد"}
                   </p>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${resolveOrderStatusClasses(order.status)}`}
-                  >
-                    {resolveOrderStatusLabel(order.status)}
-                  </span>
+                  <StatusBadge status={order.status} label={resolveOrderStatusLabel(order.status)} className="px-2 py-0.5 text-[10px]" />
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-400 text-sm italic">لا توجد طلبات.</p>
+          <p className="text-sm text-muted-foreground">لا توجد طلبات.</p>
         )}
       </div>
     </div>
@@ -165,12 +148,6 @@ export default function CustomerDetailsSheet({
     customerId ? !initialCachedCustomer : false,
   );
   const [error, setError] = useState<string | null>(null);
-  useBodyScrollLock(Boolean(customerId));
-  const sheetRef = useDragToClose<HTMLDivElement>({ 
-    onClose, 
-    dragThreshold: 80,
-    isOpen: Boolean(customerId) 
-  });
 
   useEffect(() => {
     let isCancelled = false;
@@ -226,24 +203,21 @@ export default function CustomerDetailsSheet({
 
   const displayName = customer?.name || customer?.phone || "عميل";
   let bodyContent = (
-    <div className="px-5 pb-8">
-      <p className="text-sm text-gray-500">لا توجد بيانات للعميل.</p>
+    <div className="pb-4">
+      <p className="text-sm text-muted-foreground">لا توجد بيانات للعميل.</p>
     </div>
   );
 
   if (loading) {
     bodyContent = (
-      <div className="p-8 flex justify-center">
-        <svg className="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+      <div className="flex justify-center p-8 text-brand-primary">
+        <LoadingSpinner className="h-8 w-8" />
       </div>
     );
   } else if (error) {
     bodyContent = (
-      <div className="px-5 pb-8">
-        <p className="text-sm text-red-600">{error}</p>
+      <div className="pb-4">
+        <p className="text-sm text-status-error">{error}</p>
       </div>
     );
   } else if (customer) {
@@ -251,28 +225,8 @@ export default function CustomerDetailsSheet({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        ref={sheetRef}
-        className="absolute bottom-0 left-0 right-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl animate-slide-up transition-transform"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="shrink-0 flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1 bg-gray-200 rounded-full"></div>
-        </div>
-
-        <div
-          className="flex-1 overflow-y-auto overscroll-contain"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        >
-          {bodyContent}
-        </div>
-      </div>
-    </div>
+    <BottomSheet isOpen={Boolean(customerId)} title={displayName} onClose={onClose}>
+      {bodyContent}
+    </BottomSheet>
   );
 }

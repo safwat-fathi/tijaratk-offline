@@ -12,10 +12,10 @@ export default function OrderNotesSection({
 	return (
 		<div
 			id="order-notes"
-			className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mt-4 transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 scroll-mt-52"
+			className="mt-4 scroll-mt-52 rounded-lg border border-brand-border bg-white p-5 shadow-soft transition-[box-shadow] focus-within:ring-4 focus-within:ring-brand-accent/15"
 		>
 			<div className="flex items-center gap-3 mb-3">
-				<div className="bg-orange-100 p-2.5 rounded-xl text-orange-600">
+				<div className="rounded-md bg-status-warning/25 p-2.5 text-amber-800">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="22"
@@ -33,8 +33,8 @@ export default function OrderNotesSection({
 				</div>
 				<div className="flex flex-col">
 					{/* <h2 className="text-xl font-bold text-gray-900">ملاحظات الطلب</h2> */}
-					<h2 className="text-xl font-bold text-gray-900">طلب يدوي</h2>
-					<p className="text-gray-900">
+					<h2 className="text-xl font-bold text-brand-text">طلب يدوي</h2>
+					<p className="text-brand-text">
 						مش لاقي اللي انت عايزه؟ اكتبه هنا وإحنا هنوفره لو متاح
 					</p>
 				</div>
@@ -43,16 +43,16 @@ export default function OrderNotesSection({
 			<textarea
 				id="order-request-textarea"
 				name="order_request"
-				placeholder="مثال: 1 كجم طماطم، 2 باكو سكر...&#10;عيش، لبن، زيت&#10;أي نوع مكرونة ينفع"
-				className="w-full p-4 border border-gray-200 rounded-2xl h-22 text-base resize-none focus:border-indigo-500 focus:ring-0 outline-none transition-all placeholder:text-gray-400 bg-gray-50/50"
+				placeholder="مثال: 1 كجم طماطم، 2 باكو سكر…&#10;عيش، لبن، زيت&#10;أي نوع مكرونة ينفع"
+				className="h-22 w-full resize-none rounded-md border border-brand-border bg-brand-soft/40 p-4 text-base transition-colors placeholder:text-muted-foreground focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 				value={orderRequest}
 				onChange={e => onOrderRequestChange(e.target.value)}
 			/>
-			<p className="text-gray-500 text-sm mb-4 leading-relaxed">
+			<p className="mb-4 text-sm leading-relaxed text-muted-foreground">
 				ملاحظات: المتجر هيتواصل معاك لتأكيد السعر والتوفر قبل التنفيذ
 			</p>
 			{error && (
-				<p className="text-sm text-red-600 mt-2 font-medium">{error}</p>
+				<p className="mt-2 text-sm font-medium text-status-error">{error}</p>
 			)}
 		</div>
 	);

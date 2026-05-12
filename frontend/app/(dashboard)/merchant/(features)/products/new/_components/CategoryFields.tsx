@@ -32,7 +32,7 @@ export default function CategoryFields({
           onClick={() => onCategoryModeChange(CATEGORY_MODE_SELECT)}
           className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
             categoryMode === CATEGORY_MODE_SELECT
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand-primary text-white'
               : 'border border-gray-300 text-gray-700'
           }`}
         >
@@ -43,7 +43,7 @@ export default function CategoryFields({
           onClick={() => onCategoryModeChange(CATEGORY_MODE_CUSTOM)}
           className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
             categoryMode === CATEGORY_MODE_CUSTOM
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand-primary text-white'
               : 'border border-gray-300 text-gray-700'
           }`}
         >
@@ -55,7 +55,7 @@ export default function CategoryFields({
         <select
           value={categorySelect}
           onChange={(event) => onCategorySelectChange(event.target.value)}
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
         >
           <option value="">بدون تصنيف محدد</option>
           {availableCategories.map((category) => (
@@ -69,7 +69,7 @@ export default function CategoryFields({
           value={categoryCustom}
           onChange={(event) => onCategoryCustomChange(event.target.value)}
           placeholder="مثال: منظفات"
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
         />
       )}
     </div>

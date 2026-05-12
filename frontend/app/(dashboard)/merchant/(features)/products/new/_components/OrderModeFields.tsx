@@ -43,7 +43,7 @@ export default function OrderModeFields({
           onClick={() => onOrderModeChange(ORDER_MODE_QUANTITY)}
           className={`rounded-lg px-2 py-2 text-xs font-semibold ${
             orderMode === ORDER_MODE_QUANTITY
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand-primary text-white'
               : 'border border-gray-300 text-gray-700'
           }`}
         >
@@ -54,7 +54,7 @@ export default function OrderModeFields({
           onClick={() => onOrderModeChange(ORDER_MODE_WEIGHT)}
           className={`rounded-lg px-2 py-2 text-xs font-semibold ${
             orderMode === ORDER_MODE_WEIGHT
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand-primary text-white'
               : 'border border-gray-300 text-gray-700'
           }`}
         >
@@ -65,7 +65,7 @@ export default function OrderModeFields({
           onClick={() => onOrderModeChange(ORDER_MODE_PRICE)}
           className={`rounded-lg px-2 py-2 text-xs font-semibold ${
             orderMode === ORDER_MODE_PRICE
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand-primary text-white'
               : 'border border-gray-300 text-gray-700'
           }`}
         >
@@ -79,21 +79,21 @@ export default function OrderModeFields({
             value={unitLabel}
             onChange={(event) => onUnitLabelChange(event.target.value)}
             placeholder="اسم الوحدة الأساسية (مثال: بيضة)"
-            className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+            className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
           />
           <div className="grid grid-cols-2 gap-2">
             <input
               value={secondaryUnitLabel}
               onChange={(event) => onSecondaryUnitLabelChange(event.target.value)}
               placeholder="وحدة إضافية (مثال: طبق 30)"
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
             />
             <input
               value={secondaryUnitMultiplier}
               onChange={(event) => onSecondaryUnitMultiplierChange(event.target.value)}
               inputMode="decimal"
               placeholder="المضاعف (مثال: 30)"
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
             />
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function OrderModeFields({
           value={weightPresets}
           onChange={(event) => onWeightPresetsChange(event.target.value)}
           placeholder="أوزان جاهزة بالجرام (مثال: 250,500,1000)"
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
         />
       )}
 
@@ -113,7 +113,7 @@ export default function OrderModeFields({
           value={pricePresets}
           onChange={(event) => onPricePresetsChange(event.target.value)}
           placeholder="مبالغ جاهزة (مثال: 100,200,300)"
-          className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
         />
       )}
     </div>

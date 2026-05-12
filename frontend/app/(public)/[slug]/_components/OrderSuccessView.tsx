@@ -34,8 +34,8 @@ export default function OrderSuccessView({
 	onCopyToken,
 }: OrderSuccessViewProps) {
 	return (
-		<div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-300">
-			<div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600">
+		<div className="fixed inset-0 z-50 flex animate-fade-in flex-col items-center justify-center bg-white p-6 text-center">
+			<div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-status-success/15 text-status-success">
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					width="40"
@@ -50,19 +50,19 @@ export default function OrderSuccessView({
 					<path d="M20 6 9 17l-5-5" />
 				</svg>
 			</div>
-			<h2 className="text-3xl font-bold mb-2 text-gray-900">تم إرسال الطلب!</h2>
-			<p className="text-gray-500 mb-8 max-w-sm">
+			<h2 className="mb-2 text-3xl font-bold text-brand-text">تم إرسال الطلب!</h2>
+			<p className="mb-8 max-w-sm text-muted-foreground">
 				سيتواصل معك صاحب المتجر للتأكيد. <br />
 				احفظ رابط التتبع لمتابعة الحالة.
 			</p>
 
-			<div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 w-full max-w-sm mb-8">
+			<div className="mb-8 flex w-full max-w-sm items-center justify-between gap-4 rounded-lg border border-brand-border bg-brand-soft/50 p-4">
 				<div className="flex flex-col items-start overflow-hidden">
-					<span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+					<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 						رابط التتبع
 					</span>
-					<div className="flex items-center gap-1 w-full text-gray-800">
-						<span className="text-sm font-mono truncate w-full text-gray-500">
+					<div className="flex w-full items-center gap-1 text-brand-text">
+						<span className="w-full truncate font-mono text-sm text-muted-foreground">
 							{typeof window !== "undefined" ? window.location.origin : ""}
 							/track-order/
 						</span>
@@ -75,7 +75,8 @@ export default function OrderSuccessView({
 					id="copy-btn"
 					type="button"
 					onClick={onCopyToken}
-					className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-500 hover:text-indigo-600 transition-all active:scale-95"
+					aria-label="نسخ رابط التتبع"
+					className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-white hover:text-brand-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 					title="نسخ الرابط"
 				>
 					<svg
@@ -95,9 +96,12 @@ export default function OrderSuccessView({
 				</button>
 			</div>
 
-			<div className="flex flex-col gap-3 w-full max-w-xs">
-				<Link href={`/track-order/${orderToken}`} prefetch={true} className="w-full">
-					<button className="w-full bg-indigo-600 hover:bg-indigo-600/90 text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+			<div className="flex w-full max-w-xs flex-col gap-3">
+				<Link
+					href={`/track-order/${orderToken}`}
+					prefetch={true}
+					className="flex w-full items-center justify-center gap-2 rounded-md bg-brand-primary py-3.5 text-lg font-bold text-white shadow-soft transition-colors hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
+				>
 						<span>تتبع الطلب</span>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -113,21 +117,21 @@ export default function OrderSuccessView({
 							<path d="m12 19-7-7 7-7" />
 							<path d="M19 12H5" />
 						</svg>
-					</button>
 				</Link>
 				<Link
 					href="/track-orders"
-					className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+					className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-brand-border bg-white py-3.5 text-center font-semibold text-brand-text transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				>
 					<TrackingOrdersIcon />
 					عرض كل طلباتي
 				</Link>
 
-				<a href={`/${tenantSlug}`} className="w-full">
-					<button className="w-full py-3.5 rounded-xl text-gray-500 font-semibold hover:bg-gray-50 transition-colors">
-						عمل طلب جديد
-					</button>
-				</a>
+				<Link
+					href={`/${tenantSlug}`}
+					className="w-full rounded-md py-3.5 font-semibold text-muted-foreground transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
+				>
+					عمل طلب جديد
+				</Link>
 			</div>
 		</div>
 	);

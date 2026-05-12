@@ -1,40 +1,32 @@
 import Link from "next/link";
-import SafeImage from "@/components/ui/SafeImage";
+import { Logo } from "@/components/ui/Logo";
 
 export default function LandingPage() {
 	return (
-		<div className="flex min-h-screen flex-col items-center justify-center bg-white">
-			<div className="flex flex-col items-center">
-				<SafeImage
-					src="/logo.png"
-					alt="الشعار"
-					width={100}
-					height={100}
-					fallback={
-						<div className="h-[100px] w-[100px] rounded-md bg-gray-100" />
-					}
-				/>
-				<h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+		<main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+			<div className="flex max-w-xl flex-col items-center rounded-xl border border-brand-border/80 bg-white p-8 text-center shadow-soft">
+				<Logo variant="icon" width={96} height={96} className="rounded-xl" />
+				<h1 className="mt-5 text-4xl font-bold tracking-tight text-brand-text sm:text-5xl">
 					تجارتك
 				</h1>
-				<p className="mt-6 text-lg leading-8 text-gray-600">
-					متجرك المحلي، أونلاين.
+				<p className="mt-4 text-lg leading-8 text-muted-foreground">
+					تجارتك أسهل. تجارتك أونلاين.
 				</p>
-				<div className="mt-10 flex items-center justify-center gap-x-6">
+				<div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<Link
 						href="/merchant/login"
-						className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+						className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-5 py-3 text-sm font-semibold text-white shadow-soft transition-colors hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 					>
 						ابدأ الآن
 					</Link>
 					<Link
 						href="/about"
-						className="text-sm font-semibold leading-6 text-gray-900"
+						className="inline-flex min-h-11 items-center justify-center rounded-md px-4 py-3 text-sm font-semibold text-brand-primary transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 					>
 						اعرف المزيد <span aria-hidden="true">←</span>
 					</Link>
 				</div>
 			</div>
-		</div>
+		</main>
 	);
 }

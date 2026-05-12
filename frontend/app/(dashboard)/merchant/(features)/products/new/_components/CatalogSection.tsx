@@ -47,7 +47,7 @@ export default function CatalogSection({
               onClick={() => onCategoryChange(category.key)}
               className={`h-14 shrink-0 rounded-2xl border px-3 py-1.5 ${
                 activeCategory === category.key
-                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                  ? 'border-brand-primary bg-brand-soft text-brand-primary'
                   : 'border-gray-300 bg-white text-gray-700'
               }`}
             >

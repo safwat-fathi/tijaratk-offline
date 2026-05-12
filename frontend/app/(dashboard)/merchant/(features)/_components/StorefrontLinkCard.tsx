@@ -54,8 +54,8 @@ export default function StorefrontLinkCard({ slug }: StorefrontLinkCardProps) {
 	};
 
 	return (
-		<div className="relative overflow-hidden rounded-xl border border-primary/15 bg-primary/5 px-4 py-3">
-			<div className="pointer-events-none absolute -top-8 start-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl" />
+		<div className="relative overflow-hidden rounded-lg border border-brand-primary/15 bg-brand-soft px-4 py-3 shadow-soft">
+			<div className="pointer-events-none absolute -top-8 start-0 h-24 w-24 rounded-full bg-brand-primary/10 blur-2xl" />
 
 			{copyState !== "idle" && (
 				<div
@@ -63,8 +63,8 @@ export default function StorefrontLinkCard({ slug }: StorefrontLinkCardProps) {
 					aria-live="polite"
 					className={`absolute top-3 end-3 inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium shadow-sm animate-fade-in ${
 						copyState === "copied"
-							? "border-emerald-200 bg-emerald-50 text-emerald-700 animate-pulse-soft"
-							: "border-red-200 bg-red-50 text-red-700"
+							? "animate-pulse-soft border-status-success/20 bg-status-success/15 text-status-success"
+							: "border-status-error/20 bg-status-error/10 text-status-error"
 					}`}
 				>
 					{copyState === "copied" ? (

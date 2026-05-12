@@ -653,7 +653,7 @@ export default function OrderItemsReplacement({
 			</h2>
 
 			{feedback && (
-				<p className="mb-3 text-sm font-medium text-indigo-700">{feedback}</p>
+				<p className="mb-3 text-sm font-medium text-brand-primary">{feedback}</p>
 			)}
 
 			<div className="space-y-3">
@@ -703,7 +703,7 @@ export default function OrderItemsReplacement({
 										type="button"
 										onClick={() => openPriceSheet(item.id)}
 										disabled={!canEditItemPrice}
-										className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
+										className="rounded-md bg-brand-primary px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
 									>
 										تسعير المنتج
 									</button>
@@ -761,7 +761,7 @@ export default function OrderItemsReplacement({
 										type="button"
 										onClick={() => handleResetReplacementDecision(item.id)}
 										disabled={isPending || !canEditItemReplacement}
-										className="mt-3 w-full rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-60"
+										className="mt-3 w-full rounded-md border border-brand-border bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-primary disabled:opacity-60"
 									>
 										إعادة فتح قرار الاستبدال
 									</button>
@@ -795,7 +795,7 @@ export default function OrderItemsReplacement({
 
 					<div 
 						ref={sheetRef}
-						className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl transition-[max-height,transform] duration-300 ${
+						className={`absolute bottom-0 left-0 right-0 flex flex-col overflow-hidden rounded-t-xl bg-white shadow-float transition-[max-height,transform] duration-300 ${
 							isSearchFocused ? "max-h-[100dvh] h-[100dvh]" : "max-h-[85dvh]"
 						}`}
 					>
@@ -830,7 +830,7 @@ export default function OrderItemsReplacement({
 													}
 													maxLength={MAX_SEARCH_LENGTH}
 													placeholder="ابحث بالاسم..."
-													className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 pe-10 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-50/50"
+											className="w-full rounded-md border border-brand-border bg-brand-soft/40 px-4 py-3 pe-10 text-sm font-medium focus:border-brand-accent focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 												/>
 												{searchQuery && (
 													<button
@@ -881,7 +881,7 @@ export default function OrderItemsReplacement({
 										ReplacementDecisionStatus.APPROVED ||
 										activeItem.replacement_decision_status ===
 											ReplacementDecisionStatus.REJECTED) && (
-										<div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
+										<div className="rounded-md border border-brand-border bg-brand-soft p-3 text-sm text-brand-primary">
 											قرار العميل مقفل على هذا الصنف. استخدم زر إعادة الضبط
 											لفتحه مرة أخرى.
 										</div>
@@ -905,7 +905,7 @@ export default function OrderItemsReplacement({
 														اكتب {MIN_SEARCH_CHARS} حرف على الأقل للبحث
 													</p>
 													{activeItemCategory && (
-														<p className="text-xs font-medium text-indigo-600">
+														<p className="text-xs font-medium text-brand-primary">
 															الأولوية لقسم: {activeItemCategory}
 														</p>
 													)}
@@ -914,14 +914,14 @@ export default function OrderItemsReplacement({
 												<div className="mt-4 space-y-2">
 													{!isTextSearchActive &&
 														replacementOptions.length > 0 && (
-															<p className="text-xs font-bold uppercase tracking-wider text-indigo-700">
+															<p className="text-xs font-bold uppercase tracking-wider text-brand-primary">
 																منتجات مشابهة مقترحة
 															</p>
 														)}
 
 													{isReplacementResultsLoading && (
 														<div className="flex flex-col items-center justify-center rounded-2xl bg-gray-50/50 py-8">
-															<div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+															<div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
 															<p className="mt-2 text-sm text-gray-500">
 																{isTextSearchActive
 																	? "جاري البحث..."
@@ -992,13 +992,13 @@ export default function OrderItemsReplacement({
 															}
 															maxLength={MAX_PRODUCT_NAME_LENGTH}
 															placeholder="اسم المنتج البديل"
-															className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+															className="flex-1 rounded-md border border-brand-border px-3 py-2 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 														/>
 														<button
 															type="button"
 															onClick={handleCreateAndSelect}
 															disabled={isPending || !canEditItemReplacement}
-															className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+															className="rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
 														>
 															حفظ
 														</button>
@@ -1030,7 +1030,7 @@ export default function OrderItemsReplacement({
 												handleResetReplacementDecision(activeItem.id)
 											}
 											disabled={isPending || !canEditItemReplacement}
-											className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
+											className="mt-4 w-full rounded-md bg-brand-primary px-4 py-3 text-sm font-semibold text-white shadow-soft disabled:opacity-60"
 										>
 											إعادة فتح قرار الاستبدال
 										</button>
@@ -1055,7 +1055,7 @@ export default function OrderItemsReplacement({
 												setPriceError(null);
 											}}
 											placeholder="مثال: 45"
-											className="w-full rounded-lg border border-gray-300 px-3 py-3 text-sm outline-none focus:border-indigo-500"
+											className="w-full rounded-md border border-brand-border px-3 py-3 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 										/>
 										<p className="mt-2 text-xs text-gray-500">
 											سيتم حفظ السعر كإجمالي هذا الصنف.
@@ -1093,7 +1093,7 @@ export default function OrderItemsReplacement({
 										type="button"
 										onClick={handleSaveLinePrice}
 										disabled={isPending}
-										className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 disabled:opacity-60"
+										className="mt-4 w-full rounded-md bg-brand-primary px-4 py-3 text-sm font-semibold text-white shadow-soft disabled:opacity-60"
 									>
 										حفظ السعر
 									</button>

@@ -29,26 +29,26 @@ export default function OrderSubmitBar({
 		<>
 			<div
 				data-order-submit-bar
-				className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 p-4 shadow-[0_-4px_30px_rgba(0,0,0,0.08)] z-50"
+				className="fixed bottom-0 left-0 right-0 z-50 border-t border-brand-border bg-white/90 p-4 shadow-float backdrop-blur-xl"
 			>
 				<div className="max-w-md mx-auto">
-					<div className="flex justify-between items-end mb-4 px-2">
-						<div className="text-sm font-medium text-gray-500">العناصر المختارة</div>
+					<div className="mb-4 flex items-end justify-between px-2">
+						<div className="text-sm font-medium text-muted-foreground">العناصر المختارة</div>
 						<div className="flex items-baseline gap-1">
 							{totalItems > 0 ? (
 								<>
-									<span className="text-2xl font-bold text-gray-900">
+									<span className="text-2xl font-bold text-brand-text">
 										{formatArabicQuantity(totalItems) || String(totalItems)}
 									</span>
-									<span className="text-sm font-semibold text-gray-500">عنصر</span>
+									<span className="text-sm font-semibold text-muted-foreground">عنصر</span>
 									{hasPricedItems && (
-										<span className="mr-2 text-sm font-bold text-indigo-700">
+										<span className="mr-2 text-sm font-bold text-brand-primary">
 											{formatCurrency(estimatedTotal)}
 										</span>
 									)}
 								</>
 							) : (
-								<span className="text-sm font-medium text-gray-500 italic">
+								<span className="text-sm font-medium italic text-muted-foreground">
 									السعر يتم تأكيده بعد الطلب
 								</span>
 							)}
@@ -60,7 +60,7 @@ export default function OrderSubmitBar({
 						ref={triggerButtonRef}
 						onClick={onSubmitClick}
 						disabled={isPending || (totalItems === 0 && !orderRequest.trim())}
-						className="w-full bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all"
+						className="flex w-full items-center justify-center gap-3 rounded-lg bg-brand-primary py-4 text-lg font-bold text-white shadow-soft transition-[background-color,box-shadow,transform] duration-200 hover:bg-brand-primary-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 					>
 						{isPending ? (
 							<>
@@ -78,7 +78,7 @@ export default function OrderSubmitBar({
 								>
 									<path d="M21 12a9 9 0 1 1-6.219-8.56" />
 								</svg>
-								<span>جاري الإرسال...</span>
+								<span>جاري الإرسال…</span>
 							</>
 						) : (
 							<>

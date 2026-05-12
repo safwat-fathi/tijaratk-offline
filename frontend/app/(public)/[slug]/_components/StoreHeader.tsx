@@ -31,12 +31,12 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 	return (
 		<div
 			data-store-header
-			className="sticky top-0 z-40 bg-linear-to-br from-indigo-600/80 to-violet-700/80 backdrop-blur-md border-b border-white/10 text-white shadow-md transition-all duration-300 rounded-bl-2xl rounded-br-2xl"
+			className="sticky top-0 z-40 rounded-b-xl border-b border-white/10 bg-brand-primary text-white shadow-soft backdrop-blur-md transition-[background-color,box-shadow] duration-200"
 		>
 			<div className="px-4 py-3 flex items-center justify-between">
 				{/* Left: Branding */}
 				<div className="flex items-center gap-3">
-					<div className="bg-white/20 backdrop-blur-sm p-1 rounded-xl shadow-inner border border-white/10 shrink-0">
+					<div className="shrink-0 rounded-md border border-white/10 bg-white/20 p-1 shadow-inner backdrop-blur-sm">
 						<SafeImage
 							src="/logo.png"
 							alt={tenant.name}
@@ -57,7 +57,7 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 				{/* Right: Actions */}
 				<Link
 					href="/track-orders"
-					className="flex items-center justify-center p-2.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 text-white backdrop-blur transition active:scale-95"
+					className="flex min-h-11 items-center justify-center rounded-md border border-white/30 bg-white/10 p-2.5 text-white backdrop-blur transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
 					aria-label="تتبع طلباتي"
 				>
 					تتبع طلباتي

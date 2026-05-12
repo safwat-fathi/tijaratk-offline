@@ -184,7 +184,7 @@ export default function TrackingOrderItemsCard({
       )}
 
       {feedback && (
-        <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
+        <p className="mb-3 rounded-md bg-brand-soft px-3 py-2 text-sm text-brand-text">
           {feedback}
         </p>
       )}
@@ -240,7 +240,7 @@ export default function TrackingOrderItemsCard({
                         type="button"
                         onClick={() => handleApprove(item.id)}
                         disabled={isPending}
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        className="rounded-md bg-status-success px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         موافقة
                       </button>
@@ -248,7 +248,7 @@ export default function TrackingOrderItemsCard({
                         type="button"
                         onClick={() => handleReject(item.id)}
                         disabled={isPending}
-                        className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        className="rounded-md bg-status-error px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         رفض
                       </button>
@@ -257,16 +257,16 @@ export default function TrackingOrderItemsCard({
                 )}
 
                 {decisionStatus === ReplacementDecisionStatus.APPROVED && (
-                  <p className="mt-2 text-xs font-semibold text-emerald-700">
+                  <p className="mt-2 text-xs font-semibold text-status-success">
                     تمت الموافقة على الاستبدال
                   </p>
                 )}
 
                 {decisionStatus === ReplacementDecisionStatus.REJECTED && (
-                  <div className="mt-2 text-xs font-semibold text-rose-700">
+                  <div className="mt-2 text-xs font-semibold text-status-error">
                     <p>تم رفض الاستبدال</p>
                     {item.replacement_decision_reason && (
-                      <p className="mt-1 text-rose-600">
+                      <p className="mt-1 text-status-error">
                         السبب: {item.replacement_decision_reason}
                       </p>
                     )}

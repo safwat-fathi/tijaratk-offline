@@ -222,10 +222,10 @@ const QuantitySelectionControls = ({
 							key={option.id}
 							type="button"
 							onClick={() => onQuantityUnitChange(product, option.id)}
-							className={`rounded-full border px-3 py-1 text-xs font-medium ${
+							className={`min-h-11 rounded-full border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
 								selectedUnitId === option.id
-									? "border-indigo-600 bg-indigo-50 text-indigo-700"
-									: "border-gray-300 bg-white text-gray-700"
+									? "border-brand-primary bg-brand-soft text-brand-primary"
+									: "border-brand-border bg-white text-brand-text"
 							}`}
 						>
 							{option.label}
@@ -240,11 +240,11 @@ const QuantitySelectionControls = ({
 						<button
 							type="button"
 							onClick={() => onQuantityDelta(product, -1)}
-							className="h-10 w-10 rounded-full border border-gray-300 text-lg text-gray-700 active:scale-[0.97]"
+							className="h-11 w-11 rounded-full border border-brand-border text-lg text-brand-text transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 						>
 							-
 						</button>
-						<span className="min-w-8 text-center text-sm font-bold text-gray-900">
+						<span className="min-w-8 text-center text-sm font-bold text-brand-text">
 							{formatArabicInteger(selectedQty) || selectedQty}
 						</span>
 					</>
@@ -252,14 +252,14 @@ const QuantitySelectionControls = ({
 				<button
 					type="button"
 					onClick={() => onQuantityDelta(product, 1)}
-					className="h-10 w-10 rounded-full bg-indigo-600 text-lg text-white active:scale-[0.97]"
+					className="h-11 w-11 rounded-full bg-brand-primary text-lg text-white transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				>
 					+
 				</button>
-				<div className="text-xs leading-tight text-gray-500">
+				<div className="text-xs leading-tight text-muted-foreground">
 					<div>{selectedUnitLabel}</div>
 					{hasMultiplierHint && (
-						<div className="text-[11px] text-gray-400">
+						<div className="text-[11px] text-muted-foreground/80">
 							{`${baseUnitLabel} × ${formattedMultiplier}`}
 						</div>
 					)}
@@ -301,7 +301,7 @@ const InlineCustomEditor = ({
 	onApply,
 	onCancel,
 }: InlineCustomEditorProps) => (
-	<div className="mt-2 space-y-1.5 rounded-xl border border-indigo-100 bg-indigo-50/40 p-2.5">
+	<div className="mt-2 space-y-1.5 rounded-md border border-brand-border bg-brand-soft/40 p-2.5">
 		<div className="flex items-center gap-2">
 			<input
 				type="text"
@@ -309,12 +309,12 @@ const InlineCustomEditor = ({
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				placeholder={mode === "weight" ? "مثال: 750" : "مثال: 150"}
-				className="h-10 w-full rounded-lg border border-indigo-200 bg-white px-3 text-sm outline-none focus:border-indigo-500"
+				className="h-11 w-full rounded-md border border-brand-border bg-white px-3 text-sm focus:border-brand-accent focus:outline-none focus:ring-4 focus:ring-brand-accent/15"
 			/>
 			<button
 				type="button"
 				onClick={onApply}
-				className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white active:scale-[0.97]"
+				className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				aria-label={mode === "weight" ? "تأكيد الكمية المخصصة" : "تأكيد المبلغ المخصص"}
 			>
 				<svg
@@ -334,7 +334,7 @@ const InlineCustomEditor = ({
 			<button
 				type="button"
 				onClick={onCancel}
-				className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-600 active:scale-[0.97]"
+				className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-border bg-white text-brand-text active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				aria-label="إلغاء وإرجاع للقيمة السابقة"
 			>
 				<svg
@@ -353,7 +353,7 @@ const InlineCustomEditor = ({
 				</svg>
 			</button>
 		</div>
-		{error && <p className="text-[11px] font-medium text-red-600">{error}</p>}
+		{error && <p className="text-[11px] font-medium text-status-error">{error}</p>}
 	</div>
 );
 
@@ -372,7 +372,7 @@ const WeightSelectionControls = ({
 	onCancelInlineValue,
 }: WeightSelectionControlsProps) => (
 	<div className="space-y-2">
-		<p className="text-xs font-semibold text-gray-700">اختار الكمية:</p>
+		<p className="text-xs font-semibold text-brand-text">اختار الكمية:</p>
 		<div className="flex flex-wrap gap-2">
 			{weightPresets.map((grams) => (
 				<button
@@ -380,10 +380,10 @@ const WeightSelectionControls = ({
 					type="button"
 					onClick={() => onPresetSelection(product, "weight", grams)}
 					aria-pressed={selectedGrams === grams}
-					className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+					className={`min-h-11 rounded-full border px-3 py-2 text-xs font-medium active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
 						selectedGrams === grams
-							? "border-indigo-600 bg-indigo-50 text-indigo-700"
-							: "border-gray-300 bg-white text-gray-700"
+							? "border-brand-primary bg-brand-soft text-brand-primary"
+							: "border-brand-border bg-white text-brand-text"
 					}`}
 				>
 					{formatArabicInteger(grams) || grams} جم
@@ -393,10 +393,10 @@ const WeightSelectionControls = ({
 				type="button"
 				onClick={onOpenInlineEditor}
 				aria-pressed={isCustomWeightSelection}
-				className={`rounded-full border border-dashed px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+				className={`min-h-11 rounded-full border border-dashed px-3 py-2 text-xs font-medium active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
 					isCustomWeightSelection
-						? "border-indigo-600 bg-indigo-50 text-indigo-700"
-						: "border-gray-400 text-gray-700"
+						? "border-brand-primary bg-brand-soft text-brand-primary"
+						: "border-brand-border text-brand-text"
 				}`}
 				>
 				{isCustomWeightSelection
@@ -445,17 +445,17 @@ const PriceSelectionControls = ({
 	onCancelInlineValue,
 }: PriceSelectionControlsProps) => (
 	<div className="space-y-2">
-		<p className="text-xs font-semibold text-gray-700">اختار المبلغ:</p>
+		<p className="text-xs font-semibold text-brand-text">اختار المبلغ:</p>
 		<div className="flex flex-wrap gap-2">
 			{pricePresets.map((amount) => (
 				<button
 					key={amount}
 					type="button"
 					onClick={() => onPresetSelection(product, "price", amount)}
-					className={`rounded-full border px-3 py-1 text-xs font-medium active:scale-[0.97] ${
+					className={`min-h-11 rounded-full border px-3 py-2 text-xs font-medium active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
 						selectedAmount === amount
-							? "border-indigo-600 bg-indigo-50 text-indigo-700"
-							: "border-gray-300 bg-white text-gray-700"
+							? "border-brand-primary bg-brand-soft text-brand-primary"
+							: "border-brand-border bg-white text-brand-text"
 					}`}
 				>
 					{formatArabicInteger(amount) || amount} جنيه
@@ -464,7 +464,7 @@ const PriceSelectionControls = ({
 			<button
 				type="button"
 				onClick={onOpenInlineEditor}
-				className="rounded-full border border-dashed border-gray-400 px-3 py-1 text-xs font-medium text-gray-700 active:scale-[0.97]"
+				className="min-h-11 rounded-full border border-dashed border-brand-border px-3 py-2 text-xs font-medium text-brand-text active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 			>
 				مبلغ مخصص
 			</button>
@@ -686,14 +686,14 @@ const ProductListCard = ({
 				<div className="flex-1">
 					<h3
 						className={`text-base font-semibold ${
-							isUnavailable ? "text-gray-600" : "text-gray-900"
+							isUnavailable ? "text-muted-foreground" : "text-brand-text"
 						}`}
 					>
 						{product.name}
 					</h3>
 					<p
 						className={`text-xs ${
-							isUnavailable ? "text-gray-400" : "text-gray-500"
+							isUnavailable ? "text-muted-foreground/70" : "text-muted-foreground"
 						}`}
 					>
 						{priceText ? `السعر: ${priceText}` : "السعر يتم تأكيده بعد الطلب"}
@@ -701,13 +701,13 @@ const ProductListCard = ({
 					<div className="mt-1 flex items-center gap-2">
 						<p
 							className={`text-[11px] font-semibold ${
-								isUnavailable ? "text-gray-500" : "text-indigo-700"
+								isUnavailable ? "text-muted-foreground" : "text-brand-primary"
 							}`}
 						>
 							{resolveModeLabel(mode)}
 						</p>
 						{isUnavailable && (
-							<span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
+							<span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
 								غير متاح حالياً
 							</span>
 						)}
@@ -1101,12 +1101,11 @@ export default function ProductList({
 					/>
 					<div
 						ref={sheetRef}
-						className="relative max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-4 shadow-2xl transition-transform"
-						style={{ WebkitOverflowScrolling: "touch" }}
+						className="relative max-h-[85dvh] w-full overflow-y-auto overscroll-contain rounded-t-xl bg-white p-4 shadow-float transition-transform [-webkit-overflow-scrolling:touch]"
 					>
-						<div className="mb-4 h-1.5 w-10 rounded-full bg-gray-300 mx-auto" />
-						<p className="text-base font-bold text-gray-900">العنصر غير متاح حالياً</p>
-						<p className="mt-1 text-sm text-gray-600">
+						<div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-brand-border" />
+						<p className="text-base font-bold text-brand-text">العنصر غير متاح حالياً</p>
+						<p className="mt-1 text-sm text-muted-foreground">
 							تحب نبلغ التاجر إنك محتاجه؟
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-2">
@@ -1114,15 +1113,15 @@ export default function ProductList({
 								type="button"
 								onClick={submitAvailabilityRequest}
 								disabled={isAvailabilitySubmitting}
-								className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+								className="rounded-md bg-brand-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
 							>
-								{isAvailabilitySubmitting ? "جاري الإرسال..." : "تأكيد الطلب"}
+								{isAvailabilitySubmitting ? "جاري الإرسال…" : "تأكيد الطلب"}
 							</button>
 							<button
 								type="button"
 								onClick={() => closeAvailabilitySheet()}
 								disabled={isAvailabilitySubmitting}
-								className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 disabled:opacity-60"
+								className="rounded-md border border-brand-border px-4 py-3 text-sm font-semibold text-brand-text disabled:opacity-60"
 							>
 								إلغاء
 							</button>

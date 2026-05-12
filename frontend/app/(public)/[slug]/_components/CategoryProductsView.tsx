@@ -52,16 +52,16 @@ export default function CategoryProductsView({
 		!activePagination.isLoading && !activePagination.error && !hasProducts;
 
 	return (
-		<div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+		<div className="rounded-lg border border-brand-border bg-white p-4 shadow-soft">
 			<div className="mb-3 flex items-center justify-between">
 				<button
 					type="button"
 					onClick={onBack}
-					className="rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700"
+					className="min-h-11 rounded-md border border-brand-border px-3 py-2 text-sm font-semibold text-brand-text transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				>
 					رجوع
 				</button>
-				<p className="text-sm font-semibold text-gray-900">{activeLabel}</p>
+				<p className="text-sm font-semibold text-brand-text">{activeLabel}</p>
 				<div className="w-16"></div>
 			</div>
 
@@ -72,10 +72,10 @@ export default function CategoryProductsView({
 						ref={node => setCategoryPillRef(category.key, node)}
 						type="button"
 						onClick={() => onCategoryChange(category.key)}
-						className={`h-14 shrink-0 rounded-2xl border px-3 py-1.5 ${
+						className={`h-14 shrink-0 rounded-lg border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 ${
 							activeCategory === category.key
-								? "border-indigo-600 bg-indigo-50 text-indigo-700"
-								: "border-gray-300 bg-white text-gray-700"
+								? "border-brand-primary bg-brand-soft text-brand-primary"
+								: "border-brand-border bg-white text-brand-text"
 						}`}
 					>
 						<span className="flex items-center gap-2">
@@ -85,9 +85,9 @@ export default function CategoryProductsView({
 								width={40}
 								height={40}
 								unoptimized
-								imageClassName="h-10 w-10 rounded object-cover ring-1 ring-gray-200"
+								imageClassName="h-10 w-10 rounded object-cover ring-1 ring-brand-border"
 								fallback={
-									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-[10px]">
+									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-soft text-[10px]">
 										🛒
 									</span>
 								}
@@ -95,7 +95,7 @@ export default function CategoryProductsView({
 							<span className="whitespace-nowrap text-sm font-medium">
 								{category.label}
 							</span>
-							<span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+							<span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
 								{formatArabicInteger(category.count) || category.count}
 							</span>
 						</span>

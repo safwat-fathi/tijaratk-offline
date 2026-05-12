@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/actions/auth-server";
 import SafeImage from "@/components/ui/SafeImage";
+import { Logo } from "@/components/ui/Logo";
 
 const navigation = [
 	{
@@ -15,7 +16,7 @@ const navigation = [
 				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
-				strokeWidth="1.5"
+				strokeWidth="2.5"
 				stroke="currentColor"
 			>
 				<path
@@ -34,7 +35,7 @@ const navigation = [
 				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
-				strokeWidth="1.5"
+				strokeWidth="2.5"
 				stroke="currentColor"
 			>
 				<path
@@ -53,7 +54,7 @@ const navigation = [
 				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
-				strokeWidth="1.5"
+				strokeWidth="2.5"
 				stroke="currentColor"
 			>
 				<path
@@ -72,7 +73,7 @@ const navigation = [
 				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
-				strokeWidth="1.5"
+				strokeWidth="2.5"
 				stroke="currentColor"
 			>
 				<path
@@ -91,7 +92,7 @@ const navigation = [
 				className="me-3 h-6 w-6 shrink-0"
 				fill="none"
 				viewBox="0 0 24 24"
-				strokeWidth="1.5"
+				strokeWidth="2.5"
 				stroke="currentColor"
 			>
 				<path
@@ -115,12 +116,12 @@ export default function MerchantLayout({
   
 
   return (
-		<div>
+		<div className="min-h-screen bg-background">
 			{/* Mobile sidebar placeholder/trigger */}
-			<div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+			<div className="sticky top-0 z-40 flex items-center gap-x-6 border-b border-brand-border bg-white px-4 py-4 shadow-soft sm:px-6 lg:hidden">
 				<button
 					type="button"
-					className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+					className="-m-2.5 rounded-md p-2.5 text-brand-text transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20 lg:hidden"
 					onClick={() => setSidebarOpen(true)}
 				>
 					<span className="sr-only">فتح القائمة</span>
@@ -128,7 +129,7 @@ export default function MerchantLayout({
 						className="h-6 w-6"
 						fill="none"
 						viewBox="0 0 24 24"
-						strokeWidth="1.5"
+						strokeWidth="2.5"
 						stroke="currentColor"
 						aria-hidden="true"
 					>
@@ -139,34 +140,27 @@ export default function MerchantLayout({
 						/>
 					</svg>
 				</button>
-				<div className="flex-1 text-sm font-semibold leading-6 text-gray-900">
+				<div className="flex-1 text-sm font-semibold leading-6 text-brand-text">
 					لوحة التحكم
 				</div>
 				<Link href="#">
 					<span className="sr-only">الملف الشخصي</span>
 					<SafeImage
-						src="/logo-no-bg.png"
+						src="/logo.png"
 						alt=""
 						width={32}
 						height={32}
-						imageClassName="h-8 w-8 rounded-full bg-gray-50"
-						fallback={<div className="h-8 w-8 rounded-full bg-gray-100" />}
+						imageClassName="h-8 w-8 rounded-full bg-brand-soft"
+						fallback={<div className="h-8 w-8 rounded-full bg-brand-soft" />}
 					/>
 				</Link>
 			</div>
 
 			{/* Static sidebar for desktop */}
 			<div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col lg:start-0">
-				<div className="flex grow flex-col gap-y-5 overflow-y-auto border-e border-gray-200 bg-white px-6">
+				<div className="flex grow flex-col gap-y-5 overflow-y-auto border-e border-brand-border bg-white px-6">
 					<div className="flex h-16 shrink-0 items-center">
-						<SafeImage
-							src="/logo-no-bg.png"
-							alt="Tijaratk"
-							width={150}
-							height={40}
-							imageClassName="h-8 w-auto"
-							fallback={<div className="h-8 w-[150px] rounded bg-gray-100" />}
-						/>
+						<Logo variant="light" width={150} height={40} className="h-8 w-auto" />
 					</div>
 					<nav className="flex flex-1 flex-col">
 						<ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -178,7 +172,7 @@ export default function MerchantLayout({
 												<form action={logoutAction}>
 													<button
 														type="submit"
-														className="cursor-pointer group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+														className="group flex w-full cursor-pointer gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-brand-text transition-colors hover:bg-brand-soft hover:text-brand-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 													>
 														{item.icon}
 														{item.name}
@@ -188,7 +182,7 @@ export default function MerchantLayout({
 												<Link
 													href={item.href}
 													className={`
-                            group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
+                            group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20
                             ${
 															(item.href !== "/logout" &&
 																pathname.startsWith(item.href) &&
@@ -196,8 +190,8 @@ export default function MerchantLayout({
 																pathname !== "/merchant") ||
 															(item.href === "/merchant" &&
 																pathname === "/merchant")
-																? "bg-gray-50 text-indigo-600"
-																: "text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+																		? "bg-brand-soft text-brand-primary"
+																		: "text-brand-text hover:bg-brand-soft hover:text-brand-primary"
 														}
                           `}
 												>
@@ -228,7 +222,7 @@ export default function MerchantLayout({
 					aria-modal="true"
 				>
 					<div
-						className="fixed inset-0 bg-gray-900/80"
+						className="fixed inset-0 bg-brand-text/80"
 						onClick={() => setSidebarOpen(false)}
 					></div>
 					<div className="fixed inset-0 flex">
@@ -236,7 +230,7 @@ export default function MerchantLayout({
 							<div className="absolute start-full top-0 flex w-16 justify-center pt-5">
 								<button
 									type="button"
-									className="-m-2.5 p-2.5 text-white"
+									className="-m-2.5 rounded-md p-2.5 text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
 									onClick={() => setSidebarOpen(false)}
 								>
 									<span className="sr-only">إغلاق القائمة</span>
@@ -244,7 +238,7 @@ export default function MerchantLayout({
 										className="h-6 w-6"
 										fill="none"
 										viewBox="0 0 24 24"
-										strokeWidth="1.5"
+										strokeWidth="2.5"
 										stroke="currentColor"
 										aria-hidden="true"
 									>
@@ -258,14 +252,7 @@ export default function MerchantLayout({
 							</div>
 							<div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
 								<div className="flex h-16 shrink-0 items-center">
-									<SafeImage
-										src="/logo-no-bg.png"
-										alt="Tijaratk"
-										width={120}
-										height={32}
-										imageClassName="h-8 w-auto"
-										fallback={<div className="h-8 w-[120px] rounded bg-gray-100" />}
-									/>
+									<Logo variant="light" width={120} height={32} className="h-8 w-auto" />
 								</div>
 								<nav className="flex flex-1 flex-col">
 									<ul role="list" className="flex flex-1 flex-col gap-y-7">
@@ -277,7 +264,7 @@ export default function MerchantLayout({
 															<form action={logoutAction}>
 																<button
 																	type="submit"
-																	className="group flex w-full gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+																	className="group flex w-full gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-brand-text transition-colors hover:bg-brand-soft hover:text-brand-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 																>
 																	{item.icon}
 																	{item.name}
@@ -288,16 +275,23 @@ export default function MerchantLayout({
 																href={item.href}
 																onClick={() => setSidebarOpen(false)}
 																className={`
-                                                        group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold
+                                                        group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20
                                                         ${
-																													(item.href !== "/logout" &&
-																														pathname.startsWith(item.href) &&
-																														item.href !== "/merchant" &&
-																														pathname !== "/merchant") ||
-																													(item.href === "/merchant" &&
-																														pathname === "/merchant")
-																														? "bg-gray-50 text-indigo-600"
-																														: "text-gray-700 hover:text-indigo-600 hover:bg-gray-50"
+																													(item.href !==
+																														"/logout" &&
+																														pathname.startsWith(
+																															item.href,
+																														) &&
+																														item.href !==
+																															"/merchant" &&
+																														pathname !==
+																															"/merchant") ||
+																													(item.href ===
+																														"/merchant" &&
+																														pathname ===
+																															"/merchant")
+																							? "bg-brand-soft text-brand-primary"
+																							: "text-brand-text hover:bg-brand-soft hover:text-brand-primary"
 																												}
                                                       `}
 															>

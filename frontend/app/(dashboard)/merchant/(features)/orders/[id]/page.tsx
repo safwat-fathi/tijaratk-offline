@@ -6,6 +6,9 @@ import { OrderStatus } from "@/types/enums";
 import OrderItemsReplacement from "./_components/OrderItemsReplacement";
 import { isNextRedirectError } from "@/lib/auth/navigation-errors";
 import { formatCurrency } from "@/lib/utils/currency";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const statusLabelMap: Record<OrderStatus, string> = {
 	[OrderStatus.DRAFT]: "جديد",
@@ -44,7 +47,7 @@ export default async function OrderDetailsPage({
 
 	if (!orderResponse.success || !orderResponse.data) {
 		return (
-			<div className="p-8 text-center text-red-500">
+			<div className="p-8 text-center text-status-error">
 				{orderResponse.message}
 			</div>
 		);
@@ -73,11 +76,11 @@ export default async function OrderDetailsPage({
 	}
 
 	return (
-		<div className="flex min-h-screen flex-col bg-gray-50">
-			<div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-4 py-3">
+		<div className="flex min-h-screen flex-col bg-background">
+			<div className="sticky top-0 z-10 flex items-center gap-3 border-b border-brand-border bg-white px-4 py-3 shadow-soft">
 				<Link
 					href="/merchant/orders"
-					className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-600 hover:bg-gray-50"
+					className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-brand-soft hover:text-brand-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -96,39 +99,28 @@ export default async function OrderDetailsPage({
 					<span className="whitespace-nowrap">الرجوع الى الطلبات</span>
 				</Link>
 
-				<h1 className="text-lg font-bold">الطلب #{order.id}</h1>
+				<h1 className="text-lg font-bold text-brand-text">الطلب #{order.id}</h1>
 
-				<span
-					className={`ms-auto rounded-full px-2 py-1 text-xs font-medium tracking-wide
-            ${order.status === OrderStatus.DRAFT ? "bg-blue-100 text-blue-800" : ""}
-            ${order.status === OrderStatus.CONFIRMED ? "bg-indigo-100 text-indigo-800" : ""}
-            ${order.status === OrderStatus.OUT_FOR_DELIVERY ? "bg-amber-100 text-amber-800" : ""}
-            ${order.status === OrderStatus.COMPLETED ? "bg-green-100 text-green-800" : ""}
-            ${order.status === OrderStatus.CANCELLED ? "bg-red-100 text-red-800" : ""}
-            ${order.status === OrderStatus.REJECTED_BY_CUSTOMER ? "bg-rose-100 text-rose-800" : ""}
-          `}
-				>
-					{statusLabelMap[order.status] || order.status}
-				</span>
+				<StatusBadge className="ms-auto" status={order.status} label={statusLabelMap[order.status] || order.status} />
 			</div>
 
 			<div className="flex-1 space-y-4 p-4 pb-24">
-				<section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-					<h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+				<Card className="p-4">
+					<h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 						معلومات العميل
 					</h2>
 
 					<div className="flex items-center gap-4">
-						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-lg font-bold text-gray-500">
+						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-lg font-bold text-brand-primary">
 							{(customer.name?.[0] || "C").toUpperCase()}
 						</div>
 						<div>
-							<p className="font-bold text-gray-900">
+							<p className="font-bold text-brand-text">
 								{customer.name || "Unknown"}
 							</p>
 							<a
 								href={`tel:${customer.phone}`}
-								className="mt-0.5 text-sm font-medium text-blue-600"
+								className="mt-0.5 text-sm font-medium text-brand-primary hover:text-brand-primary-hover"
 							>
 								{customer.phone}
 							</a>
@@ -136,11 +128,11 @@ export default async function OrderDetailsPage({
 					</div>
 
 					{customer.address && (
-						<div className="mt-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+						<div className="mt-3 rounded-md bg-brand-soft/60 p-3 text-sm text-brand-text">
 							📍 {customer.address}
 						</div>
 					)}
-				</section>
+				</Card>
 
 				<OrderItemsReplacement
 					orderId={order.id}
@@ -150,27 +142,27 @@ export default async function OrderDetailsPage({
 				/>
 
 				{order.free_text_payload?.text && (
-					<section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-						<h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+					<Card className="p-4">
+						<h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 							طلب نصي
 						</h2>
-						<p className="whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-sm text-gray-800">
+						<p className="whitespace-pre-wrap rounded-md bg-brand-soft/60 p-3 text-sm text-brand-text">
 							{order.free_text_payload.text}
 						</p>
-					</section>
+					</Card>
 				)}
 
 				{order.notes && (
-					<section className="rounded-xl border border-amber-100 bg-amber-50 p-4 shadow-sm">
+					<section className="rounded-lg border border-status-warning/30 bg-status-warning/20 p-4 shadow-soft">
 						<p className="text-sm text-amber-900">
 							<strong>ملاحظة:</strong> {order.notes}
 						</p>
 					</section>
 				)}
 
-				<section className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+				<Card className="p-4">
 					<div className="space-y-2">
-						<div className="flex justify-between text-sm text-gray-600">
+						<div className="flex justify-between text-sm text-muted-foreground">
 							<span>الإجمالي الفرعي</span>
 							<span>
 								{order.subtotal !== null && order.subtotal !== undefined
@@ -179,24 +171,24 @@ export default async function OrderDetailsPage({
 							</span>
 						</div>
 
-						<div className="flex justify-between text-sm text-gray-600">
+						<div className="flex justify-between text-sm text-muted-foreground">
 							<span>رسوم التوصيل</span>
 							<span>{formatCurrency(order.delivery_fee) || "غير محدد"}</span>
 						</div>
 
-						<div className="flex items-end justify-between border-t border-gray-100 pt-3">
-							<span className="font-bold text-gray-900">الإجمالي</span>
-							<span className="text-xl font-bold text-gray-900">
+						<div className="flex items-end justify-between border-t border-brand-border pt-3">
+							<span className="font-bold text-brand-text">الإجمالي</span>
+							<span className="text-xl font-bold text-brand-text">
 								{order.total !== null && order.total !== undefined
 									? formatCurrency(order.total) || "غير محدد"
 									: "غير محدد"}
 							</span>
 						</div>
 					</div>
-				</section>
+				</Card>
 			</div>
 
-			<div className="fixed bottom-0 left-0 right-0 border-t bg-white p-4 pb-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+			<div className="safe-bottom-padding fixed bottom-0 left-0 right-0 border-t border-brand-border bg-white p-4 shadow-float">
 				<div className="mx-auto flex max-w-md gap-3">
 					{order.status === OrderStatus.DRAFT && (
 						<>
@@ -204,17 +196,17 @@ export default async function OrderDetailsPage({
 								action={updateStatus.bind(null, OrderStatus.CANCELLED)}
 								className="flex-1"
 							>
-								<button className="w-full rounded-xl bg-gray-100 py-3 font-bold text-gray-700">
+								<Button type="submit" variant="secondary" className="w-full">
 									رفض الطلب
-								</button>
+								</Button>
 							</form>
 							<form
 								action={updateStatus.bind(null, OrderStatus.CONFIRMED)}
 								className="flex-[2]"
 							>
-								<button className="w-full rounded-xl bg-blue-600 py-3 font-bold text-white shadow-lg shadow-blue-200">
+								<Button type="submit" className="w-full">
 									تأكيد الطلب
-								</button>
+								</Button>
 							</form>
 						</>
 					)}
@@ -224,9 +216,9 @@ export default async function OrderDetailsPage({
 							action={updateStatus.bind(null, OrderStatus.OUT_FOR_DELIVERY)}
 							className="w-full"
 						>
-							<button className="w-full rounded-xl bg-amber-500 py-3 font-bold text-white shadow-lg shadow-amber-200">
+							<Button type="submit" className="w-full bg-status-warning text-brand-text hover:bg-status-warning/90">
 								تأكيد التوصيل
-							</button>
+							</Button>
 						</form>
 					)}
 
@@ -235,16 +227,16 @@ export default async function OrderDetailsPage({
 							action={updateStatus.bind(null, OrderStatus.COMPLETED)}
 							className="w-full"
 						>
-							<button className="w-full rounded-xl bg-green-600 py-3 font-bold text-white shadow-lg shadow-green-200">
+							<Button type="submit" className="w-full bg-status-completed hover:bg-status-completed/90">
 								تم التوصيل
-							</button>
+							</Button>
 						</form>
 					)}
 
 					{(order.status === OrderStatus.COMPLETED ||
 						order.status === OrderStatus.CANCELLED ||
 						order.status === OrderStatus.REJECTED_BY_CUSTOMER) && (
-						<div className="w-full py-2 text-center font-medium text-gray-500">
+						<div className="w-full py-2 text-center font-medium text-muted-foreground">
 							حالة الطلب: {statusLabelMap[order.status] || order.status}
 						</div>
 					)}

@@ -180,7 +180,7 @@ export default function EndOfDayTeaser({ initialStatus }: EndOfDayTeaserProps) {
 					{feedback ? (
 						<p
 							className={`text-xs ${
-								feedback.kind === "error" ? "text-rose-600" : "text-emerald-700"
+								feedback.kind === "error" ? "text-status-error" : "text-status-success"
 							}`}
 							aria-live="polite"
 						>

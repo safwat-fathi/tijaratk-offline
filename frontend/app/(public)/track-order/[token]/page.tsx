@@ -38,7 +38,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 	> = {
 		[OrderStatus.DRAFT]: {
 			label: "قيد المراجعة",
-			color: "bg-gray-100 text-gray-700",
+			color: "bg-status-new/15 text-status-new border border-status-new/25",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -61,7 +61,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 		[OrderStatus.CONFIRMED]: {
 			label: "مؤكد",
-			color: "bg-blue-100 text-blue-700",
+			color: "bg-status-confirmed/15 text-status-confirmed border border-status-confirmed/25",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -81,7 +81,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 		[OrderStatus.OUT_FOR_DELIVERY]: {
 			label: "خرج للتوصيل",
-			color: "bg-orange-100 text-orange-700",
+			color: "bg-status-delivery/25 text-amber-800 border border-status-delivery/40",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -103,7 +103,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 		[OrderStatus.COMPLETED]: {
 			label: "اكتمل",
-			color: "bg-green-100 text-green-700",
+			color: "bg-status-completed/15 text-status-completed border border-status-completed/25",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -123,7 +123,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 		[OrderStatus.CANCELLED]: {
 			label: "ملغي",
-			color: "bg-red-100 text-red-700",
+			color: "bg-status-cancelled/15 text-status-cancelled border border-status-cancelled/25",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -144,7 +144,7 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => {
 		},
 		[OrderStatus.REJECTED_BY_CUSTOMER]: {
 			label: "مرفوض من العميل",
-			color: "bg-rose-100 text-rose-700",
+			color: "bg-status-cancelled/15 text-status-cancelled border border-status-cancelled/25",
 			icon: (
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -206,8 +206,8 @@ export default async function TrackOrder({ params }: Props) {
 
   if (!order) {
     return (
-			<div className="rounded-md bg-red-50 p-4 text-center">
-				<h3 className="text-sm font-medium text-red-800">
+			<div className="rounded-md border border-status-error/20 bg-status-error/10 p-4 text-center">
+				<h3 className="text-sm font-medium text-status-error">
 					الطلب غير موجود أو الرابط منتهي الصلاحية.
 				</h3>
 			</div>
@@ -215,27 +215,27 @@ export default async function TrackOrder({ params }: Props) {
   }
 
   return (
-		<div className="bg-white shadow overflow-hidden sm:rounded-lg">
+		<div className="overflow-hidden rounded-lg border border-brand-border bg-white shadow-soft">
 			<div className="flex items-center gap-2 px-2">
 				<SafeImage
 					src="/logo.png"
 					alt="Tijaratk"
 					width={80}
 					height={80}
-					fallback={<div className="h-20 w-20 rounded-lg bg-gray-100" />}
+					fallback={<div className="h-20 w-20 rounded-md bg-brand-soft" />}
 				/>
 				<div className="px-4 py-5 sm:px-6">
-					<h3 className="text-lg leading-6 font-medium text-gray-900">
+					<h3 className="text-lg font-bold leading-6 text-brand-text">
 						تفاصيل الطلب {order.tenant?.name && `من ${order.tenant.name}`}
 					</h3>
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-						<p className="mt-1 max-w-2xl text-sm text-gray-500">
+						<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
 							رقم التتبع: {order.public_token}
 						</p>
 						<div className="flex items-center gap-2">
 							<Link
 								href="/track-orders"
-								className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-xs font-medium rounded-full text-slate-700 bg-white hover:bg-slate-50"
+								className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-border bg-white px-3 py-1.5 text-xs font-medium text-brand-text transition-colors hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 							>
 								<TrackingOrdersIcon />
 								كل طلباتي
@@ -243,7 +243,7 @@ export default async function TrackOrder({ params }: Props) {
 							{order.tenant?.slug && (
 								<Link
 									href={`/${order.tenant.slug}?reorder=${order.public_token}`}
-									className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+									className="inline-flex min-h-10 items-center rounded-full border border-transparent bg-brand-primary px-3 py-1.5 text-xs font-medium text-white shadow-soft transition-colors hover:bg-brand-primary-hover focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 								>
 									إعادة الطلب
 								</Link>
@@ -252,53 +252,53 @@ export default async function TrackOrder({ params }: Props) {
 					</div>
 				</div>
 			</div>
-			<div className="border-t border-gray-200">
+			<div className="border-t border-brand-border">
 				<dl>
-					<div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">الحالة</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+					<div className="bg-brand-soft/50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+						<dt className="text-sm font-medium text-muted-foreground">الحالة</dt>
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
 							<StatusBadge status={order.status as OrderStatus} />
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">المتجر</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+						<dt className="text-sm font-medium text-muted-foreground">المتجر</dt>
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
 							{order.tenant?.name || "غير متوفر"}
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">تاريخ الطلب</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+						<dt className="text-sm font-medium text-muted-foreground">تاريخ الطلب</dt>
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
 							{new Date(order.created_at).toLocaleString("ar-EG")}
 						</dd>
 					</div>
-					<div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">
+					<div className="bg-brand-soft/50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+						<dt className="text-sm font-medium text-muted-foreground">
 							المجموع الفرعي
 						</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
 							{order.subtotal !== null && order.subtotal !== undefined
 								? formatCurrency(Number(order.subtotal) || 0)
 								: "السعر يتم تأكيده بعد الطلب"}
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">رسوم التوصيل</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+						<dt className="text-sm font-medium text-muted-foreground">رسوم التوصيل</dt>
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
 							{formatCurrency(Number(order.delivery_fee) || 0)}
 						</dd>
 					</div>
-					<div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">الإجمالي</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 font-bold">
+					<div className="bg-brand-soft/50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+						<dt className="text-sm font-medium text-muted-foreground">الإجمالي</dt>
+						<dd className="mt-1 text-sm font-bold text-brand-text sm:col-span-2 sm:mt-0">
 							{order.total !== null && order.total !== undefined
 								? formatCurrency(Number(order.total) || 0)
 								: "السعر يتم تأكيده بعد الطلب"}
 						</dd>
 					</div>
 					<div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-						<dt className="text-sm font-medium text-gray-500">العناصر</dt>
-						<dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+						<dt className="text-sm font-medium text-muted-foreground">العناصر</dt>
+						<dd className="mt-1 text-sm text-brand-text sm:col-span-2 sm:mt-0">
               {order.items && order.items.length > 0 ? (
                 <TrackingOrderItemsCard
                   token={order.public_token}
@@ -306,8 +306,8 @@ export default async function TrackOrder({ params }: Props) {
                   initialItems={order.items}
                 />
               ) : (
-                <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
-								<li className="pl-3 pr-4 py-3 text-sm text-gray-700 italic">
+                <ul className="divide-y divide-brand-border rounded-md border border-brand-border">
+								<li className="py-3 pl-3 pr-4 text-sm italic text-muted-foreground">
 									{order.free_text_payload?.text ||
 										"لا يوجد عناصر أو ملاحظات"}
 								</li>

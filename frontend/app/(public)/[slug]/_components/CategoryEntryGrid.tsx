@@ -85,9 +85,9 @@ export default function CategoryEntryGrid({
 	}, [categoryCards, onCategoryInView]);
 
 	return (
-		<div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
-			<h2 className="text-lg font-bold text-gray-900">اختار القسم</h2>
-			<p className="mt-1 text-sm text-gray-500">
+		<div className="rounded-lg border border-brand-border bg-white p-4 shadow-soft">
+			<h2 className="text-lg font-bold text-brand-text">اختار القسم</h2>
+			<p className="mt-1 text-sm text-muted-foreground">
 				اختيار القسم أسرع من تصفح قائمة طويلة.
 			</p>
 			<div className="mt-4 grid grid-cols-2 gap-3">
@@ -99,7 +99,7 @@ export default function CategoryEntryGrid({
 							data-category-key={category.key}
 							type="button"
 							onClick={() => onSelectCategory(category.key)}
-							className="flex min-h-[120px] flex-col items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 px-2 py-3 text-center shadow-sm active:scale-[0.97]"
+						className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-brand-border bg-brand-soft/50 px-2 py-3 text-center shadow-sm transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 						>
 							<SafeImage
 								src={category.image_url ? getImageUrl(category.image_url) : null}
@@ -107,16 +107,16 @@ export default function CategoryEntryGrid({
 								width={54}
 								height={54}
 								unoptimized
-								imageClassName="h-14 w-14 rounded-xl object-cover ring-1 ring-gray-200"
+								imageClassName="h-14 w-14 rounded-md object-cover ring-1 ring-brand-border"
 								fallback={<span className="text-2xl">🛒</span>}
 							/>
-							<span className="mt-2 text-sm font-semibold text-gray-800">
+							<span className="mt-2 text-sm font-semibold text-brand-text">
 								{category.label}
 							</span>
 						</button>
 					))
 				) : (
-					<div className="col-span-2 rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center text-sm text-gray-500">
+					<div className="col-span-2 rounded-md border border-dashed border-brand-border bg-white p-4 text-center text-sm text-muted-foreground">
 						لا توجد أقسام حالياً.
 					</div>
 				)}

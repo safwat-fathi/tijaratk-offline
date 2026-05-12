@@ -8,6 +8,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatRtlQuantityLabel } from "@/lib/utils/number";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -103,78 +106,67 @@ export default function OrderCard({ order, isHighlighted }: OrderCardProps) {
 
   if (!order.id) {
     return (
-        <div className="bg-red-50 border-b border-red-100 p-4">
-            <p className="text-red-500 font-bold">طلب غير صالح (رقم المعرف مفقود)</p>
+        <div className="border-b border-status-error/20 bg-status-error/10 p-4">
+            <p className="font-bold text-status-error">طلب غير صالح (رقم المعرف مفقود)</p>
             <pre className="text-xs">{JSON.stringify(order, null, 2)}</pre>
         </div>
     );
   }
 
   return (
-    <Link href={`/merchant/orders/${order.id}`} className="block">
-      <div className={`
-        border-b border-gray-100 active:bg-gray-50 transition-colors p-4 relative
-        ${isHighlighted ? 'bg-blue-50 animate-pulse-soft' : 'bg-white'}
-      `}>
+    <Card className={`relative mb-3 p-4 ${isHighlighted ? "animate-pulse-soft bg-status-new/10" : ""}`}>
           {isHighlighted && (
-             <div className="absolute start-0 top-0 bottom-0 w-1 bg-blue-500 animate-pulse"></div>
+             <div className="absolute bottom-0 start-0 top-0 w-1 animate-pulse bg-status-new"></div>
           )}
         {/* Top Row: Customer & Total */}
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="font-bold text-gray-900 text-base">
-              {customerName}
-            </h3>
-            <span className="text-xs text-gray-500">{formatDate(order.created_at)}</span>
+        <Link href={`/merchant/orders/${order.id}`} className="block rounded-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20">
+          <div className="mb-2 flex items-start justify-between">
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-bold text-brand-text">
+                {customerName}
+              </h3>
+              <span className="text-xs text-muted-foreground">{formatDate(order.created_at)}</span>
+            </div>
+            <div className="shrink-0 text-end">
+              <span className="block text-lg font-bold text-brand-text">
+                {formatCurrency(order.total) || "غير محدد"}
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {order.pricing_mode === "manual" ? "يدوي" : "نقدي"}
+              </span>
+            </div>
           </div>
-          <div className="text-end">
-            <span className="block font-bold text-gray-900 text-lg">
-              {formatCurrency(order.total) || "غير محدد"}
-            </span>
-            <span className="text-xs text-gray-400 font-medium">
-              {order.pricing_mode === 'manual' ? 'يدوي' : 'نقدي'}
-            </span>
-          </div>
-        </div>
 
         {/* Middle: Items Preview */}
-        <div className="mb-3">
-          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+          <div className="mb-3">
+          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
             {renderItemsContent()}
             {order.notes && (
-               <span className="block text-amber-600 text-xs mt-1 font-medium">
-                 ملاحظة: {order.notes}
+               <span className="mt-1 block text-xs font-medium text-amber-700">
+                  ملاحظة: {order.notes}
                </span>
             )}
           </p>
         </div>
+        </Link>
 
         {/* Bottom: Action Button (if actionable) */}
         {isActionable && (
           <div className="mt-2">
-            <button 
-              className={`
-                w-full py-2.5 rounded-lg text-sm font-semibold transition-colors flex justify-center items-center
-                ${order.status === OrderStatus.DRAFT 
-                  ? "bg-blue-600 text-white hover:bg-blue-700 shadow-sm" 
-                  : "bg-gray-100 text-gray-900 hover:bg-gray-200"}
-                ${isLoading ? "opacity-70 cursor-not-allowed" : ""}
-              `}
+            <Button
+              variant={order.status === OrderStatus.DRAFT ? "primary" : "secondary"}
+              className="w-full"
               onClick={handleAction}
               disabled={isLoading}
             >
               {isLoading ? (
-                <svg className="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <LoadingSpinner className="h-4 w-4" />
               ) : (
                 getActionLabel(order.status)
               )}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </Link>
+      </Card>
   );
 }

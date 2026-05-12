@@ -13,7 +13,7 @@ import {
 import { formatArabicInteger } from '@/lib/utils/number';
 import type { CatalogItem, Product, ProductOrderMode } from '@/types/models/product';
 import CatalogSection from './CatalogSection';
-import EditProductModal from './EditProductModal';
+import EditProductSheet from './EditProductSheet';
 import MyProductsSection from './MyProductsSection';
 import ProductMessageBanner from './ProductMessageBanner';
 import ProductOnboardingHeader from './ProductOnboardingHeader';
@@ -875,7 +875,7 @@ export default function ProductOnboardingClient({
 					}}
 			/>
 
-			<EditProductModal
+			<EditProductSheet
 				editingProduct={editingProduct}
 				onClose={handleCloseEdit}
 				onSubmit={handleEditSubmit}

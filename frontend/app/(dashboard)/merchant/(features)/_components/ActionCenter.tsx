@@ -15,7 +15,7 @@ const getIconContainerClasses = (type: ActionItem["type"]) => {
   }
 
   if (type === "out_for_delivery") {
-    return "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400";
+    return "bg-brand-soft text-brand-primary dark:bg-brand-soft dark:text-brand-primary";
   }
 
   return "bg-primary/10 text-primary";
@@ -62,7 +62,7 @@ export default function ActionCenter({ items }: ActionCenterProps) {
                 className={cn(
                     "relative group bg-card rounded-xl border p-4 shadow-sm transition-all hover:shadow-md",
                     isUrgent && "border-destructive/30 bg-destructive/5",
-                    isDelivery && "border-blue-500/30 bg-blue-50/50 dark:bg-blue-900/10"
+                    isDelivery && "border-brand-primary/30 bg-brand-soft/50 dark:bg-brand-soft/20"
                 )}
               >
                 <div className="flex justify-between items-start mb-4">

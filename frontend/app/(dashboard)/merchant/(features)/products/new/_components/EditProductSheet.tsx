@@ -1,12 +1,15 @@
-import type { ChangeEvent, FormEvent } from 'react';
-import SafeImage from '@/components/ui/SafeImage';
-import type { Product, ProductOrderMode } from '@/types/models/product';
-import type { CategoryMode } from '../_utils/product-onboarding.types';
+import type { ChangeEvent, FormEvent } from "react";
+import BottomSheet from "@/components/ui/BottomSheet";
+import SafeImage from "@/components/ui/SafeImage";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import type { Product, ProductOrderMode } from "@/types/models/product";
+import type { CategoryMode } from "../_utils/product-onboarding.types";
 import { resolveImageUrl } from "../_utils/product-onboarding";
-import CategoryFields from './CategoryFields';
-import OrderModeFields from './OrderModeFields';
+import CategoryFields from "./CategoryFields";
+import OrderModeFields from "./OrderModeFields";
 
-type EditProductModalProps = {
+type EditProductSheetProps = {
   editingProduct: Product | null;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -41,7 +44,7 @@ type EditProductModalProps = {
   onEditImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
 };
 
-export default function EditProductModal({
+export default function EditProductSheet({
   editingProduct,
   onClose,
   onSubmit,
@@ -74,69 +77,58 @@ export default function EditProductModal({
   editImagePreview,
   editImageError,
   onEditImageChange,
-}: EditProductModalProps) {
-  if (!editingProduct) {
-    return null;
-  }
+}: EditProductSheetProps) {
+  const currentImageUrl = editingProduct
+    ? editImagePreview || resolveImageUrl(editingProduct.image_url)
+    : null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center"
-      onClick={onClose}
+    <BottomSheet
+      isOpen={Boolean(editingProduct)}
+      title="تعديل المنتج"
+      onClose={onClose}
     >
-      <div
-        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-900">تعديل المنتج</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
-          >
-            إغلاق
-          </button>
-        </div>
-
+      {editingProduct ? (
         <form onSubmit={onSubmit} className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm text-gray-700">اسم المنتج</span>
-            <input
+            <span className="mb-1 block text-sm text-brand-text">اسم المنتج</span>
+            <Input
               value={editName}
               onChange={(event) => onEditNameChange(event.target.value)}
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="text-sm"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-gray-700">صورة المنتج</span>
+            <span className="mb-1 block text-sm text-brand-text">صورة المنتج</span>
             <input
               type="file"
               accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
               onChange={onEditImageChange}
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-brand-border px-3 py-2 text-sm"
             />
-            {editImageError && (
-              <span className="mt-1 block text-xs text-red-600">{editImageError}</span>
-            )}
+            {editImageError ? (
+              <span className="mt-1 block text-xs text-status-error">
+                {editImageError}
+              </span>
+            ) : null}
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-gray-700">السعر (اختياري)</span>
-            <input
+            <span className="mb-1 block text-sm text-brand-text">السعر (اختياري)</span>
+            <Input
               value={editPrice}
               onChange={(event) => onEditPriceChange(event.target.value)}
               inputMode="decimal"
               placeholder="مثال: 45.50"
-              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="text-sm"
             />
           </label>
 
-          <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2">
+          <label className="flex items-center justify-between rounded-md border border-brand-border px-3 py-2">
             <div>
-              <span className="block text-sm font-semibold text-gray-800">متاح للبيع</span>
-              <span className="block text-xs text-gray-500">
+              <span className="block text-sm font-semibold text-brand-text">متاح للبيع</span>
+              <span className="block text-xs text-muted-foreground">
                 المنتج غير المتاح سيبقى ظاهرًا لك للإدارة.
               </span>
             </div>
@@ -144,7 +136,7 @@ export default function EditProductModal({
               type="checkbox"
               checked={editIsAvailable}
               onChange={(event) => onEditIsAvailableChange(event.target.checked)}
-              className="h-5 w-5 accent-indigo-600"
+              className="h-5 w-5 accent-brand-primary"
             />
           </label>
 
@@ -173,38 +165,38 @@ export default function EditProductModal({
             availableCategories={availableProductCategories}
           />
 
-          <div className="rounded-xl border border-dashed border-gray-300 p-3">
-            <p className="mb-2 text-xs text-gray-500">معاينة الصورة</p>
-            {editImagePreview || resolveImageUrl(editingProduct.image_url) ? (
+          <div className="rounded-md border border-dashed border-brand-border p-3">
+            <p className="mb-2 text-xs text-muted-foreground">معاينة الصورة</p>
+            {currentImageUrl ? (
               <SafeImage
-                src={editImagePreview || resolveImageUrl(editingProduct.image_url)!}
+                src={currentImageUrl}
                 alt={editingProduct.name}
                 width={96}
                 height={96}
                 unoptimized
-                imageClassName="h-24 w-24 rounded-lg border border-gray-200 bg-gray-50 object-cover"
+                imageClassName="h-24 w-24 rounded-md border border-brand-border bg-brand-soft object-cover"
                 fallback={
-                  <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-md border border-brand-border bg-brand-soft text-xs text-muted-foreground">
                     لا توجد صورة
                   </div>
                 }
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500">
+              <div className="flex h-24 w-24 items-center justify-center rounded-md border border-brand-border bg-brand-soft text-xs text-muted-foreground">
                 لا توجد صورة
               </div>
             )}
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={isEditPending}
-            className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="w-full"
           >
-            {isEditPending ? '...جاري الحفظ' : 'حفظ التعديل'}
-          </button>
+            {isEditPending ? "جاري الحفظ…" : "حفظ التعديل"}
+          </Button>
         </form>
-      </div>
-    </div>
+      ) : null}
+    </BottomSheet>
   );
 }
