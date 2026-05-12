@@ -1,9 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { UsersService } from '../users/users.service'; // Correct import path might be wrong in original file? Original said '../users/users.service'. Let's stick to original if possible or fix it. Original was '../users/users.service'.
+import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../users/entities/user.entity';
-import { DataSource } from 'typeorm';
+import { User, UserRole } from '../../generated/prisma';
 import { TenantsService } from '../tenants/tenants.service';
 import { SignupDto } from './dto/signup.dto';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';
@@ -13,7 +12,6 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private dataSource: DataSource,
     private tenantsService: TenantsService,
   ) {}
 
@@ -65,38 +63,36 @@ export class AuthService {
 
     // Check if user with phone already exists
     const existingUser = await this.usersService.findOneByPhone(phone);
-    // Note: One phone number can only belong to one tenant in this model (User belongs to one tenant).
-    // So if user exists, they are already registered.
     if (existingUser) {
       throw new BadRequestException(
         'User with this phone number already exists',
       );
     }
 
-    return this.dataSource.transaction(async (manager) => {
-      // 1. Create Tenant
-      const tenant = await this.tenantsService.create(
-        storeName,
+    // 1. Create Tenant
+    const tenant = await this.tenantsService.create(
+      storeName,
+      phone,
+      category,
+    );
+
+    // Hash the password before saving since we no longer have TypeORM hooks
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 2. Create User (Owner)
+    const user = await this.usersService.create(
+      {
         phone,
-        category,
-        manager,
-      );
+        password: hashedPassword,
+        name,
+        role: UserRole.owner,
+        tenant_id: tenant.id, // Link to the new tenant
+      }
+    );
 
-      // 2. Create User (Owner)
-      const user = await this.usersService.create(
-        {
-          phone,
-          password,
-          name,
-          role: UserRole.OWNER,
-          tenant, // Link to the new tenant
-        },
-        manager,
-      );
-
-      // 3. Return Login Response
-      return this.login(user);
-    });
+    // 3. Return Login Response
+    return this.login(user);
   }
 
   // Helper for registering via API if needed (or seeding)
@@ -107,12 +103,10 @@ export class AuthService {
     role: UserRole,
   ) {
     const hashedPassword = await bcrypt.hash(pass, 10);
-    // Logic here might fail if usersService.create without transaction doesn't handle tenantId correctly if passing Partial<User>.
-    // But assuming legacy/seeding code, leaving as is but fixing Types if needed.
-    // UsersService.create signature in previous view_file was: async create(userData: Partial<User>): Promise<User>
     return this.usersService.create({
       phone,
       password: hashedPassword,
+      name: phone, // fallback to phone if no name is provided in register helper
       tenant_id: tenantId,
       role,
     });

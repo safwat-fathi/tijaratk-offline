@@ -2,12 +2,8 @@ import { Logger } from '@nestjs/common';
 import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 import { ProductSource } from 'src/common/enums/product-source.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
-import { Product } from 'src/products/entities/product.entity';
-import { TenantProductCategory } from 'src/products/entities/tenant-product-category.entity';
+import { PrismaClient } from '../../../generated/prisma';
 import { TENANT_CATEGORIES } from 'src/tenants/constants/tenant-category';
-import { Tenant } from 'src/tenants/entities/tenant.entity';
-import { User, UserRole } from 'src/users/entities/user.entity';
-import { DataSource } from 'typeorm';
 
 const SUPERMARKET_TENANT = {
   name: 'سوبر ماركت تيجارتك',
@@ -20,10 +16,7 @@ const ownerCredential =
   process.env.SEED_SUPERMARKET_OWNER_CREDENTIAL ??
   ['pass', 'word', '123'].join('');
 
-type SupermarketProductSeed = Pick<
-  Product,
-  'name' | 'category' | 'current_price' | 'order_mode' | 'order_config'
->;
+type SupermarketProductSeed = any;
 
 const quantityConfig = (unitLabel = 'قطعة') => ({
   quantity: { unit_label: unitLabel },
@@ -585,48 +578,44 @@ const supermarketProducts: SupermarketProductSeed[] = [
 /**
  * Seeds a supermarket tenant, owner user, categories, and product inventory.
  */
-export async function seedSupermarketMerchant(dataSource: DataSource) {
+export async function seedSupermarketMerchant(prisma: PrismaClient) {
   const logger = new Logger('SupermarketMerchantSeeder');
 
-  await dataSource.transaction(async (manager) => {
-    const tenantRepo = manager.getRepository(Tenant);
-    const userRepo = manager.getRepository(User);
-    const productRepo = manager.getRepository(Product);
-    const categoryRepo = manager.getRepository(TenantProductCategory);
-
-    let tenant = await tenantRepo.findOne({
-      where: [
-        { phone: SUPERMARKET_TENANT.phone },
-        { slug: SUPERMARKET_TENANT.slug },
-      ],
+  await prisma.$transaction(async (tx) => {
+    let tenant = await tx.tenant.findFirst({
+      where: {
+        OR: [
+          { phone: SUPERMARKET_TENANT.phone },
+          { slug: SUPERMARKET_TENANT.slug },
+        ],
+      },
     });
 
     if (!tenant) {
-      tenant = await tenantRepo.save(
-        tenantRepo.create({
+      tenant = await tx.tenant.create({
+        data: {
           name: SUPERMARKET_TENANT.name,
           phone: SUPERMARKET_TENANT.phone,
           slug: SUPERMARKET_TENANT.slug,
           category: TENANT_CATEGORIES.GROCERY.value,
-        }),
-      );
+        },
+      });
     }
 
-    const ownerExists = await userRepo.findOne({
+    const ownerExists = await tx.user.findFirst({
       where: { phone: SUPERMARKET_TENANT.phone },
-      withDeleted: true,
     });
 
     if (!ownerExists) {
-      await userRepo.save(
-        userRepo.create({
+      await tx.user.create({
+        data: {
           tenant_id: tenant.id,
           phone: SUPERMARKET_TENANT.phone,
           name: SUPERMARKET_TENANT.ownerName,
           password: ownerCredential,
-          role: UserRole.OWNER,
-        }),
-      );
+          role: 'owner',
+        },
+      });
     }
 
     const categoryNames = Array.from(
@@ -634,21 +623,21 @@ export async function seedSupermarketMerchant(dataSource: DataSource) {
     );
 
     for (const categoryName of categoryNames) {
-      const categoryExists = await categoryRepo.findOne({
+      const categoryExists = await tx.tenantProductCategory.findFirst({
         where: { tenant_id: tenant.id, name: categoryName },
       });
 
       if (!categoryExists) {
-        await categoryRepo.save(
-          categoryRepo.create({ tenant_id: tenant.id, name: categoryName }),
-        );
+        await tx.tenantProductCategory.create({
+          data: { tenant_id: tenant.id, name: categoryName },
+        });
       }
     }
 
     let insertedProducts = 0;
 
     for (const product of supermarketProducts) {
-      const productExists = await productRepo.findOne({
+      const productExists = await tx.product.findFirst({
         where: {
           tenant_id: tenant.id,
           name: product.name,
@@ -657,15 +646,15 @@ export async function seedSupermarketMerchant(dataSource: DataSource) {
       });
 
       if (!productExists) {
-        await productRepo.save(
-          productRepo.create({
+        await tx.product.create({
+          data: {
             ...product,
             tenant_id: tenant.id,
             source: ProductSource.MANUAL,
             status: ProductStatus.ACTIVE,
             is_available: true,
-          }),
-        );
+          },
+        });
         insertedProducts += 1;
       }
     }

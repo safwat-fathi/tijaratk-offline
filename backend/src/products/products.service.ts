@@ -6,19 +6,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SelectQueryBuilder, Repository } from 'typeorm';
-import { Product } from './entities/product.entity';
-import { CatalogItem } from './entities/catalog-item.entity';
-import { TenantProductCategory } from './entities/tenant-product-category.entity';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductSource } from 'src/common/enums/product-source.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { AddProductFromCatalogDto } from './dto/add-product-from-catalog.dto';
 import { ImageProcessorService } from 'src/common/services/image-processor.service';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
 import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma, Product, CatalogItem } from '../../generated/prisma';
 
 const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
 const DUPLICATE_PRODUCT_NAME_MESSAGE = 'Product with this name already exists';
@@ -93,15 +90,15 @@ type StrictMatchThresholds = {
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
-    @InjectRepository(CatalogItem)
-    private readonly catalogItemsRepository: Repository<CatalogItem>,
-    @InjectRepository(TenantProductCategory)
-    private readonly tenantProductCategoriesRepository: Repository<TenantProductCategory>,
+    private readonly prisma: PrismaService,
     private readonly imageProcessorService: ImageProcessorService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
+
+  private getPrismaClient() {
+    const manager = DbTenantContext.getManager() as Prisma.TransactionClient;
+    return manager || this.prisma;
+  }
 
   /**
    * Creates a manual product for the authenticated tenant.
@@ -123,26 +120,27 @@ export class ProductsService {
       createProductDto.order_config,
     );
 
-    const product = this.getProductsRepository().create({
-      tenant_id: tenantId,
-      name: normalizedName,
-      image_url: createProductDto.image_url,
-      category: this.normalizeCategory(createProductDto.category),
-      source: ProductSource.MANUAL,
-      status: ProductStatus.ACTIVE,
-      current_price:
-        typeof createProductDto.current_price === 'number'
-          ? this.normalizeCurrentPrice(createProductDto.current_price)
-          : undefined,
-      order_mode: orderMode,
-      order_config: orderConfig,
-      is_available: createProductDto.is_available ?? true,
+    const product = await this.getPrismaClient().product.create({
+      data: {
+        tenant_id: tenantId,
+        name: normalizedName,
+        image_url: createProductDto.image_url,
+        category: this.normalizeCategory(createProductDto.category),
+        source: ProductSource.MANUAL,
+        status: ProductStatus.ACTIVE,
+        current_price:
+          typeof createProductDto.current_price === 'number'
+            ? this.normalizeCurrentPrice(createProductDto.current_price)
+            : undefined,
+        order_mode: orderMode,
+        order_config: orderConfig as Prisma.InputJsonValue,
+        is_available: createProductDto.is_available ?? true,
+      },
     });
 
-    const saved = await this.getProductsRepository().save(product);
-    await this.storeTenantProductCategory(tenantId, saved.category);
+    await this.storeTenantProductCategory(tenantId, product.category);
     await this.bumpTenantSearchCacheVersion(tenantId);
-    return saved;
+    return product;
   }
 
   /**
@@ -152,7 +150,7 @@ export class ProductsService {
     tenantId: number,
     payload: AddProductFromCatalogDto,
   ): Promise<Product> {
-    const catalogItem = await this.getCatalogItemsRepository().findOne({
+    const catalogItem = await this.getPrismaClient().catalogItem.findFirst({
       where: { id: payload.catalog_item_id, is_active: true },
     });
 
@@ -171,35 +169,38 @@ export class ProductsService {
 
     await this.ensureUniqueActiveProductName(tenantId, catalogItem.name);
 
-    const product = this.getProductsRepository().create({
-      tenant_id: tenantId,
-      name: catalogItem.name,
-      image_url: catalogItem.image_url,
-      category: catalogCategory,
-      source: ProductSource.CATALOG,
-      status: ProductStatus.ACTIVE,
-      order_mode: ProductOrderMode.QUANTITY,
-      order_config: this.normalizeProductOrderConfig(ProductOrderMode.QUANTITY),
-      is_available: true,
+    const product = await this.getPrismaClient().product.create({
+      data: {
+        tenant_id: tenantId,
+        name: catalogItem.name,
+        image_url: catalogItem.image_url,
+        category: catalogCategory,
+        source: ProductSource.CATALOG,
+        status: ProductStatus.ACTIVE,
+        order_mode: ProductOrderMode.QUANTITY,
+        order_config: this.normalizeProductOrderConfig(
+          ProductOrderMode.QUANTITY,
+        ) as Prisma.InputJsonValue,
+        is_available: true,
+      },
     });
 
-    const saved = await this.getProductsRepository().save(product);
-    await this.storeTenantProductCategory(tenantId, saved.category);
+    await this.storeTenantProductCategory(tenantId, product.category);
     await this.bumpTenantSearchCacheVersion(tenantId);
-    return saved;
+    return product;
   }
 
   /**
    * Returns all active products for the authenticated tenant.
    */
   async findAll(tenantId: number): Promise<Product[]> {
-    return this.getProductsRepository().find({
+    return this.getPrismaClient().product.findMany({
       where: {
         tenant_id: tenantId,
         status: ProductStatus.ACTIVE,
       },
-      order: {
-        created_at: 'DESC',
+      orderBy: {
+        created_at: 'desc',
       },
     });
   }
@@ -330,25 +331,27 @@ export class ProductsService {
       : 20;
     const normalizedCategory = category?.trim();
 
-    const query = this.getProductsRepository()
-      .createQueryBuilder('product')
-      .innerJoin('product.tenant', 'tenant')
-      .where('tenant.slug = :slug', { slug })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
+    const where: Prisma.ProductWhereInput = {
+      status: ProductStatus.ACTIVE,
+      tenant: {
+        slug: slug,
+      },
+    };
 
     if (normalizedCategory) {
-      query.andWhere('product.category = :category', {
-        category: normalizedCategory,
-      });
+      where.category = normalizedCategory;
     }
 
-    query
-      .orderBy('product.created_at', 'DESC')
-      .addOrderBy('product.id', 'DESC')
-      .skip((normalizedPage - 1) * normalizedLimit)
-      .take(normalizedLimit);
+    const [data, total] = await Promise.all([
+      this.getPrismaClient().product.findMany({
+        where,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        skip: (normalizedPage - 1) * normalizedLimit,
+        take: normalizedLimit,
+      }),
+      this.getPrismaClient().product.count({ where }),
+    ]);
 
-    const [data, total] = await query.getManyAndCount();
     const lastPage = total > 0 ? Math.ceil(total / normalizedLimit) : 1;
 
     return {
@@ -371,16 +374,18 @@ export class ProductsService {
   ): Promise<PublicProductCategorySummary[]> {
     const normalizedCategoryExpression = `COALESCE(NULLIF(TRIM(product.category), ''), '${DEFAULT_PRODUCT_CATEGORY}')`;
 
-    const categoryRows = await this.getProductsRepository()
-      .createQueryBuilder('product')
-      .innerJoin('product.tenant', 'tenant')
-      .select(normalizedCategoryExpression, 'category')
-      .addSelect('COUNT(product.id)', 'count')
-      .where('tenant.slug = :slug', { slug })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
-      .groupBy(normalizedCategoryExpression)
-      .orderBy('category', 'ASC')
-      .getRawMany<{ category: string; count: string }>();
+    const categoryQuery = `
+      SELECT ${normalizedCategoryExpression} as category, COUNT(product.id)::int as count
+      FROM product
+      INNER JOIN tenant ON product.tenant_id = tenant.id
+      WHERE tenant.slug = $1 AND product.status = $2
+      GROUP BY ${normalizedCategoryExpression}
+      ORDER BY category ASC
+    `;
+
+    const categoryRows = await this.getPrismaClient().$queryRawUnsafe<
+      { category: string; count: number }[]
+    >(categoryQuery, slug, ProductStatus.ACTIVE);
 
     if (categoryRows.length === 0) {
       return [];
@@ -388,21 +393,22 @@ export class ProductsService {
 
     const categories = categoryRows.map((row) => row.category);
 
-    const catalogRows = await this.getCatalogItemsRepository()
-      .createQueryBuilder('catalog')
-      .select('catalog.category', 'category')
-      .addSelect('catalog.image_url', 'image_url')
-      .where('catalog.is_active = :isActive', { isActive: true })
-      .andWhere('catalog.category IN (:...categories)', { categories })
-      .andWhere('catalog.image_url IS NOT NULL')
-      .andWhere("TRIM(catalog.image_url) <> ''")
-      .orderBy('catalog.category', 'ASC')
-      .addOrderBy('catalog.name', 'ASC')
-      .getRawMany<{ category: string; image_url: string }>();
+    const catalogRows = await this.getPrismaClient().catalogItem.findMany({
+      where: {
+        is_active: true,
+        category: { in: categories },
+        image_url: { not: null, notIn: [''] },
+      },
+      select: {
+        category: true,
+        image_url: true,
+      },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    });
 
     const categoryImages = new Map<string, string>();
     for (const row of catalogRows) {
-      if (!categoryImages.has(row.category)) {
+      if (row.category && row.image_url && !categoryImages.has(row.category)) {
         categoryImages.set(row.category, row.image_url);
       }
     }
@@ -418,14 +424,13 @@ export class ProductsService {
    * Returns active catalog categories for product onboarding.
    */
   async findCatalogCategories(): Promise<string[]> {
-    const rows = await this.getCatalogItemsRepository()
-      .createQueryBuilder('catalog')
-      .select('DISTINCT catalog.category', 'category')
-      .where('catalog.is_active = :isActive', { isActive: true })
-      .orderBy('catalog.category', 'ASC')
-      .getRawMany<{ category: string }>();
+    const rows = await this.getPrismaClient().catalogItem.groupBy({
+      by: ['category'],
+      where: { is_active: true },
+      orderBy: { category: 'asc' },
+    });
 
-    return rows.map((row) => row.category);
+    return rows.map((row) => row.category).filter((c) => c != null) as string[];
   }
 
   /**
@@ -433,26 +438,26 @@ export class ProductsService {
    */
   async findTenantProductCategories(tenantId: number): Promise<string[]> {
     const [catalogRows, tenantRows] = await Promise.all([
-      this.getCatalogItemsRepository()
-        .createQueryBuilder('catalog')
-        .select('DISTINCT catalog.category', 'category')
-        .where('catalog.is_active = :isActive', { isActive: true })
-        .getRawMany<{ category: string }>(),
-      this.getTenantProductCategoriesRepository()
-        .createQueryBuilder('tenantCategory')
-        .select('tenantCategory.name', 'category')
-        .where('tenantCategory.tenant_id = :tenantId', { tenantId })
-        .getRawMany<{ category: string }>(),
+      this.getPrismaClient().catalogItem.groupBy({
+        by: ['category'],
+        where: { is_active: true },
+      }),
+      this.getPrismaClient().tenantProductCategory.groupBy({
+        by: ['name'],
+        where: { tenant_id: tenantId },
+      }),
     ]);
 
     const uniqueCategories = new Set<string>();
-    for (const row of [...catalogRows, ...tenantRows]) {
-      const normalizedCategory = this.normalizeOptionalCategory(row.category);
-      if (!normalizedCategory) {
-        continue;
-      }
-
-      uniqueCategories.add(normalizedCategory);
+    for (const row of catalogRows) {
+      const normalizedCategory = this.normalizeOptionalCategory(
+        row.category ?? undefined,
+      );
+      if (normalizedCategory) uniqueCategories.add(normalizedCategory);
+    }
+    for (const row of tenantRows) {
+      const normalizedCategory = this.normalizeOptionalCategory(row.name);
+      if (normalizedCategory) uniqueCategories.add(normalizedCategory);
     }
 
     return Array.from(uniqueCategories).sort((left, right) =>
@@ -464,16 +469,14 @@ export class ProductsService {
    * Returns active catalog items, optionally filtered by category.
    */
   async findCatalogItems(category?: string): Promise<CatalogItem[]> {
-    const where = category
-      ? { is_active: true, category }
-      : { is_active: true };
+    const where: Prisma.CatalogItemWhereInput = { is_active: true };
+    if (category) {
+      where.category = category;
+    }
 
-    return this.getCatalogItemsRepository().find({
+    return this.getPrismaClient().catalogItem.findMany({
       where,
-      order: {
-        category: 'ASC',
-        name: 'ASC',
-      },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
     });
   }
 
@@ -481,7 +484,7 @@ export class ProductsService {
    * Returns a single product owned by tenant.
    */
   async findOne(id: number, tenantId: number): Promise<Product> {
-    const product = await this.getProductsRepository().findOne({
+    const product = await this.getPrismaClient().product.findFirst({
       where: { id, tenant_id: tenantId },
     });
 
@@ -504,6 +507,7 @@ export class ProductsService {
     const product = await this.findOne(id, tenantId);
 
     const previousImageUrl = product.image_url;
+    const updateData: Prisma.ProductUpdateInput = {};
 
     if (typeof updateProductDto.name === 'string') {
       const normalizedName = updateProductDto.name.trim();
@@ -512,23 +516,23 @@ export class ProductsService {
       }
 
       await this.ensureUniqueActiveProductName(tenantId, normalizedName, id);
-      product.name = normalizedName;
+      updateData.name = normalizedName;
     }
 
     if (updateProductDto.status) {
-      product.status = updateProductDto.status;
+      updateData.status = updateProductDto.status;
     }
 
     if (updateProductDto.is_available !== undefined) {
-      product.is_available = updateProductDto.is_available;
+      updateData.is_available = updateProductDto.is_available;
     }
 
     if (typeof updateProductDto.category === 'string') {
-      product.category = this.normalizeCategory(updateProductDto.category);
+      updateData.category = this.normalizeCategory(updateProductDto.category);
     }
 
     if (typeof updateProductDto.current_price === 'number') {
-      product.current_price = this.normalizeCurrentPrice(
+      updateData.current_price = this.normalizeCurrentPrice(
         updateProductDto.current_price,
       );
     }
@@ -538,26 +542,32 @@ export class ProductsService {
       updateProductDto.order_config !== undefined
     ) {
       const nextOrderMode = this.resolveProductOrderMode(
-        updateProductDto.order_mode ?? product.order_mode,
+        updateProductDto.order_mode ?? (product.order_mode as ProductOrderMode),
       );
-      product.order_mode = nextOrderMode;
-      product.order_config = this.normalizeProductOrderConfig(
+      updateData.order_mode = nextOrderMode;
+      updateData.order_config = this.normalizeProductOrderConfig(
         nextOrderMode,
-        updateProductDto.order_config ?? product.order_config ?? undefined,
-      );
+        updateProductDto.order_config ??
+          (product.order_config as Record<string, unknown>) ??
+          undefined,
+      ) as Prisma.InputJsonValue;
     }
 
     if (file?.path) {
-      product.image_url =
+      updateData.image_url =
         await this.imageProcessorService.processProductThumbnail(file.path);
     } else if (typeof updateProductDto.image_url === 'string') {
       const normalizedImageUrl = updateProductDto.image_url.trim();
-      product.image_url = normalizedImageUrl || undefined;
+      updateData.image_url = normalizedImageUrl || null;
     }
 
-    const updatedProduct = await this.getProductsRepository().save(product);
+    const updatedProduct = await this.getPrismaClient().product.update({
+      where: { id },
+      data: updateData,
+    });
+
     if (typeof updateProductDto.category === 'string') {
-      await this.storeTenantProductCategory(tenantId, updatedProduct.category);
+      await this.storeTenantProductCategory(tenantId, updatedProduct.category!);
     }
     await this.bumpTenantSearchCacheVersion(tenantId);
 
@@ -574,9 +584,11 @@ export class ProductsService {
    * Soft archives a product so historical order records stay intact.
    */
   async remove(id: number, tenantId: number): Promise<void> {
-    const product = await this.findOne(id, tenantId);
-    product.status = ProductStatus.ARCHIVED;
-    await this.getProductsRepository().save(product);
+    await this.findOne(id, tenantId);
+    await this.getPrismaClient().product.update({
+      where: { id },
+      data: { status: ProductStatus.ARCHIVED },
+    });
     await this.bumpTenantSearchCacheVersion(tenantId);
   }
 
@@ -591,38 +603,96 @@ export class ProductsService {
     page: number,
     limit: number,
   ): Promise<TenantProductsSearchResult> {
-    const query = this.getProductsRepository()
-      .createQueryBuilder('product')
-      .where('product.tenant_id = :tenantId', { tenantId })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
-
-    // When rankAll=true, category is a hard filter (suggested similar products).
-    // When rankAll=false (text search), category is a ranking boost instead.
     const useCategoryAsFilter = rankAll && !!category;
     const useCategoryAsBoost = !rankAll && !!category;
 
+    const prefixPattern = `${normalizedSearch}%`;
+    const containsPattern = `%${normalizedSearch}%`;
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+
+    const addParam = (val: any) => {
+      params.push(val);
+      return `$${params.length}`;
+    };
+
+    conditions.push(`tenant_id = ${addParam(tenantId)}`);
+    conditions.push(`status = ${addParam(ProductStatus.ACTIVE)}`);
+
     if (useCategoryAsFilter) {
-      query.andWhere('product.category = :category', { category });
+      conditions.push(`category = ${addParam(category)}`);
     }
 
     if (excludedProductIds.length > 0) {
-      query.andWhere('product.id NOT IN (:...excludedProductIds)', {
-        excludedProductIds,
-      });
+      conditions.push(
+        `id NOT IN (${excludedProductIds.map((id) => addParam(id)).join(', ')})`,
+      );
     }
 
-    this.applySimilarityRanking(
-      query,
-      normalizedSearch,
-      similarityThreshold,
-      strictMatchThresholds,
-      rankAll,
-      useCategoryAsBoost ? category : undefined,
+    const searchParam = addParam(normalizedSearch);
+    const prefixParam = addParam(prefixPattern);
+    const containsParam = addParam(containsPattern);
+    const strictSimParam = addParam(
+      strictMatchThresholds.strictSimilarityThreshold,
+    );
+    const strictWordSimParam = addParam(
+      strictMatchThresholds.strictWordSimilarityThreshold,
     );
 
-    query.skip((page - 1) * limit).take(limit);
+    const comparableNameSql =
+      this.buildComparableProductNameExpression('name');
 
-    const [data, total] = await query.getManyAndCount();
+    let rankSql = `(word_similarity(${comparableNameSql}, ${searchParam}) * 0.55) + (similarity(${comparableNameSql}, ${searchParam}) * 0.30) + (CASE WHEN ${comparableNameSql} LIKE ${prefixParam} THEN 1 ELSE 0 END) * 0.15`;
+
+    if (useCategoryAsBoost) {
+      const catParam = addParam(category);
+      rankSql = `(word_similarity(${comparableNameSql}, ${searchParam}) * 0.50) + (similarity(${comparableNameSql}, ${searchParam}) * 0.25) + (CASE WHEN ${comparableNameSql} LIKE ${prefixParam} THEN 1 ELSE 0 END) * 0.15 + (CASE WHEN category = ${catParam} THEN 0.10 ELSE 0 END)`;
+    }
+
+    if (!rankAll) {
+      conditions.push(`(
+        ${comparableNameSql} LIKE ${prefixParam}
+        OR ${comparableNameSql} LIKE ${containsParam}
+        OR (
+          similarity(${comparableNameSql}, ${searchParam}) >= ${strictSimParam}
+          AND word_similarity(${comparableNameSql}, ${searchParam}) >= ${strictWordSimParam}
+        )
+      )`);
+    }
+
+    const whereClause = conditions.join(' AND ');
+
+    const limitParam = addParam(limit);
+    const offsetParam = addParam((page - 1) * limit);
+
+    const dataQuery = `
+      SELECT *, 
+        ${rankSql} as search_rank,
+        word_similarity(${comparableNameSql}, ${searchParam}) as word_sim,
+        similarity(${comparableNameSql}, ${searchParam}) as name_similarity,
+        CASE WHEN ${comparableNameSql} LIKE ${containsParam} THEN 1 ELSE 0 END as contains_score
+      FROM product
+      WHERE ${whereClause}
+      ORDER BY search_rank DESC, word_sim DESC, name_similarity DESC, contains_score DESC, created_at DESC, id DESC
+      LIMIT ${limitParam} OFFSET ${offsetParam}
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*)::int as total
+      FROM product
+      WHERE ${whereClause}
+    `;
+
+    const data = await this.getPrismaClient().$queryRawUnsafe<Product[]>(
+      dataQuery,
+      ...params,
+    );
+    const countResult = await this.getPrismaClient().$queryRawUnsafe<
+      { total: number }[]
+    >(countQuery, ...params);
+    const total = countResult[0]?.total || 0;
+
     return this.buildSearchResult(data, total, page, limit);
   }
 
@@ -635,107 +705,80 @@ export class ProductsService {
     page: number,
     limit: number,
   ): Promise<PublicProductsResult> {
-    const query = this.getProductsRepository()
-      .createQueryBuilder('product')
-      .innerJoin('product.tenant', 'tenant')
-      .where('tenant.slug = :slug', { slug })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE });
+    const conditions: string[] = [];
+    const params: any[] = [];
+    const addParam = (val: any) => {
+      params.push(val);
+      return `$${params.length}`;
+    };
+
+    const slugParam = addParam(slug);
+    conditions.push(`tenant.slug = ${slugParam}`);
+    conditions.push(`product.status = ${addParam(ProductStatus.ACTIVE)}`);
 
     if (category) {
-      query.andWhere('product.category = :category', { category });
+      conditions.push(`product.category = ${addParam(category)}`);
     }
 
-    this.applySimilarityRanking(
-      query,
-      normalizedSearch,
-      similarityThreshold,
-      strictMatchThresholds,
+    const searchParam = addParam(normalizedSearch);
+    const prefixParam = addParam(`${normalizedSearch}%`);
+    const containsParam = addParam(`%${normalizedSearch}%`);
+    const strictSimParam = addParam(
+      strictMatchThresholds.strictSimilarityThreshold,
+    );
+    const strictWordSimParam = addParam(
+      strictMatchThresholds.strictWordSimilarityThreshold,
     );
 
-    query.skip((page - 1) * limit).take(limit);
-
-    const [data, total] = await query.getManyAndCount();
-    return this.buildSearchResult(data, total, page, limit);
-  }
-
-  private applySimilarityRanking(
-    query: SelectQueryBuilder<Product>,
-    normalizedSearch: string,
-    similarityThreshold: number,
-    strictMatchThresholds: StrictMatchThresholds,
-    rankAll = false,
-    boostCategory?: string,
-  ): void {
     const comparableNameSql =
       this.buildComparableProductNameExpression('product.name');
-    const prefixPattern = `${normalizedSearch}%`;
-    const containsPattern = `%${normalizedSearch}%`;
 
-    query
-      .setParameter('normalizedSearch', normalizedSearch)
-      .setParameter('prefixPattern', prefixPattern)
-      .setParameter('containsPattern', containsPattern)
-      .setParameter('similarityThreshold', similarityThreshold)
-      .setParameter(
-        'strictSimilarityThreshold',
-        strictMatchThresholds.strictSimilarityThreshold,
-      )
-      .setParameter(
-        'strictWordSimilarityThreshold',
-        strictMatchThresholds.strictWordSimilarityThreshold,
-      )
-      .addSelect(
-        `similarity(${comparableNameSql}, :normalizedSearch)`,
-        'name_similarity',
-      )
-      .addSelect(
-        `word_similarity(${comparableNameSql}, :normalizedSearch)`,
-        'word_sim',
-      )
-      .addSelect(
-        `CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END`,
-        'prefix_score',
-      )
-      .addSelect(
-        `CASE WHEN ${comparableNameSql} LIKE :containsPattern THEN 1 ELSE 0 END`,
-        'contains_score',
-      );
+    const rankSql = `(word_similarity(${comparableNameSql}, ${searchParam}) * 0.55) + (similarity(${comparableNameSql}, ${searchParam}) * 0.30) + (CASE WHEN ${comparableNameSql} LIKE ${prefixParam} THEN 1 ELSE 0 END) * 0.15`;
 
-    // Category boost: add +0.10 to search_rank for products matching the boost category
-    if (boostCategory) {
-      query
-        .setParameter('boostCategory', boostCategory)
-        .addSelect(
-          `(word_similarity(${comparableNameSql}, :normalizedSearch) * 0.50) + (similarity(${comparableNameSql}, :normalizedSearch) * 0.25) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15 + (CASE WHEN product.category = :boostCategory THEN 0.10 ELSE 0 END)`,
-          'search_rank',
-        );
-    } else {
-      query.addSelect(
-        `(word_similarity(${comparableNameSql}, :normalizedSearch) * 0.55) + (similarity(${comparableNameSql}, :normalizedSearch) * 0.30) + (CASE WHEN ${comparableNameSql} LIKE :prefixPattern THEN 1 ELSE 0 END) * 0.15`,
-        'search_rank',
-      );
-    }
+    conditions.push(`(
+      ${comparableNameSql} LIKE ${prefixParam}
+      OR ${comparableNameSql} LIKE ${containsParam}
+      OR (
+        similarity(${comparableNameSql}, ${searchParam}) >= ${strictSimParam}
+        AND word_similarity(${comparableNameSql}, ${searchParam}) >= ${strictWordSimParam}
+      )
+    )`);
 
-    if (!rankAll) {
-      query.andWhere(
-        `(
-          ${comparableNameSql} LIKE :prefixPattern
-          OR ${comparableNameSql} LIKE :containsPattern
-          OR (
-            similarity(${comparableNameSql}, :normalizedSearch) >= :strictSimilarityThreshold
-            AND word_similarity(${comparableNameSql}, :normalizedSearch) >= :strictWordSimilarityThreshold
-          )
-        )`,
-      );
-    }
+    const whereClause = conditions.join(' AND ');
 
-    query
-      .orderBy('search_rank', 'DESC')
-      .addOrderBy('word_sim', 'DESC')
-      .addOrderBy('name_similarity', 'DESC')
-      .addOrderBy('contains_score', 'DESC')
-      .addOrderBy('product.created_at', 'DESC')
-      .addOrderBy('product.id', 'DESC');
+    const limitParam = addParam(limit);
+    const offsetParam = addParam((page - 1) * limit);
+
+    const dataQuery = `
+      SELECT product.*, 
+        ${rankSql} as search_rank,
+        word_similarity(${comparableNameSql}, ${searchParam}) as word_sim,
+        similarity(${comparableNameSql}, ${searchParam}) as name_similarity,
+        CASE WHEN ${comparableNameSql} LIKE ${containsParam} THEN 1 ELSE 0 END as contains_score
+      FROM product
+      INNER JOIN tenant ON product.tenant_id = tenant.id
+      WHERE ${whereClause}
+      ORDER BY search_rank DESC, word_sim DESC, name_similarity DESC, contains_score DESC, product.created_at DESC, product.id DESC
+      LIMIT ${limitParam} OFFSET ${offsetParam}
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*)::int as total
+      FROM product
+      INNER JOIN tenant ON product.tenant_id = tenant.id
+      WHERE ${whereClause}
+    `;
+
+    const data = await this.getPrismaClient().$queryRawUnsafe<Product[]>(
+      dataQuery,
+      ...params,
+    );
+    const countResult = await this.getPrismaClient().$queryRawUnsafe<
+      { total: number }[]
+    >(countQuery, ...params);
+    const total = countResult[0]?.total || 0;
+
+    return this.buildSearchResult(data, total, page, limit);
   }
 
   private buildSearchResult(
@@ -780,22 +823,29 @@ export class ProductsService {
       return;
     }
 
-    const query = this.getProductsRepository()
-      .createQueryBuilder('product')
-      .where('product.tenant_id = :tenantId', { tenantId })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
-      .andWhere(
-        "LOWER(REGEXP_REPLACE(TRIM(product.name), '\\s+', ' ', 'g')) = :normalizedName",
-        { normalizedName },
-      );
+    const conditions: string[] = [
+      `tenant_id = $1`,
+      `status = $2`,
+      `LOWER(REGEXP_REPLACE(TRIM(name), '\\s+', ' ', 'g')) = $3`,
+    ];
+    const params: any[] = [tenantId, ProductStatus.ACTIVE, normalizedName];
 
     if (excludedProductId) {
-      query.andWhere('product.id != :excludedProductId', {
-        excludedProductId,
-      });
+      params.push(excludedProductId);
+      conditions.push(`id != $4`);
     }
 
-    const duplicateCount = await query.getCount();
+    const query = `
+      SELECT COUNT(*)::int as count
+      FROM product
+      WHERE ${conditions.join(' AND ')}
+    `;
+
+    const result = await this.getPrismaClient().$queryRawUnsafe<
+      { count: number }[]
+    >(query, ...params);
+    const duplicateCount = result[0]?.count || 0;
+
     if (duplicateCount > 0) {
       throw new ConflictException(DUPLICATE_PRODUCT_NAME_MESSAGE);
     }
@@ -1123,16 +1173,11 @@ export class ProductsService {
       return;
     }
 
-    await this.getTenantProductCategoriesRepository()
-      .createQueryBuilder()
-      .insert()
-      .into(TenantProductCategory)
-      .values({
-        tenant_id: tenantId,
-        name: normalizedCategory,
-      })
-      .orIgnore()
-      .execute();
+    await this.getPrismaClient().$executeRaw`
+      INSERT INTO tenant_product_category (tenant_id, name)
+      VALUES (${tenantId}, ${normalizedCategory})
+      ON CONFLICT DO NOTHING
+    `;
   }
 
   private getTenantSearchCacheVersionKey(tenantId: number): string {
@@ -1188,33 +1233,5 @@ export class ProductsService {
   private async bumpTenantSearchCacheVersion(tenantId: number): Promise<void> {
     const versionKey = this.getTenantSearchCacheVersionKey(tenantId);
     await this.cacheManager.set(versionKey, Date.now().toString());
-  }
-
-  /**
-   * Returns product repository bound to request manager when present.
-   */
-  private getProductsRepository(): Repository<Product> {
-    const manager = DbTenantContext.getManager();
-    return manager ? manager.getRepository(Product) : this.productsRepository;
-  }
-
-  /**
-   * Returns catalog repository bound to request manager when present.
-   */
-  private getCatalogItemsRepository(): Repository<CatalogItem> {
-    const manager = DbTenantContext.getManager();
-    return manager
-      ? manager.getRepository(CatalogItem)
-      : this.catalogItemsRepository;
-  }
-
-  /**
-   * Returns tenant category repository bound to request manager when present.
-   */
-  private getTenantProductCategoriesRepository(): Repository<TenantProductCategory> {
-    const manager = DbTenantContext.getManager();
-    return manager
-      ? manager.getRepository(TenantProductCategory)
-      : this.tenantProductCategoriesRepository;
   }
 }

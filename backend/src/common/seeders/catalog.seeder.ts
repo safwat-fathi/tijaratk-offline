@@ -1,12 +1,10 @@
 import { Logger } from '@nestjs/common';
-import { CatalogItem } from 'src/products/entities/catalog-item.entity';
-import { DataSource } from 'typeorm';
+import { PrismaClient } from '../../../generated/prisma';
 
-export async function seedCatalog(dataSource: DataSource) {
+export async function seedCatalog(prisma: PrismaClient) {
   const logger = new Logger('CatalogSeeder');
-  const catalogRepo = dataSource.getRepository(CatalogItem);
   try {
-    const catalogData: Partial<CatalogItem>[] = [
+    const catalogData: any[] = [
       //  ألبان و بيض (Dairy & Eggs)
       {
         name: 'بيض أبيض',
@@ -627,13 +625,13 @@ export async function seedCatalog(dataSource: DataSource) {
     ];
 
     for (const item of catalogData) {
-      const exists = await catalogRepo.findOne({
+      const exists = await prisma.catalogItem.findFirst({
         where: { name: item.name, category: item.category },
       });
       if (!exists) {
-        await catalogRepo.save(
-          catalogRepo.create({ ...item, is_active: true }),
-        );
+        await prisma.catalogItem.create({
+          data: { ...item, is_active: true },
+        });
       }
     }
 

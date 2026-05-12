@@ -3,12 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
-import { Product } from 'src/products/entities/product.entity';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
-import { AvailabilityRequest } from './entities/availability-request.entity';
+import { Prisma } from '../../generated/prisma';
 import { CreateAvailabilityRequestDto } from './dto/create-availability-request.dto';
 
 type CreateAvailabilityRequestResult = {
@@ -33,12 +31,7 @@ type MerchantAvailabilitySummary = {
 export class AvailabilityRequestsService {
   private static readonly CAIRO_TIME_ZONE = 'Africa/Cairo';
 
-  constructor(
-    @InjectRepository(AvailabilityRequest)
-    private readonly availabilityRequestsRepository: Repository<AvailabilityRequest>,
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createPublicBySlug(
     slug: string,
@@ -52,13 +45,15 @@ export class AvailabilityRequestsService {
     const visitorKey = this.normalizeVisitorKey(dto.visitor_key);
     const productId = dto.product_id;
 
-    const product = await this.getProductsRepository()
-      .createQueryBuilder('product')
-      .innerJoin('product.tenant', 'tenant')
-      .where('tenant.slug = :slug', { slug: normalizedSlug })
-      .andWhere('product.id = :productId', { productId })
-      .andWhere('product.status = :status', { status: ProductStatus.ACTIVE })
-      .getOne();
+    const product = await this.getPrismaClient().product.findFirst({
+      where: {
+        id: productId,
+        status: ProductStatus.ACTIVE,
+        tenant: {
+          slug: normalizedSlug,
+        },
+      },
+    });
 
     if (!product) {
       throw new NotFoundException('Product not found');
@@ -70,20 +65,15 @@ export class AvailabilityRequestsService {
 
     const requestDate = this.getCairoDateKey();
 
-    const availabilityRequest = this.getAvailabilityRequestsRepository().create(
-      {
-        tenant_id: product.tenant_id,
-        product_id: product.id,
-        visitor_key: visitorKey,
-        request_date: requestDate,
-      },
-    );
-
     try {
-      const saved =
-        await this.getAvailabilityRequestsRepository().save(
-          availabilityRequest,
-        );
+      const saved = await this.getPrismaClient().availabilityRequest.create({
+        data: {
+          tenant_id: product.tenant_id,
+          product_id: product.id,
+          visitor_key: visitorKey,
+          request_date: requestDate,
+        },
+      });
 
       return {
         status: 'created',
@@ -95,15 +85,15 @@ export class AvailabilityRequestsService {
         throw error;
       }
 
-      const existing = await this.getAvailabilityRequestsRepository().findOne({
+      const existing = await this.getPrismaClient().availabilityRequest.findFirst({
         where: {
           tenant_id: product.tenant_id,
           product_id: product.id,
           visitor_key: visitorKey,
           request_date: requestDate,
         },
-        order: {
-          created_at: 'DESC',
+        orderBy: {
+          created_at: 'desc',
         },
       });
 
@@ -126,42 +116,63 @@ export class AvailabilityRequestsService {
     const todayDate = this.getCairoDateKey();
     const fromDate = this.shiftDateKey(todayDate, normalizedDays - 1);
 
-    const totalRow = await this.getAvailabilityRequestsRepository()
-      .createQueryBuilder('request')
-      .select('COUNT(request.id)', 'total')
-      .where('request.tenant_id = :tenantId', { tenantId })
-      .andWhere('request.request_date = :todayDate', { todayDate })
-      .getRawOne<{ total: string }>();
+    const totalRequests = await this.getPrismaClient().availabilityRequest.count({
+      where: {
+        tenant_id: tenantId,
+        request_date: todayDate,
+      },
+    });
 
-    const topRows = await this.getAvailabilityRequestsRepository()
-      .createQueryBuilder('request')
-      .innerJoin('request.product', 'product')
-      .select('request.product_id', 'product_id')
-      .addSelect('MAX(product.name)', 'product_name')
-      .addSelect('COUNT(request.id)', 'requests_count')
-      .addSelect('MAX(request.created_at)', 'last_requested_at')
-      .where('request.tenant_id = :tenantId', { tenantId })
-      .andWhere('request.request_date >= :fromDate', { fromDate })
-      .andWhere('request.request_date <= :todayDate', { todayDate })
-      .groupBy('request.product_id')
-      .orderBy('requests_count', 'DESC')
-      .addOrderBy('last_requested_at', 'DESC')
-      .limit(normalizedLimit)
-      .getRawMany<{
-        product_id: string;
-        product_name: string;
-        requests_count: string;
-        last_requested_at: Date;
-      }>();
+    const topGroups = await this.getPrismaClient().availabilityRequest.groupBy({
+      by: ['product_id'],
+      _count: {
+        id: true,
+      },
+      _max: {
+        created_at: true,
+      },
+      where: {
+        tenant_id: tenantId,
+        request_date: {
+          gte: fromDate,
+          lte: todayDate,
+        },
+      },
+      orderBy: [
+        {
+          _count: {
+            id: 'desc',
+          },
+        },
+        {
+          _max: {
+            created_at: 'desc',
+          },
+        },
+      ],
+      take: normalizedLimit,
+    });
+
+    const productIds = topGroups.map((g) => g.product_id);
+    const products = await this.getPrismaClient().product.findMany({
+      where: {
+        id: { in: productIds },
+      },
+      select: { id: true, name: true },
+    });
+
+    const productsMap = new Map(products.map((p) => [p.id, p.name]));
+
+    const top_products = topGroups.map((group) => ({
+      product_id: group.product_id,
+      product_name: productsMap.get(group.product_id) || 'Unknown Product',
+      requests_count: group._count.id,
+      last_requested_at: group._max.created_at ?? new Date(),
+    }));
 
     return {
-      today_total_requests: Number(totalRow?.total || 0),
-      top_products: topRows.map((row) => ({
-        product_id: Number(row.product_id),
-        product_name: row.product_name,
-        requests_count: Number(row.requests_count),
-        last_requested_at: new Date(row.last_requested_at),
-      })),
+      today_total_requests: totalRequests,
+      top_products,
     };
   }
 
@@ -225,24 +236,11 @@ export class AvailabilityRequestsService {
     if (!error || typeof error !== 'object') {
       return false;
     }
-
-    const errorCode =
-      'code' in error && typeof error.code === 'string' ? error.code : null;
-
-    return errorCode === '23505';
+    return 'code' in error && error.code === 'P2002';
   }
 
-  private getAvailabilityRequestsRepository(): Repository<AvailabilityRequest> {
-    const manager = DbTenantContext.getManager();
-
-    return manager
-      ? manager.getRepository(AvailabilityRequest)
-      : this.availabilityRequestsRepository;
-  }
-
-  private getProductsRepository(): Repository<Product> {
-    const manager = DbTenantContext.getManager();
-
-    return manager ? manager.getRepository(Product) : this.productsRepository;
+  private getPrismaClient() {
+    const manager = DbTenantContext.getManager() as Prisma.TransactionClient;
+    return manager || this.prisma;
   }
 }

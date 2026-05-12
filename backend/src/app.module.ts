@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
-import dataSource from './config/orm.config';
 import { HealthController } from './health/health.controller';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,6 +13,7 @@ import { OrdersModule } from './orders/orders.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
 import { AvailabilityRequestsModule } from './availability-requests/availability-requests.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 const ENV = process.env.NODE_ENV;
 
@@ -28,7 +27,7 @@ const ENV = process.env.NODE_ENV;
       isGlobal: true,
       ttl: 3600, // Default TTL is 1 hour
     }),
-    TypeOrmModule.forRoot({ ...dataSource.options, autoLoadEntities: true }),
+    PrismaModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60, // 1 minute

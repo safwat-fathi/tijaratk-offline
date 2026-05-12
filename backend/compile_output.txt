@@ -1,0 +1,15 @@
+src/common/seeders/catalog.seeder.ts(2,29): error TS2307: Cannot find module 'src/products/entities/catalog-item.entity' or its corresponding type declarations.
+src/common/seeders/supermarket-merchant.seeder.ts(5,25): error TS2307: Cannot find module 'src/products/entities/product.entity' or its corresponding type declarations.
+src/common/seeders/supermarket-merchant.seeder.ts(6,39): error TS2307: Cannot find module 'src/products/entities/tenant-product-category.entity' or its corresponding type declarations.
+src/orders/entities/order-item.entity.ts(10,25): error TS2307: Cannot find module 'src/products/entities/product.entity' or its corresponding type declarations.
+src/orders/orders.module.ts(7,25): error TS2307: Cannot find module 'src/products/entities/product.entity' or its corresponding type declarations.
+src/orders/orders.service.ts(27,25): error TS2307: Cannot find module 'src/products/entities/product.entity' or its corresponding type declarations.
+src/orders/orders.service.ts(29,37): error TS2307: Cannot find module 'src/products/entities/product-price-history.entity' or its corresponding type declarations.
+src/orders/orders.service.ts(120,11): error TS2345: Argument of type 'EntityManager' is not assignable to parameter of type 'TransactionClient'.
+  Type 'EntityManager' is missing the following properties from type 'TransactionClient': order, product, tenant, customer, and 13 more.
+src/orders/orders.service.ts(1440,23): error TS2345: Argument of type 'TransactionClient' is not assignable to parameter of type 'EntityManager'.
+  Type 'TransactionClient' is missing the following properties from type 'EntityManager': "@instanceof", connection, repositories, treeRepositories, and 50 more.
+src/orders/orders.service.ts(1457,30): error TS2339: Property 'getRepository' does not exist on type 'TransactionClient'.
+src/orders/orders.service.ts(1466,17): error TS2339: Property 'getRepository' does not exist on type 'TransactionClient'.
+src/orders/orders.service.ts(1475,30): error TS2339: Property 'getRepository' does not exist on type 'TransactionClient'.
+src/orders/orders.service.ts(1484,17): error TS2339: Property 'getRepository' does not exist on type 'TransactionClient'.

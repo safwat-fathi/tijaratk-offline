@@ -1,109 +1,174 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Tijaratk Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend API for Tijaratk, an operations-first SaaS for local merchants to receive structured WhatsApp-linked orders, manage products and customers, track order status, and send customer/merchant WhatsApp notifications.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- NestJS 11
+- TypeScript
+- Prisma ORM 7
+- PostgreSQL
+- Swagger/OpenAPI
+- JWT authentication with secure cookies
+- Twilio WhatsApp messaging
+- Zod, class-validator, Helmet, Sharp
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Requirements
 
-## Project setup
+- Node.js 22 or compatible local runtime
+- pnpm
+- PostgreSQL
+
+## Setup
 
 ```bash
-$ pnpm install
+pnpm install
+cp .env.example .env.development
 ```
 
-## Compile and run the project
+Fill `.env.development` with local values before starting the API.
 
-```bash
-# development
-$ pnpm run start
+## Environment Variables
 
-# watch mode
-$ pnpm run start:dev
+Application and server:
 
-# production mode
-$ pnpm run start:prod
-```
+- `APP_URL`: Public API URL used by Swagger server metadata.
+- `HTTP_SERVER_PORT`: Port used by `main.ts` when starting the HTTP server.
+- `CLIENT_URL`: Frontend URL allowed to communicate with the API.
 
-## WhatsApp Content Template Env Vars
+Database:
 
-Set these env vars to enable Twilio Content Template sends. If any SID is missing,
-the backend automatically falls back to the existing plaintext WhatsApp message.
+- `DATABASE_URL`: Full PostgreSQL connection string. Preferred when available.
+- `DB_HOST`: PostgreSQL host fallback when `DATABASE_URL` is not set.
+- `DB_PORT`: PostgreSQL port fallback when `DATABASE_URL` is not set.
+- `DB_USER`: PostgreSQL user fallback when `DATABASE_URL` is not set.
+- `DB_NAME`: PostgreSQL database fallback when `DATABASE_URL` is not set.
+- `DB_PASS`: PostgreSQL password fallback when `DATABASE_URL` is not set.
 
-- `TWILIO_CONTENT_SID_NEW_ORDER_MERCHANT`
+Auth, session, and security:
+
+- `JWT_SECRET`: Access token signing secret.
+- `THEME_EDITOR_JWT_SECRET`: Theme editor token signing secret.
+- `THEME_EDITOR_PREVIEW_URL`: Theme editor preview URL.
+- `THEME_EDITOR_TOKEN_EXPIRES_IN`: Theme editor token lifetime.
+- `CSRF_SECRET`: CSRF token secret.
+- `SESSION_SECRET`: Session signing secret.
+- `ENCRYPTION_PASSWORD`: Encryption password for sensitive values.
+- `IP_HASH_SALT`: Salt used when hashing IP-derived identifiers.
+
+WhatsApp providers:
+
+- `WHATS_APP_API_KEY`: WhatsApp provider API key.
+- `WHATS_APP_BASE_URL`: WhatsApp provider base URL.
+- `WHATS_APP_SENDER`: WhatsApp sender identifier.
+- `ACCOUNT_SID`: Twilio account SID.
+- `AUTH_TOKEN`: Twilio auth token.
+- `WHATSAPP_PHONE_NUMBER`: Twilio WhatsApp sender number.
+
+Twilio Content Template SIDs:
+
 - `TWILIO_CONTENT_SID_ORDER_RECEIVED_CUSTOMER`
 - `TWILIO_CONTENT_SID_ORDER_OUT_FOR_DELIVERY`
 - `TWILIO_CONTENT_SID_ORDER_STATUS_UPDATE_CUSTOMER`
+- `TWILIO_CONTENT_SID_NEW_ORDER_MERCHANT`
+- `TWILIO_CONTENT_SID_MERCHANT_REPLACEMENT_REJECTED`
+- `TWILIO_CONTENT_SID_MERCHANT_REPLACEMENT_ACCEPTED`
+- `TWILIO_CONTENT_SID_ORDER_PRODUCT_REPLACEMENT`
 - `TWILIO_CONTENT_SID_MERCHANT_DAY_CLOSURE_SUMMARY`
 
-## Run tests
+Seed data:
+
+- `SEED_SUPERMARKET_OWNER_CREDENTIAL`: Seed credential payload for the supermarket merchant owner.
+
+## Running Locally
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm run start:dev
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Production-style local run:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm run build
+pnpm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## API Documentation
 
-## Resources
+Swagger is mounted by the API at:
 
-Check out a few resources that may come in handy when working with NestJS:
+- `/docs`: Swagger UI
+- `/docs/json`: OpenAPI JSON document
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The Swagger server URL is derived from `APP_URL`.
 
-## Support
+## Prisma And Database
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+Prisma is the current database layer for the backend.
 
-## Stay in touch
+Key files:
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- `prisma/schema.prisma`: Prisma schema and model definitions.
+- `prisma.config.ts`: Prisma configuration and database URL resolution.
+- `src/prisma/prisma.service.ts`: Global NestJS Prisma service using `@prisma/adapter-pg`.
+- `src/prisma/prisma.module.ts`: Global Prisma module.
+- `generated/prisma`: Generated Prisma client output path.
 
-## License
+The Prisma datasource uses PostgreSQL. The connection URL is resolved from `DATABASE_URL` first, then falls back to the individual `DB_*` variables.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Useful Prisma commands:
+
+```bash
+pnpm prisma generate
+pnpm prisma migrate dev
+pnpm prisma migrate deploy
+pnpm prisma studio
+```
+
+Some legacy TypeORM scripts and dependencies may still exist during the migration period. Do not use them as the primary database workflow unless the team explicitly decides to keep them for a specific task.
+
+## Seed Data
+
+Development seed:
+
+```bash
+pnpm run seed:dev
+```
+
+Production seed:
+
+```bash
+pnpm run seed:prod
+```
+
+## Quality Checks
+
+```bash
+pnpm run lint
+pnpm run lint:ci
+pnpm run test:e2e
+```
+
+`test:e2e` currently delegates to the security e2e flow.
+
+## Project Structure
+
+- `src/auth`: Authentication and JWT strategy.
+- `src/users`: User persistence and lookup logic.
+- `src/tenants`: Tenant lookup and tenant-aware operations.
+- `src/products`: Product, catalog, category, pricing, and availability logic.
+- `src/orders`: Order lifecycle, replacement decisions, closures, and WhatsApp order notifications.
+- `src/customers`: Customer creation, lookup, and order history.
+- `src/availability-requests`: Customer product availability interest tracking.
+- `src/whatsapp`: WhatsApp provider integration and message templates.
+- `src/webhooks`: Incoming webhook handlers.
+- `src/common`: Shared filters, decorators, middleware, context, utilities, DTOs, and constants.
+- `src/prisma`: Prisma module and service.
+
+## Development Notes
+
+- Add Swagger decorators to new routes.
+- Keep request and response DTOs typed.
+- Use Prisma through `PrismaService` or request-bound transaction clients where tenant RLS context is required.
+- Keep tenant-aware reads and writes scoped by tenant context.
+- Avoid exposing sensitive error details to clients.

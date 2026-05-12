@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
-import { Order } from './entities/order.entity';
+import { Order, OrderItem, Customer, Tenant, Product } from '../../generated/prisma';
 import { welcomeCustomer } from 'src/whatsapp/templates';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
-import { OrderItem } from './entities/order-item.entity';
+
+type OrderWithRelations = Order & { customer?: Customer | null; tenant?: Tenant | null };
+type OrderItemWithProduct = OrderItem & { pending_replacement_product?: Product | null };
 
 @Injectable()
 export class OrderWhatsappService {
@@ -17,7 +19,7 @@ export class OrderWhatsappService {
     [OrderStatus.REJECTED_BY_CUSTOMER]: 'تم الرفض من العميل',
   };
 
-  async notifySellerNewOrder(order: Order): Promise<void> {
+  async notifySellerNewOrder(order: OrderWithRelations): Promise<void> {
     const sellerNumber = order.tenant?.phone;
     if (!sellerNumber) return;
 
@@ -38,7 +40,7 @@ export class OrderWhatsappService {
   }
 
   async notifyCustomerConfirmed(
-    order: Order,
+    order: OrderWithRelations,
     trackingUrl: string,
   ): Promise<void> {
     // parameter defined to match interface, but internally unneeded
@@ -61,11 +63,11 @@ export class OrderWhatsappService {
     });
   }
 
-  async notifyCustomerStatusUpdate(order: Order): Promise<void> {
+  async notifyCustomerStatusUpdate(order: OrderWithRelations): Promise<void> {
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber) return;
 
-    const statusLabel = this.statusLabels[order.status];
+    const statusLabel = this.statusLabels[order.status as OrderStatus];
     if (!statusLabel) return;
 
     const customerName = order.customer_name || order.customer?.name || 'عميل';
@@ -85,8 +87,8 @@ export class OrderWhatsappService {
    * Sends customer replacement decision request when merchant proposes alternative product.
    */
   async notifyCustomerReplacementRequested(
-    order: Order,
-    item: OrderItem,
+    order: OrderWithRelations,
+    item: OrderItemWithProduct,
   ): Promise<void> {
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber || !item.pending_replacement_product?.name) return;
@@ -110,8 +112,8 @@ export class OrderWhatsappService {
    * Sends merchant notification when customer accepts replacement.
    */
   async notifyMerchantReplacementAccepted(
-    order: Order,
-    _item: OrderItem,
+    order: OrderWithRelations,
+    _item: OrderItemWithProduct,
   ): Promise<void> {
     // parameter defined to match interface, but internally unneeded
     // @ts-ignore
@@ -135,8 +137,8 @@ export class OrderWhatsappService {
    * Sends merchant notification when customer rejects replacement.
    */
   async notifyMerchantReplacementRejected(
-    order: Order,
-    item: OrderItem,
+    order: OrderWithRelations,
+    item: OrderItemWithProduct,
     reason?: string,
   ): Promise<void> {
     const sellerNumber = order.tenant?.phone;
@@ -158,7 +160,7 @@ export class OrderWhatsappService {
     });
   }
 
-  async notifyWelcomeCustomer(order: Order): Promise<void> {
+  async notifyWelcomeCustomer(order: OrderWithRelations): Promise<void> {
     const customerNumber = order.customer_phone || order.customer?.phone;
     if (!customerNumber) return;
 

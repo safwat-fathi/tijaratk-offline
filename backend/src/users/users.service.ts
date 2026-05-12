@@ -1,37 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { User, Prisma } from '../../generated/prisma';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async findOneByPhone(phone: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { phone } });
+    return this.prisma.user.findUnique({ where: { phone } });
   }
 
   async findOneByPhoneWithPassword(phone: string): Promise<User | null> {
-    return this.usersRepository
-      .createQueryBuilder('user')
-      .where('user.phone = :phone', { phone })
-      .addSelect('user.password')
-      .getOne();
+    // Prisma returns all scalar fields by default, including password
+    return this.prisma.user.findUnique({ where: { phone } });
   }
 
   async findOneById(id: number): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id } });
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
   async create(
-    userData: Partial<User>,
-    manager?: EntityManager,
+    data: Prisma.UserUncheckedCreateInput,
+    tx?: Prisma.TransactionClient,
   ): Promise<User> {
-    const repo = manager ? manager.getRepository(User) : this.usersRepository;
-    const user = repo.create(userData);
-    return repo.save(user);
+    const prismaClient = tx || this.prisma;
+    return prismaClient.user.create({ data });
   }
 }

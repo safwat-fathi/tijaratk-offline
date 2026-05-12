@@ -9,8 +9,9 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { firstValueFrom, from, Observable } from 'rxjs';
-import { DataSource, QueryRunner } from 'typeorm';
 import { DbTenantContext } from '../contexts/db-tenant.context';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '../../../generated/prisma';
 
 /**
  * Starts a request transaction, sets app.tenant_id, and binds a manager so RLS
@@ -24,7 +25,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
     'tracking',
   ]);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * Wraps tenant-scoped routes in a request transaction with tenant session config.
@@ -43,48 +44,30 @@ export class TenantRlsInterceptor implements NestInterceptor {
   }
 
   /**
-   * Runs request with a tenant-scoped query runner transaction.
+   * Runs request with a tenant-scoped Prisma transaction.
    */
   private async runWithTenantContext(
     req: Request,
     next: CallHandler,
   ): Promise<unknown> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const tenantId = await this.resolveTenantId(req, queryRunner);
+    return this.prisma.$transaction(async (tx) => {
+      const tenantId = await this.resolveTenantId(req, tx);
+      
       if (tenantId === TenantRlsInterceptor.NO_TENANT_CONTEXT) {
-        const result = await firstValueFrom<unknown>(next.handle());
-        await queryRunner.commitTransaction();
-        return result;
+        return firstValueFrom<unknown>(next.handle());
       }
 
       if (!tenantId) {
         throw new UnauthorizedException('Tenant context is required');
       }
 
-      await queryRunner.query(`SELECT set_config('app.tenant_id', $1, true)`, [
-        String(tenantId),
-      ]);
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${String(tenantId)}, true)`;
 
-      const result = await DbTenantContext.run(
-        { tenantId, manager: queryRunner.manager },
+      return DbTenantContext.run(
+        { tenantId, manager: tx },
         async () => firstValueFrom<unknown>(next.handle()),
       );
-
-      await queryRunner.commitTransaction();
-      return result;
-    } catch (error) {
-      if (queryRunner.isTransactionActive) {
-        await queryRunner.rollbackTransaction();
-      }
-
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    });
   }
 
   /**
@@ -92,7 +75,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
    */
   private async resolveTenantId(
     req: Request,
-    queryRunner: QueryRunner,
+    tx: Prisma.TransactionClient,
   ): Promise<number | null> {
     const userTenant = this.extractUserTenantId(req);
     if (userTenant) {
@@ -108,16 +91,16 @@ export class TenantRlsInterceptor implements NestInterceptor {
 
     if (this.isProductsPublicSlugRoute(parts)) {
       const slug = parts[2];
-      return this.resolveTenantIdBySlug(slug, queryRunner);
+      return this.resolveTenantIdBySlug(slug, tx);
     }
 
     if (this.isAvailabilityRequestsPublicSlugRoute(parts)) {
       const slug = parts[2];
-      return this.resolveTenantIdBySlug(slug, queryRunner);
+      return this.resolveTenantIdBySlug(slug, tx);
     }
 
     if (this.isOrdersPublicCreateRoute(req.method, parts)) {
-      return this.resolveTenantIdBySlug(parts[1], queryRunner);
+      return this.resolveTenantIdBySlug(parts[1], tx);
     }
 
     if (this.isOrdersTrackingRoute(parts)) {
@@ -126,7 +109,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
         throw new BadRequestException('Tracking token is required');
       }
 
-      return this.resolveTenantIdByOrderToken(token, queryRunner);
+      return this.resolveTenantIdByOrderToken(token, tx);
     }
 
     if (this.isOrdersTrackingBatchRoute(parts)) {
@@ -135,7 +118,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
         return TenantRlsInterceptor.NO_TENANT_CONTEXT;
       }
 
-      return this.resolveTenantIdByTrackingTokens(req, tokens, queryRunner);
+      return this.resolveTenantIdByTrackingTokens(req, tokens, tx);
     }
 
     return null;
@@ -258,13 +241,10 @@ export class TenantRlsInterceptor implements NestInterceptor {
    */
   private async resolveTenantIdBySlug(
     slug: string,
-    queryRunner: QueryRunner,
+    tx: Prisma.TransactionClient,
   ): Promise<number> {
     const normalizedSlug = this.safeDecodePathSegment(slug);
-    const rows = (await queryRunner.query(
-      `SELECT app.resolve_tenant_id_by_slug($1)::int AS tenant_id`,
-      [normalizedSlug],
-    )) as Array<{ tenant_id?: unknown }>;
+    const rows = await tx.$queryRaw<{ tenant_id: number }[]>`SELECT app.resolve_tenant_id_by_slug(${normalizedSlug})::int AS tenant_id`;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     if (!tenantId) {
@@ -281,12 +261,9 @@ export class TenantRlsInterceptor implements NestInterceptor {
    */
   private async resolveTenantIdByOrderToken(
     token: string,
-    queryRunner: QueryRunner,
+    tx: Prisma.TransactionClient,
   ): Promise<number> {
-    const rows = (await queryRunner.query(
-      `SELECT app.resolve_tenant_id_by_order_token($1)::int AS tenant_id`,
-      [token],
-    )) as Array<{ tenant_id?: unknown }>;
+    const rows = await tx.$queryRaw<{ tenant_id: number }[]>`SELECT app.resolve_tenant_id_by_order_token(${token})::int AS tenant_id`;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     if (!tenantId) {
@@ -302,7 +279,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
   private async resolveTenantIdByTrackingTokens(
     req: Request,
     tokens: string[],
-    queryRunner: QueryRunner,
+    tx: Prisma.TransactionClient,
   ): Promise<number> {
     let resolvedTenant: number | null = null;
     const validTokens: string[] = [];
@@ -310,7 +287,7 @@ export class TenantRlsInterceptor implements NestInterceptor {
     for (const token of tokens) {
       const tenantId = await this.tryResolveTenantIdByOrderToken(
         token,
-        queryRunner,
+        tx,
       );
       if (!tenantId) {
         continue;
@@ -367,12 +344,9 @@ export class TenantRlsInterceptor implements NestInterceptor {
    */
   private async tryResolveTenantIdByOrderToken(
     token: string,
-    queryRunner: QueryRunner,
+    tx: Prisma.TransactionClient,
   ): Promise<number | null> {
-    const rows = (await queryRunner.query(
-      `SELECT app.resolve_tenant_id_by_order_token($1)::int AS tenant_id`,
-      [token],
-    )) as Array<{ tenant_id?: unknown }>;
+    const rows = await tx.$queryRaw<{ tenant_id: number }[]>`SELECT app.resolve_tenant_id_by_order_token(${token})::int AS tenant_id`;
 
     const tenantId = this.parseTenantId(rows?.[0]?.tenant_id);
     return tenantId ?? null;

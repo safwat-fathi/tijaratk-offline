@@ -1,49 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { Tenant } from './entities/tenant.entity';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, Tenant } from '../../generated/prisma';
 import { TENANT_CATEGORIES, TenantCategory } from './constants/tenant-category';
 import { generateUniqueSlug } from '../common/utils/slug.utils';
 
 @Injectable()
 export class TenantsService {
-  constructor(
-    @InjectRepository(Tenant)
-    private tenantsRepository: Repository<Tenant>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(
     storeName: string,
     phone: string,
     category?: TenantCategory,
-    manager?: EntityManager,
+    manager?: Prisma.TransactionClient,
   ): Promise<Tenant> {
-    const repo = manager
-      ? manager.getRepository(Tenant)
-      : this.tenantsRepository;
+    const db = manager || this.prisma;
 
     const slug = await generateUniqueSlug(storeName, async (slug) => {
-      const existing = await this.tenantsRepository.findOne({
+      const existing = await this.prisma.tenant.findUnique({
         where: { slug },
       });
       return !!existing;
     });
 
-    const tenant = repo.create({
-      name: storeName,
-      phone,
-      slug,
-      category: category || TENANT_CATEGORIES.OTHER.value,
+    return db.tenant.create({
+      data: {
+        name: storeName,
+        phone,
+        slug,
+        category: category || TENANT_CATEGORIES.OTHER.value,
+      },
     });
-
-    return repo.save(tenant);
   }
 
   async findOneBySlug(slug: string): Promise<Tenant | null> {
-    return this.tenantsRepository.findOne({ where: { slug } });
+    return this.prisma.tenant.findUnique({ where: { slug } });
   }
 
   async findOneById(id: number): Promise<Tenant | null> {
-    return this.tenantsRepository.findOne({ where: { id } });
+    return this.prisma.tenant.findUnique({ where: { id } });
   }
 }

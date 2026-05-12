@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tijaratk Frontend
 
-## Getting Started
+Frontend application for Tijaratk, an Arabic-first SaaS that helps local merchants receive structured orders through WhatsApp-linked storefronts and manage daily store operations from a seller dashboard.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- TailwindCSS 4
+- Zod
+- Server Actions
+- Server-side API services
+
+## Requirements
+
+- Node.js 20 or compatible local runtime
+- pnpm
+- Running Tijaratk backend API
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set the backend API URL in `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:<backend-port>
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use the same backend port configured by `HTTP_SERVER_PORT` in the backend environment.
 
-## Learn More
+## Running Locally
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open `http://localhost:3000` in the browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Production-style local run:
 
-## Deploy on Vercel
+```bash
+pnpm build
+pnpm start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Quality Checks
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm lint
+pnpm type-check
+```
+
+`pnpm lint` runs ESLint and TypeScript checking.
+
+## Main Routes
+
+- `/`: Arabic landing page.
+- `/about`: Public product/about page.
+- `/merchant/login`: Merchant login.
+- `/merchant/register`: Merchant registration.
+- `/merchant`: Merchant dashboard.
+- `/merchant/orders`: Merchant order list and filtering.
+- `/merchant/orders/[id]`: Merchant order details and order actions.
+- `/merchant/customers`: Customer list and customer details.
+- `/merchant/products/new`: Product onboarding and catalog management.
+- `/[slug]`: Public merchant storefront.
+- `/track-orders`: Public order tracking entry point.
+- `/track-order/[token]`: Public order tracking details.
+
+## Project Structure
+
+- `app`: App Router pages, layouts, route groups, route handlers, and server actions.
+- `app/(dashboard)`: Merchant authentication and protected dashboard routes.
+- `app/(public)`: Public storefront and order tracking routes.
+- `components`: Shared UI components.
+- `constants`: Reusable constant maps and app constants.
+- `lib`: Shared framework utilities and auth helpers.
+- `middlewares`: Middleware composition utilities.
+- `services/api`: Backend API service classes.
+- `services/base`: Shared HTTP service abstraction.
+- `services/bff`: Composed backend-for-frontend service logic when needed.
+- `styles`: Shared styling assets.
+- `types`: Shared TypeScript models and service types.
+- `utilities`: Shared utility functions.
+
+## API Access Pattern
+
+Backend communication should go through service classes under `services/api`. Shared request behavior lives in `services/base/http.service.ts`.
+
+Important conventions:
+
+- Fetch data on the server when possible.
+- Do not fetch protected backend data directly from client components.
+- Read auth cookies on the server side only.
+- Pass server-fetched data into client components as props when interactivity is needed.
+- Use Server Actions for form submissions where possible.
+
+## UI And Product Notes
+
+- The application is Arabic-first and uses `dir="rtl"` at the root layout.
+- Fonts are loaded through `next/font` using IBM Plex Sans Arabic and Poppins.
+- TailwindCSS is the styling system.
+- Prefer existing shared components before creating new ones.
+- Keep merchant workflows optimized for operations, not SEO-heavy content pages.
+
+## Development Notes
+
+- Prefer Server Components for pages.
+- Use Client Components only for browser interactivity.
+- Validate form input with Zod.
+- Use type aliases instead of interfaces.
+- Avoid storing sensitive data in browser storage.
+- Keep file and component names in PascalCase for React components.

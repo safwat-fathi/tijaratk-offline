@@ -1,13 +1,13 @@
 import { AsyncLocalStorage } from 'async_hooks';
-import { EntityManager } from 'typeorm';
+import { Prisma } from '../../../generated/prisma';
 
 type DbTenantStore = {
   tenantId: number;
-  manager: EntityManager;
+  manager: Prisma.TransactionClient;
 };
 
 /**
- * Holds request-scoped tenant + TypeORM manager for RLS-bound queries.
+ * Holds request-scoped tenant + Prisma transaction client for RLS-bound queries.
  */
 export class DbTenantContext {
   private static readonly storage = new AsyncLocalStorage<DbTenantStore>();
@@ -27,9 +27,9 @@ export class DbTenantContext {
   }
 
   /**
-   * Returns current request-bound manager if available.
+   * Returns current request-bound Prisma transaction client if available.
    */
-  static getManager(): EntityManager | undefined {
+  static getManager(): Prisma.TransactionClient | undefined {
     return this.storage.getStore()?.manager;
   }
 }
