@@ -6,10 +6,10 @@ import { PrismaClient } from '../../../generated/prisma/client';
 import { TENANT_CATEGORIES } from 'src/tenants/constants/tenant-category';
 
 const SUPERMARKET_TENANT = {
-  name: 'سوبر ماركت تيجارتك',
+  name: 'سوبر ماركت تجارتك',
   phone: '+201000000001',
   slug: 'tijaratk-supermarket',
-  ownerName: 'مالك سوبر ماركت تيجارتك',
+  ownerName: 'خالد محمد',
 } as const;
 
 const ownerCredential =
