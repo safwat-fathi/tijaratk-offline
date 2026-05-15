@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
-import { Order, OrderItem, Customer, Tenant, Product } from '../../generated/prisma';
+import { Order, OrderItem, Customer, Tenant, Product } from '../../generated/prisma/client';
 import { welcomeCustomer } from 'src/whatsapp/templates';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 

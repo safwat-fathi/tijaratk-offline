@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { PrismaClient } from '../../../generated/prisma';
+import { PrismaClient } from '../../../generated/prisma/client';
 
 export async function seedCatalog(prisma: PrismaClient) {
   const logger = new Logger('CatalogSeeder');

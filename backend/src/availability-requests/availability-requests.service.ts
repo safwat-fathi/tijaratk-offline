@@ -6,7 +6,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
-import { Prisma } from '../../generated/prisma';
+import { Prisma } from '../../generated/prisma/client';
 import { CreateAvailabilityRequestDto } from './dto/create-availability-request.dto';
 
 type CreateAvailabilityRequestResult = {

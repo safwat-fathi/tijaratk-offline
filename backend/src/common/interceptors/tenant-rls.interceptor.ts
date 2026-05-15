@@ -11,7 +11,7 @@ import { Request } from 'express';
 import { firstValueFrom, from, Observable } from 'rxjs';
 import { DbTenantContext } from '../contexts/db-tenant.context';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma } from '../../../generated/prisma';
+import { Prisma } from '../../../generated/prisma/client';
 
 /**
  * Starts a request transaction, sets app.tenant_id, and binds a manager so RLS

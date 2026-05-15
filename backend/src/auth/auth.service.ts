@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../../generated/prisma';
+import { User, UserRole } from '../../generated/prisma/client';
 import { TenantsService } from '../tenants/tenants.service';
 import { SignupDto } from './dto/signup.dto';
 import { formatPhoneNumber } from 'src/common/utils/phone.util';

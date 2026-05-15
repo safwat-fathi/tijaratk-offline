@@ -3,7 +3,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { formatPhoneNumber } from '../common/utils/phone.util';
 import { DbTenantContext } from '../common/contexts/db-tenant.context';
 import { PrismaService } from '../prisma/prisma.service';
-import { Customer, Order, Prisma } from '../../generated/prisma';
+import { Customer, Order, Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class CustomersService {

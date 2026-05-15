@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'async_hooks';
-import { Prisma } from '../../../generated/prisma';
+import { Prisma } from '../../../generated/prisma/client';
 
 type DbTenantStore = {
   tenantId: number;

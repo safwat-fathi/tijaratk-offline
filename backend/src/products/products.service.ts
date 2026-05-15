@@ -15,7 +15,7 @@ import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Prisma, Product, CatalogItem } from '../../generated/prisma';
+import { Prisma, Product, CatalogItem } from '../../generated/prisma/client';
 
 const DEFAULT_PRODUCT_CATEGORY = 'أخرى';
 const DUPLICATE_PRODUCT_NAME_MESSAGE = 'Product with this name already exists';

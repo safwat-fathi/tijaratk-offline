@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, Tenant } from '../../generated/prisma';
+import { Prisma, Tenant } from '../../generated/prisma/client';
 import { TENANT_CATEGORIES, TenantCategory } from './constants/tenant-category';
 import { generateUniqueSlug } from '../common/utils/slug.utils';
 

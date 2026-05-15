@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { Order, OrderItem, DayClosure, Prisma } from '../../generated/prisma';
+import { Order, OrderItem, DayClosure, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -15,9 +15,9 @@ import { PricingMode } from 'src/common/enums/pricing-mode.enum';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
 import { TenantsService } from 'src/tenants/tenants.service';
 import { OrderWhatsappService } from './order-whatsapp.service';
-import { Product } from '../../generated/prisma';
+import { Product } from '../../generated/prisma/client';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
-import { ProductPriceHistory } from '../../generated/prisma';
+import { ProductPriceHistory } from '../../generated/prisma/client';
 import { ReplacementDecisionStatus } from 'src/common/enums/replacement-decision-status.enum';
 import { ReplacementDecisionAction } from './dto/decide-replacement.dto';
 import { DbTenantContext } from 'src/common/contexts/db-tenant.context';
@@ -259,8 +259,8 @@ export class OrdersService {
 
         await manager.order.update({ where: { id: persistedOrder.id }, data: { pricing_mode: pricingMode, subtotal, total } });
         persistedOrder.pricing_mode = pricingMode;
-        persistedOrder.subtotal = subtotal;
-        persistedOrder.total = total;
+        persistedOrder.subtotal = subtotal === undefined ? null : new Prisma.Decimal(subtotal);
+        persistedOrder.total = total === undefined ? null : new Prisma.Decimal(total);
 
         await manager.customer.update({ where: { id: customer.id }, data: { order_count: { increment: 1 }, last_order_at: new Date() } });
 
@@ -685,8 +685,8 @@ export class OrdersService {
           ? this.roundCurrency(normalizedTotal / numericQty)
           : normalizedTotal;
 
-      orderItem.total_price = normalizedTotal;
-      orderItem.unit_price = normalizedUnitPrice;
+      orderItem.total_price = new Prisma.Decimal(normalizedTotal);
+      orderItem.unit_price = new Prisma.Decimal(normalizedUnitPrice);
       const savedItem = await orderItemRepository.update({ where: { id: orderItem.id }, data: orderItem as any }) as any;
 
       const order = await orderRepository.findFirst({
@@ -730,8 +730,8 @@ export class OrdersService {
       }
 
       order.pricing_mode = PricingMode.MANUAL;
-      order.subtotal = subtotal;
-      order.total = recomputedTotal;
+      order.subtotal = subtotal === undefined ? null : new Prisma.Decimal(subtotal);
+      order.total = recomputedTotal === undefined ? null : new Prisma.Decimal(recomputedTotal);
       await orderRepository.update({ where: { id: order.id }, data: order as any });
 
       const targetProductId =

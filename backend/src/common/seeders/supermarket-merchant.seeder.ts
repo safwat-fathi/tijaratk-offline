@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { ProductOrderMode } from 'src/common/enums/product-order-mode.enum';
 import { ProductSource } from 'src/common/enums/product-source.enum';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
-import { PrismaClient } from '../../../generated/prisma';
+import { PrismaClient } from '../../../generated/prisma/client';
 import { TENANT_CATEGORIES } from 'src/tenants/constants/tenant-category';
 
 const SUPERMARKET_TENANT = {

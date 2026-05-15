@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { seedCatalog } from './seeders/catalog.seeder';
 import { seedSupermarketMerchant } from './seeders/supermarket-merchant.seeder';
-import { PrismaClient } from '../../generated/prisma';
+import { PrismaClient } from '../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
