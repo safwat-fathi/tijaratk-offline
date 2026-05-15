@@ -81,6 +81,7 @@ jobs:
               exit 1
             fi
 
+            rm -f ~/pnpm-workspace.yaml ../pnpm-workspace.yaml pnpm-workspace.yaml || true
             pnpm -v
             CI=true pnpm -C backend install --frozen-lockfile --force --ignore-workspace
             pnpm -C backend run prisma:generate
@@ -118,6 +119,7 @@ jobs:
               exit 1
             fi
 
+            rm -f ~/pnpm-workspace.yaml ../pnpm-workspace.yaml pnpm-workspace.yaml || true
             pnpm -v
             CI=true pnpm -C frontend install --frozen-lockfile --force --ignore-workspace
             pnpm -C frontend build
