@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CreateCustomerDto } from './dto/create-customer.dto';
-import { formatPhoneNumber } from '../common/utils/phone.util';
-import { DbTenantContext } from '../common/contexts/db-tenant.context';
-import { PrismaService } from '../prisma/prisma.service';
+import { formatPhoneNumber } from '@/common/utils/phone.util';
+import { DbTenantContext } from '@/common/contexts/db-tenant.context';
+import { PrismaService } from '@/prisma/prisma.service';
 import { Customer, Order, Prisma } from '../../generated/prisma/client';
 
 @Injectable()
