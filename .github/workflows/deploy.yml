@@ -82,9 +82,10 @@ jobs:
 
             pnpm -v
             CI=true pnpm -C backend install --frozen-lockfile --force
+            pnpm -C backend run prisma:generate
+            pnpm -C backend exec prisma migrate deploy || true
             pnpm -C backend build
-            pnpm -C backend migration:run:prod
-            pm2 restart ~/ecosystem.config.js --only tijaratk-api --env production
+            pm2 reload tijaratk-backend || pm2 start ecosystem.config.js --only tijaratk-backend --env production
           EOF
 
       - name: Deploy Frontend
@@ -118,5 +119,5 @@ jobs:
             pnpm -v
             CI=true pnpm -C frontend install --frozen-lockfile --force
             pnpm -C frontend build
-            pm2 restart ~/ecosystem.config.js --only tijaratk-frontend --env production
+            pm2 reload tijaratk-frontend || pm2 start ecosystem.config.js --only tijaratk-frontend --env production
           EOF
