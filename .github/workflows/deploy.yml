@@ -60,6 +60,7 @@ jobs:
 
             cd ${{secrets.DEPLOY_PATH}}
 
+            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
             git fetch origin main --prune
             git checkout -f main
             git reset --hard origin/main
@@ -96,6 +97,7 @@ jobs:
 
             cd ${{secrets.DEPLOY_PATH}}
 
+            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
             git fetch origin main --prune
             git checkout -f main
             git reset --hard origin/main
