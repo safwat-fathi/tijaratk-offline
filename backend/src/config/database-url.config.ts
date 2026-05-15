@@ -5,7 +5,7 @@ type DatabaseUrlEnvName =
   | 'DB_HOST'
   | 'DB_PORT'
   | 'DB_NAME';
-type DatabaseUrlEnv = Partial<Record<DatabaseUrlEnvName, string | number>>;
+type DatabaseUrlEnv = Record<string, string | number | undefined>;
 
 const REQUIRED_DB_PARTS = ['DB_USER', 'DB_HOST', 'DB_PORT', 'DB_NAME'] as const;
 
