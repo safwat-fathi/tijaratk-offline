@@ -38,12 +38,7 @@ Application and server:
 
 Database:
 
-- `DATABASE_URL`: Full PostgreSQL connection string. Preferred when available.
-- `DB_HOST`: PostgreSQL host fallback when `DATABASE_URL` is not set.
-- `DB_PORT`: PostgreSQL port fallback when `DATABASE_URL` is not set.
-- `DB_USER`: PostgreSQL user fallback when `DATABASE_URL` is not set.
-- `DB_NAME`: PostgreSQL database fallback when `DATABASE_URL` is not set.
-- `DB_PASS`: PostgreSQL password fallback when `DATABASE_URL` is not set.
+- `DB_URL`: Full PostgreSQL connection string.
 
 Auth, session, and security:
 
@@ -114,7 +109,7 @@ Key files:
 - `src/prisma/prisma.module.ts`: Global Prisma module.
 - `generated/prisma`: Generated Prisma client output path.
 
-The Prisma datasource uses PostgreSQL. The connection URL is resolved from `DATABASE_URL` first, then falls back to the individual `DB_*` variables.
+The Prisma datasource uses PostgreSQL. The connection URL is read from `DB_URL`.
 
 Useful Prisma commands:
 

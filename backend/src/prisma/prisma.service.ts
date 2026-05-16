@@ -10,11 +10,7 @@ export class PrismaService
 {
   constructor() {
     const adapter = new PrismaPg({
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT),
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
+      connectionString: process.env.DB_URL,
     });
 
     super({

@@ -3,11 +3,7 @@ declare global {
     interface ProcessEnv {
       NODE_ENV: 'development' | 'production';
       HTTP_SERVER_PORT: number;
-      DB_NAME: string;
-      DB_USER: string;
-      DB_PASS: string;
-      DB_HOST: string;
-      DB_PORT: number;
+      DB_URL: string;
       APP_URL: string;
       JWT_SECRET: string;
       CSRF_SECRET: string;

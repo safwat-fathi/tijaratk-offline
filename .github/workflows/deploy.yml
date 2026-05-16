@@ -84,9 +84,9 @@ jobs:
             rm -f ~/pnpm-workspace.yaml ../pnpm-workspace.yaml pnpm-workspace.yaml || true
             pnpm -v
             CI=true pnpm -C backend install --frozen-lockfile --force --ignore-workspace
-            pnpm -C backend run prisma:generate
-            pnpm -C backend exec prisma migrate deploy || true
-            pnpm -C backend build
+            NODE_ENV=production pnpm -C backend run prisma:generate
+            NODE_ENV=production pnpm -C backend exec prisma migrate deploy || true
+            NODE_ENV=production pnpm -C backend build
             pm2 reload tijaratk-backend || pm2 start ecosystem.config.js --only tijaratk-backend --env production
           EOF
 

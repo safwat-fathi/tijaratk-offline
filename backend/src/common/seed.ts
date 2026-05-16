@@ -4,14 +4,12 @@ import { seedSupermarketMerchant } from './seeders/supermarket-merchant.seeder';
 import { PrismaClient } from '../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { resolveDatabaseUrl } from '../config/database-url.config';
 
 async function bootstrap() {
   const logger = new Logger('Seed');
   logger.log('Seeding...');
 
-  const dbUrl = resolveDatabaseUrl();
-  const pool = new Pool({ connectionString: dbUrl });
+  const pool = new Pool({ connectionString: process.env.DB_URL });
   const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({ adapter });
 
