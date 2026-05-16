@@ -9,7 +9,6 @@ import { Order, OrderItem, DayClosure, Prisma } from '../../generated/prisma/cli
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Customer } from 'src/customers/entities/customer.entity';
 import { CustomersService } from 'src/customers/customers.service';
 import { PricingMode } from 'src/common/enums/pricing-mode.enum';
 import { OrderStatus } from 'src/common/enums/order-status.enum';

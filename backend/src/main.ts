@@ -9,15 +9,14 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptors/response-transform.transform';
-import { TypeOrmExceptionFilter } from './common/filters/db-exception.filter';
+import { AllExceptionFilter } from './common/filters/all-exception.filter';
 import { TenantRlsInterceptor } from './common/interceptors/tenant-rls.interceptor';
 import { validationExceptionFactory } from './common/utils/validation-exception.factory';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Register Global TypeORM Exception Filter
-  app.useGlobalFilters(new TypeOrmExceptionFilter());
+  app.useGlobalFilters(new AllExceptionFilter());
 
   // Remove COOP header to fix Swagger UI issues
   app.use((_req: Request, res: Response, next: NextFunction) => {

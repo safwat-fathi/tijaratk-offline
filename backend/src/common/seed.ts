@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 
 config({
   path: process.env.NODE_ENV ? `.env.${process.env.NODE_ENV}` : '.env',
+  quiet: true,
 });
 
 async function bootstrap() {

@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { ValidationError } from 'class-validator';
 import { Request, Response } from 'express';
-import { QueryFailedError } from 'typeorm';
 
 @Catch()
 export class AllExceptionFilter implements ExceptionFilter {
@@ -84,6 +83,12 @@ export class AllExceptionFilter implements ExceptionFilter {
     );
   }
 
+  private isDatabaseException(
+    exception: unknown,
+  ): exception is Record<string, unknown> {
+    return typeof exception === 'object' && exception !== null && 'code' in exception;
+  }
+
   private resolveErrorDetails(exception: unknown): {
     status: number;
     message: string;
@@ -98,10 +103,7 @@ export class AllExceptionFilter implements ExceptionFilter {
       status = details.status;
       message = details.message;
       errorDetails = details.errorDetails;
-    } else if (
-      exception instanceof QueryFailedError ||
-      (typeof exception === 'object' && exception !== null && 'code' in exception)
-    ) {
+    } else if (this.isDatabaseException(exception)) {
       const details = this.handleDbException(exception);
       status = details.status;
       message = details.message;
@@ -131,24 +133,27 @@ export class AllExceptionFilter implements ExceptionFilter {
     return { status, message, errorDetails };
   }
 
-  private handleDbException(exception: unknown) {
+  private handleDbException(exception: Record<string, unknown>) {
     let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Database operation failed';
-    const code = (exception as Record<string, unknown>).code;
+    const code = exception.code;
 
     if (code === '22P02') {
       status = HttpStatus.BAD_REQUEST;
       message = 'Invalid input syntax for database query';
-    } else if (code === '23505') {
+    } else if (code === '23505' || code === 'P2002') {
       status = HttpStatus.CONFLICT;
       message = 'Duplicate entry violation';
+    } else if (code === '23503' || code === 'P2003') {
+      status = HttpStatus.BAD_REQUEST;
+      message = 'Foreign key constraint violation';
+    } else if (code === 'P2025') {
+      status = HttpStatus.NOT_FOUND;
+      message = 'Requested record was not found';
     } else {
       const errMsg = exception instanceof Error ? exception.message : 'Unknown';
       const errStack = exception instanceof Error ? exception.stack : undefined;
-      this.logger.error(
-        `Database Error [${String(code)}]: ${errMsg}`,
-        errStack,
-      );
+      this.logger.error(`Database Error [${String(code)}]: ${errMsg}`, errStack);
     }
     return { status, message };
   }

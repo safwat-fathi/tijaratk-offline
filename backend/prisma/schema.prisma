@@ -89,14 +89,6 @@ model DayClosure {
   @@map("day_closures")
 }
 
-model Migration {
-  id        Int    @id(map: "PK_8c82d7f526340ab734260ea46be") @default(autoincrement())
-  timestamp BigInt
-  name      String @db.VarChar
-
-  @@map("migrations")
-}
-
 model OrderItem {
   id                             Int                       @id(map: "PK_005269d8574e6fac0493715c308") @default(autoincrement())
   order_id                       Int
