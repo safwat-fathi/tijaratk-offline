@@ -8,5 +8,11 @@ export interface Tenant {
   category: TenantCategory;
   delivery_fee?: number | string;
   delivery_available?: boolean;
-  delivery_time_window?: string | null;
+  delivery_starts_at?: string | null;
+  delivery_ends_at?: string | null;
 }
+
+export type TenantDeliverySettings = Pick<
+  Tenant,
+  "delivery_fee" | "delivery_available" | "delivery_starts_at" | "delivery_ends_at"
+>;

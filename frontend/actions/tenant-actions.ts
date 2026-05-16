@@ -15,13 +15,38 @@ const updateDeliverySettingsSchema = z.object({
     .number({ error: "أدخل قيمة رقمية صحيحة" })
     .min(0, "رسوم التوصيل لا يمكن أن تكون أقل من صفر"),
   delivery_available: z.enum(["true", "false"]).transform(value => value === "true"),
-  delivery_time_window: z
+  delivery_starts_at: z
     .string()
-    .trim()
-    .max(64, "نافذة التوصيل يجب ألا تزيد عن 64 حرف")
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "صيغة الوقت غير صحيحة")
     .optional()
+    .or(z.literal(""))
     .transform(value => value || undefined),
-});
+  delivery_ends_at: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "صيغة الوقت غير صحيحة")
+    .optional()
+    .or(z.literal(""))
+    .transform(value => value || undefined),
+}).refine(
+  (data) => {
+    const hasStart = !!data.delivery_starts_at;
+    const hasEnd = !!data.delivery_ends_at;
+    return hasStart === hasEnd; // Either both or neither
+  },
+  {
+    message: "أدخل وقت البداية والنهاية للتوصيل",
+    path: ["delivery_ends_at"],
+  }
+).refine(
+  (data) => {
+    if (!data.delivery_starts_at || !data.delivery_ends_at) return true;
+    return data.delivery_ends_at > data.delivery_starts_at;
+  },
+  {
+    message: "وقت النهاية يجب أن يكون بعد وقت البداية",
+    path: ["delivery_ends_at"],
+  }
+);
 
 export async function updateDeliverySettingsAction(
   _prevState: UpdateDeliverySettingsState,

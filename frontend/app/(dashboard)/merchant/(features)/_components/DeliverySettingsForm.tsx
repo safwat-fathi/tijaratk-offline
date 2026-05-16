@@ -1,0 +1,180 @@
+"use client";
+
+import { useActionState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/Button";
+import { Field, Input } from "@/components/ui/Field";
+import {
+  updateDeliverySettingsAction,
+  type UpdateDeliverySettingsState,
+} from "@/actions/tenant-actions";
+import type { TenantDeliverySettings } from "@/types/models/tenant";
+
+const initialState: UpdateDeliverySettingsState = {
+  success: false,
+  message: "",
+};
+
+const DELIVERY_FEE_PRESETS = [0, 10, 15, 20] as const;
+
+type DeliverySettingsFormProps = {
+  deliverySettings: TenantDeliverySettings;
+  onSuccess?: () => void;
+};
+
+export default function DeliverySettingsForm({ deliverySettings, onSuccess }: DeliverySettingsFormProps) {
+  const [state, formAction, isPending] = useActionState(
+    updateDeliverySettingsAction,
+    initialState,
+  );
+  const deliveryFeeInputRef = useRef<HTMLInputElement | null>(null);
+
+  const deliveryFee = Number(deliverySettings.delivery_fee || 0);
+  const deliveryAvailable = deliverySettings.delivery_available !== false;
+
+  useEffect(() => {
+    if (state.success && onSuccess) {
+      // Optional slight delay before closing
+      const t = setTimeout(() => {
+        onSuccess();
+      }, 1000);
+      return () => clearTimeout(t);
+    }
+  }, [state.success, onSuccess]);
+
+  return (
+    <form action={formAction} className="space-y-6">
+      <div className="space-y-5">
+        <Field
+          label="رسوم التوصيل"
+          htmlFor="delivery_fee"
+          error={state.errors?.delivery_fee?.[0]}
+        >
+          <div className="relative">
+            <Input
+              id="delivery_fee"
+              name="delivery_fee"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              autoComplete="off"
+              ref={deliveryFeeInputRef}
+              defaultValue={Number.isFinite(deliveryFee) ? deliveryFee : 0}
+              className="pe-16 text-lg font-bold tabular-nums"
+              required
+            />
+            <span className="pointer-events-none absolute inset-y-0 end-4 flex items-center text-sm font-semibold text-muted-foreground">
+              جنيه
+            </span>
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-4 gap-2" aria-label="اختيارات سريعة لرسوم التوصيل">
+          {DELIVERY_FEE_PRESETS.map(value => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                if (deliveryFeeInputRef.current) {
+                  deliveryFeeInputRef.current.value = String(value);
+                }
+              }}
+              className="min-h-11 rounded-md border border-brand-border bg-brand-soft px-3 py-2 text-sm font-bold text-brand-text transition-[background-color,border-color,color,box-shadow] hover:border-brand-accent hover:bg-brand-soft/80 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+
+        <fieldset className="rounded-lg border border-brand-border bg-white p-4">
+          <legend className="px-1 text-sm font-semibold text-brand-text">
+            حالة التوصيل
+          </legend>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-brand-border px-3 text-sm font-bold text-brand-text transition-[background-color,border-color,box-shadow] focus-within:ring-4 focus-within:ring-brand-accent/20 has-[:checked]:border-brand-primary has-[:checked]:bg-brand-soft has-[:checked]:text-brand-primary">
+              <input
+                type="radio"
+                name="delivery_available"
+                value="true"
+                defaultChecked={deliveryAvailable}
+                className="sr-only"
+              />
+              متاح
+            </label>
+            <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-brand-border px-3 text-sm font-bold text-brand-text transition-[background-color,border-color,box-shadow] focus-within:ring-4 focus-within:ring-brand-accent/20 has-[:checked]:border-status-error has-[:checked]:bg-status-error/10 has-[:checked]:text-status-error">
+              <input
+                type="radio"
+                name="delivery_available"
+                value="false"
+                defaultChecked={!deliveryAvailable}
+                className="sr-only"
+              />
+              غير متاح
+            </label>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            عند إيقاف التوصيل، لن يتمكن العملاء من إرسال طلبات جديدة.
+          </p>
+        </fieldset>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field
+            label="من الساعة"
+            htmlFor="delivery_starts_at"
+            error={state.errors?.delivery_starts_at?.[0]}
+          >
+            <Input
+              id="delivery_starts_at"
+              name="delivery_starts_at"
+              type="time"
+              defaultValue={deliverySettings.delivery_starts_at || ""}
+            />
+          </Field>
+
+          <Field
+            label="إلى الساعة"
+            htmlFor="delivery_ends_at"
+            error={state.errors?.delivery_ends_at?.[0]}
+          >
+            <Input
+              id="delivery_ends_at"
+              name="delivery_ends_at"
+              type="time"
+              defaultValue={deliverySettings.delivery_ends_at || ""}
+            />
+          </Field>
+        </div>
+        {(state.errors?.delivery_starts_at || state.errors?.delivery_ends_at) && (
+          <p className="text-sm text-status-error mt-2">
+            يرجى التأكد من إدخال وقت صحيح، وأن يكون وقت النهاية بعد وقت البداية.
+          </p>
+        )}
+      </div>
+
+      {state.message ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
+            state.success
+              ? "border-status-success/20 bg-status-success/10 text-status-success"
+              : "border-status-error/20 bg-status-error/10 text-status-error"
+          }`}
+        >
+          {state.message}
+        </div>
+      ) : null}
+
+      <div className="pt-4 border-t border-brand-border flex gap-3">
+        <Button type="submit" size="lg" className="flex-1" disabled={isPending}>
+          {isPending ? "جاري الحفظ…" : "حفظ التغييرات"}
+        </Button>
+        {onSuccess && (
+           <Button type="button" size="lg" variant="outline" onClick={onSuccess} disabled={isPending}>
+             إلغاء
+           </Button>
+        )}
+      </div>
+    </form>
+  );
+}

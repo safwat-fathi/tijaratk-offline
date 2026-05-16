@@ -5,7 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  MaxLength,
+  Matches,
   Min,
 } from 'class-validator';
 
@@ -27,11 +27,24 @@ export class UpdateTenantDeliverySettingsDto {
   delivery_available: boolean;
 
   @ApiPropertyOptional({
-    example: '2-4 مساءً',
-    description: 'Merchant-facing delivery time window text',
+    example: '14:00',
+    description: 'Delivery start time (HH:mm)',
   })
   @IsOptional()
   @IsString()
-  @MaxLength(64)
-  delivery_time_window?: string;
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'delivery_starts_at must be a valid time in HH:mm format',
+  })
+  delivery_starts_at?: string;
+
+  @ApiPropertyOptional({
+    example: '18:00',
+    description: 'Delivery end time (HH:mm)',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
+    message: 'delivery_ends_at must be a valid time in HH:mm format',
+  })
+  delivery_ends_at?: string;
 }

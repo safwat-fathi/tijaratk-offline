@@ -1,9 +1,9 @@
 import type { Order } from "@/types/models/order";
-import type { Tenant } from "@/types/models/tenant";
+import type { TenantDeliverySettings } from "@/types/models/tenant";
 import { formatCurrency } from "@/lib/utils/currency";
 
 type DeliveryDetailsSectionProps = {
-	tenant: Tenant;
+	deliverySettings: TenantDeliverySettings;
 	initialOrder?: Order | null;
 	savedCustomerProfile?: {
 		name?: string;
@@ -20,7 +20,7 @@ type DeliveryDetailsSectionProps = {
 };
 
 export default function DeliveryDetailsSection({
-	tenant,
+	deliverySettings,
 	initialOrder,
 	savedCustomerProfile,
 	notes,
@@ -35,9 +35,24 @@ export default function DeliveryDetailsSection({
 		initialOrder?.customer?.phone || savedCustomerProfile?.phone || "";
 	const defaultAddress =
 		initialOrder?.customer?.address || savedCustomerProfile?.address || "";
-	const deliveryAvailable = tenant.delivery_available !== false;
-	const deliveryFee = formatCurrency(tenant.delivery_fee ?? 0) ?? "غير محدد";
-	const deliveryTimeWindow = tenant.delivery_time_window?.trim();
+	const deliveryAvailable = deliverySettings.delivery_available !== false;
+	const deliveryFee =
+		formatCurrency(deliverySettings.delivery_fee ?? 0) ?? "غير محدد";
+
+	let deliveryTimeWindow: string | undefined = undefined;
+	if (
+		deliverySettings.delivery_starts_at &&
+		deliverySettings.delivery_ends_at
+	) {
+		const formatTime = (time: string) => {
+			const [hours, minutes] = time.split(":");
+			const h = parseInt(hours, 10);
+			const period = h >= 12 ? "مساءً" : "صباحاً";
+			const h12 = h % 12 || 12;
+			return `${h12}:${minutes} ${period}`;
+		};
+		deliveryTimeWindow = `من ${formatTime(deliverySettings.delivery_starts_at)} إلى ${formatTime(deliverySettings.delivery_ends_at)}`;
+	}
 
 	return (
 		<div
@@ -74,12 +89,24 @@ export default function DeliveryDetailsSection({
 				<div className="flex items-start justify-between gap-3">
 					<div className="min-w-0">
 						<p className="text-sm font-bold text-brand-text">
-							{deliveryAvailable ? "التوصيل متاح حالياً" : "التوصيل غير متاح حالياً"}
+							{deliveryAvailable
+								? "التوصيل متاح حالياً"
+								: "التوصيل غير متاح حالياً"}
 						</p>
-						<p className="mt-1 text-sm leading-6 text-muted-foreground">
-							رسوم التوصيل: {deliveryFee}
-							{deliveryTimeWindow ? ` · الموعد المتوقع: ${deliveryTimeWindow}` : ""}
-						</p>
+						{deliveryAvailable ? (
+							<>
+								<p className="mt-1 text-sm leading-6 text-muted-foreground">
+									رسوم التوصيل: {deliveryFee}
+								</p>
+								<p className="mt-1 text-sm leading-6 text-muted-foreground">
+									مواعيد التوصيل: {deliveryTimeWindow}
+								</p>
+							</>
+						) : (
+							<p className="mt-1 text-sm leading-6 text-muted-foreground">
+								المتجر لا يستقبل طلبات توصيل الآن.
+							</p>
+						)}
 					</div>
 					<span
 						className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${

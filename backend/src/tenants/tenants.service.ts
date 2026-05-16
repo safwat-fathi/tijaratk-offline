@@ -49,14 +49,16 @@ export class TenantsService {
     id: number,
     dto: UpdateTenantDeliverySettingsDto,
   ): Promise<Tenant> {
-    const deliveryTimeWindow = dto.delivery_time_window?.trim() || null;
+    const deliveryStartsAt = dto.delivery_starts_at?.trim() || null;
+    const deliveryEndsAt = dto.delivery_ends_at?.trim() || null;
 
     return this.prisma.tenant.update({
       where: { id },
       data: {
         delivery_fee: dto.delivery_fee,
         delivery_available: dto.delivery_available,
-        delivery_time_window: deliveryTimeWindow,
+        delivery_starts_at: deliveryStartsAt,
+        delivery_ends_at: deliveryEndsAt,
       },
     });
   }

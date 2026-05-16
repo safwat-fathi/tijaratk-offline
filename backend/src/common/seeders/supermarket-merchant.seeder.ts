@@ -598,6 +598,10 @@ export async function seedSupermarketMerchant(prisma: PrismaClient) {
           phone: SUPERMARKET_TENANT.phone,
           slug: SUPERMARKET_TENANT.slug,
           category: TENANT_CATEGORIES.GROCERY.value,
+          delivery_fee: 15,
+          delivery_available: true,
+          delivery_starts_at: '09:00',
+          delivery_ends_at: '22:00',
         },
       });
     }

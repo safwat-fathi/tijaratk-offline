@@ -4,7 +4,8 @@ import { Tenant } from "@/types/models/tenant";
 type UpdateTenantDeliverySettingsRequest = {
   delivery_fee: number;
   delivery_available: boolean;
-  delivery_time_window?: string;
+  delivery_starts_at?: string;
+  delivery_ends_at?: string;
 };
 
 class TenantsService extends HttpService {

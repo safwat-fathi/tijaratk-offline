@@ -137,6 +137,19 @@ export class OrdersService {
 
         const tenant = await manager.tenant.findUnique({ where: { id: tenantId } });
         const deliveryFee = Number(tenant?.delivery_fee || 0);
+        
+        let deliveryTimeWindowSnapshot: string | null = null;
+        if (tenant?.delivery_starts_at && tenant?.delivery_ends_at) {
+          const formatTime = (time: string) => {
+            const [hours, minutes] = time.split(':');
+            const h = parseInt(hours, 10);
+            const period = h >= 12 ? 'مساءً' : 'صباحاً';
+            const h12 = h % 12 || 12;
+            return `${h12}:${minutes} ${period}`;
+          };
+          deliveryTimeWindowSnapshot = `من ${formatTime(tenant.delivery_starts_at)} إلى ${formatTime(tenant.delivery_ends_at)}`;
+        }
+        
         let subtotal: number | undefined;
         let total: number | undefined;
         let pricingMode = PricingMode.MANUAL;
@@ -149,6 +162,7 @@ export class OrdersService {
           status: OrderStatus.DRAFT,
           pricing_mode: pricingMode,
           delivery_fee: deliveryFee,
+          delivery_time_window_snapshot: deliveryTimeWindowSnapshot,
           free_text_payload: createOrderDto.free_text_payload,
           notes: createOrderDto.notes,
         };

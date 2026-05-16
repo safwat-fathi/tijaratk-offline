@@ -63,6 +63,7 @@ export interface Order {
   pricing_mode: PricingMode;
   subtotal?: OrderNumericValue;
   delivery_fee?: OrderNumericValue;
+  delivery_time_window_snapshot?: string | null;
   total?: OrderNumericValue;
   free_text_payload?: { text?: string };
   notes?: string;

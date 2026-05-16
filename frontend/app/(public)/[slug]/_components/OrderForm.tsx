@@ -11,7 +11,7 @@ import {
 import type { FormEvent, InvalidEvent } from "react";
 import type { Product, PublicProductCategory, PublicProductsMeta } from "@/types/models/product";
 import type { Order } from "@/types/models/order";
-import type { Tenant } from "@/types/models/tenant";
+import type { TenantDeliverySettings } from "@/types/models/tenant";
 import { createOrderAction, type CreateOrderState } from "@/actions/order-actions";
 import {
 	markAvailabilityRequestSentAction,
@@ -68,7 +68,7 @@ type ToastState = {
 
 type OrderFormProps = {
 	tenantSlug: string;
-	tenant: Tenant;
+	deliverySettings: TenantDeliverySettings;
 	initialCategory?: string;
 	initialProducts: Product[];
 	initialProductsMeta: PublicProductsMeta;
@@ -85,7 +85,7 @@ type OrderFormProps = {
 
 export default function OrderForm({
 	tenantSlug,
-	tenant,
+	deliverySettings,
 	initialCategory,
 	initialProducts,
 	initialProductsMeta,
@@ -139,7 +139,7 @@ export default function OrderForm({
 			initialProducts.map((product) => [product.id, product]),
 		) as Record<number, Product>,
 	);
-	const deliveryAvailable = tenant.delivery_available !== false;
+	const deliveryAvailable = deliverySettings.delivery_available !== false;
 
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
 	const prefetchTriggeredRef = useRef<Set<string>>(new Set());
@@ -808,9 +808,8 @@ export default function OrderForm({
 				/>
 
 				<DeliveryDetailsSection
-					tenant={tenant}
-					initialOrder={initialOrder}
-					savedCustomerProfile={savedCustomerProfile}
+					deliverySettings={deliverySettings}
+					initialOrder={initialOrder}					savedCustomerProfile={savedCustomerProfile}
 					notes={notes}
 					onNotesChange={setNotes}
 					errors={state.errors}
@@ -842,8 +841,8 @@ export default function OrderForm({
 					onClose={() => closeReviewSheet(true)}
 					onEditManualRequest={handleEditManualRequestFromSheet}
 					onUpdateSelection={handleReviewSelectionUpdate}
-				/>
-			</form>
-		</>
-	);
-}
+					/>
+					</form>
+					</>
+					);
+					}

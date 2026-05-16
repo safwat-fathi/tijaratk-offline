@@ -104,7 +104,6 @@ export default async function Dashboard() {
 				</h1>
 			</div>
 			<StorefrontLinkCard slug={tenantSlug} />
-			<DeliverySettingsCard tenant={tenant} />
 
 			{/* 1. Today Snapshot */}
 			<TodaySnapshot stats={stats} />
@@ -120,6 +119,7 @@ export default async function Dashboard() {
 			{/* <LatestOrders orders={latestOrdersData} /> */}
 
 			{/* 6. End-of-Day Teaser */}
+			<DeliverySettingsCard tenant={tenant} />
 			<EndOfDayTeaser initialStatus={dayCloseStatus} />
 		</div>
 	);

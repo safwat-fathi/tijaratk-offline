@@ -85,26 +85,6 @@ const navigation = [
 		),
 	},
 	{
-		name: "إعدادات التوصيل",
-		href: "/merchant/settings/delivery",
-		icon: (
-			<svg
-				className="me-3 h-6 w-6 shrink-0"
-				fill="none"
-				viewBox="0 0 24 24"
-				strokeWidth="2.5"
-				stroke="currentColor"
-				aria-hidden="true"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					d="M8.25 18.75a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM17.25 18.75a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM3.75 6.75h10.5v8.25H3.75V6.75ZM14.25 9h2.25l3.75 3.75v2.25h-6V9Z"
-				/>
-			</svg>
-		),
-	},
-	{
 		name: "تسجيل الخروج",
 		href: "/logout",
 		icon: (
