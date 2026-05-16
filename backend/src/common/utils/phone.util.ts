@@ -1,6 +1,6 @@
 export const formatPhoneNumber = (phone: string): string => {
   // 1. Remove non-numeric characters except leading +
-  const cleaned = phone.replace(/[^\d+]/g, '');
+  const cleaned = phone.trim().replace(/(?!^)\+/g, '').replace(/[^\d+]/g, '');
 
   // 2. Already in E.164 format for Egypt (+20...)
   if (cleaned.startsWith('+20')) {
@@ -17,6 +17,11 @@ export const formatPhoneNumber = (phone: string): string => {
     return `+20${cleaned.substring(1)}`;
   }
 
-  // 5. Fallback: return as is (could be international or invalid)
+  // 5. Egyptian mobile number without country code or leading zero (1xxxxxxxxx)
+  if (cleaned.startsWith('1') && cleaned.length === 10) {
+    return `+20${cleaned}`;
+  }
+
+  // 6. Fallback: return as is (could be international or invalid)
   return cleaned;
 };

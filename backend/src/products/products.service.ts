@@ -376,8 +376,8 @@ export class ProductsService {
 
     const categoryQuery = `
       SELECT ${normalizedCategoryExpression} as category, COUNT(product.id)::int as count
-      FROM product
-      INNER JOIN tenant ON product.tenant_id = tenant.id
+      FROM products product
+      INNER JOIN tenants tenant ON product.tenant_id = tenant.id
       WHERE tenant.slug = $1 AND product.status = $2
       GROUP BY ${normalizedCategoryExpression}
       ORDER BY category ASC
@@ -672,7 +672,7 @@ export class ProductsService {
         word_similarity(${comparableNameSql}, ${searchParam}) as word_sim,
         similarity(${comparableNameSql}, ${searchParam}) as name_similarity,
         CASE WHEN ${comparableNameSql} LIKE ${containsParam} THEN 1 ELSE 0 END as contains_score
-      FROM product
+      FROM products
       WHERE ${whereClause}
       ORDER BY search_rank DESC, word_sim DESC, name_similarity DESC, contains_score DESC, created_at DESC, id DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
@@ -680,7 +680,7 @@ export class ProductsService {
 
     const countQuery = `
       SELECT COUNT(*)::int as total
-      FROM product
+      FROM products
       WHERE ${whereClause}
     `;
 
@@ -690,7 +690,7 @@ export class ProductsService {
     );
     const countResult = await this.getPrismaClient().$queryRawUnsafe<
       { total: number }[]
-    >(countQuery, ...params);
+    >(countQuery, ...this.getReferencedRawQueryParams(countQuery, params));
     const total = countResult[0]?.total || 0;
 
     return this.buildSearchResult(data, total, page, limit);
@@ -755,8 +755,8 @@ export class ProductsService {
         word_similarity(${comparableNameSql}, ${searchParam}) as word_sim,
         similarity(${comparableNameSql}, ${searchParam}) as name_similarity,
         CASE WHEN ${comparableNameSql} LIKE ${containsParam} THEN 1 ELSE 0 END as contains_score
-      FROM product
-      INNER JOIN tenant ON product.tenant_id = tenant.id
+      FROM products product
+      INNER JOIN tenants tenant ON product.tenant_id = tenant.id
       WHERE ${whereClause}
       ORDER BY search_rank DESC, word_sim DESC, name_similarity DESC, contains_score DESC, product.created_at DESC, product.id DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}
@@ -764,8 +764,8 @@ export class ProductsService {
 
     const countQuery = `
       SELECT COUNT(*)::int as total
-      FROM product
-      INNER JOIN tenant ON product.tenant_id = tenant.id
+      FROM products product
+      INNER JOIN tenants tenant ON product.tenant_id = tenant.id
       WHERE ${whereClause}
     `;
 
@@ -775,7 +775,7 @@ export class ProductsService {
     );
     const countResult = await this.getPrismaClient().$queryRawUnsafe<
       { total: number }[]
-    >(countQuery, ...params);
+    >(countQuery, ...this.getReferencedRawQueryParams(countQuery, params));
     const total = countResult[0]?.total || 0;
 
     return this.buildSearchResult(data, total, page, limit);
@@ -799,6 +799,16 @@ export class ProductsService {
         has_next: page < lastPage,
       },
     };
+  }
+
+  private getReferencedRawQueryParams(query: string, params: any[]): any[] {
+    const matches = Array.from(query.matchAll(/\$(\d+)/g));
+    const highestParamIndex = matches.reduce((highest, match) => {
+      const index = Number(match[1]);
+      return Number.isFinite(index) && index > highest ? index : highest;
+    }, 0);
+
+    return params.slice(0, highestParamIndex);
   }
 
   private normalizeCategory(category?: string): string {
@@ -837,7 +847,7 @@ export class ProductsService {
 
     const query = `
       SELECT COUNT(*)::int as count
-      FROM product
+      FROM products
       WHERE ${conditions.join(' AND ')}
     `;
 
@@ -1174,7 +1184,7 @@ export class ProductsService {
     }
 
     await this.getPrismaClient().$executeRaw`
-      INSERT INTO tenant_product_category (tenant_id, name)
+      INSERT INTO tenant_product_categories (tenant_id, name)
       VALUES (${tenantId}, ${normalizedCategory})
       ON CONFLICT DO NOTHING
     `;

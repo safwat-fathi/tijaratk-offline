@@ -76,15 +76,11 @@ export class AuthService {
       category,
     );
 
-    // Hash the password before saving since we no longer have TypeORM hooks
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // 2. Create User (Owner)
     const user = await this.usersService.create(
       {
         phone,
-        password: hashedPassword,
+        password,
         name,
         role: UserRole.owner,
         tenant_id: tenant.id, // Link to the new tenant
@@ -102,10 +98,9 @@ export class AuthService {
     tenantId: number,
     role: UserRole,
   ) {
-    const hashedPassword = await bcrypt.hash(pass, 10);
     return this.usersService.create({
       phone,
-      password: hashedPassword,
+      password: pass,
       name: phone, // fallback to phone if no name is provided in register helper
       tenant_id: tenantId,
       role,

@@ -1,5 +1,6 @@
 import { registerDecorator, ValidationOptions } from 'class-validator';
 import { parsePhoneNumberWithError, CountryCode } from 'libphonenumber-js';
+import { formatPhoneNumber } from '../utils/phone.util';
 
 /**
  * Options for phone number validation.
@@ -50,12 +51,17 @@ export function IsPhoneNumber(
             return false;
           }
 
+          const normalizedValue = formatPhoneNumber(value);
+
           // Strategy: Try parsing as local number for each allowed country
           // This handles both international format (+20...) and local format (01...)
           // if the local format is valid for that country.
           for (const country of allowedCountries) {
             try {
-              const phoneNumber = parsePhoneNumberWithError(value, country);
+              const phoneNumber = parsePhoneNumberWithError(
+                normalizedValue,
+                country,
+              );
               if (phoneNumber?.isValid() && phoneNumber.country === country) {
                 return true;
               }
