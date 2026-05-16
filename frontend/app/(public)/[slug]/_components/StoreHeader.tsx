@@ -1,6 +1,7 @@
 import { TENANT_CATEGORIES, type TenantCategory } from "@/constants";
 import { Tenant } from "@/types/models/tenant";
 import Link from "next/link";
+import Image from "next/image";
 import SafeImage from "@/components/ui/SafeImage";
 
 type TenantCategoryMeta =
@@ -38,11 +39,13 @@ export default function StoreHeader({ tenant }: { tenant: Tenant }) {
 				<div className="flex items-center gap-3">
 					<div className="shrink-0 rounded-md border border-white/10 bg-white/20 p-1 shadow-inner backdrop-blur-sm">
 						<SafeImage
-							src="/logo.png"
+							src="/tijaratk-logo-suite/app-icon-light.png"
 							alt={tenant.name}
 							width={40}
 							height={40}
-							imageClassName="rounded-lg"
+							className="rounded-lg object-contain"
+							sizes="40px"
+							loading="lazy"
 							fallback={<div className="h-10 w-10 rounded-lg bg-white/20" />}
 						/>
 					</div>
