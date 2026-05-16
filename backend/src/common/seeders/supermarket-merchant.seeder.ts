@@ -602,6 +602,8 @@ export async function seedSupermarketMerchant(prisma: PrismaClient) {
       });
     }
 
+    await tx.$executeRaw`SELECT set_config('app.tenant_id', ${String(tenant.id)}, true)`;
+
     const ownerExists = await tx.user.findFirst({
       where: { phone: SUPERMARKET_TENANT.phone },
     });
