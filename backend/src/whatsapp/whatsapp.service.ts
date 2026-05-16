@@ -18,6 +18,25 @@ export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
   private twilioClient: twilio.Twilio | null = null;
 
+  /**
+   * Allows development environments to disable all WhatsApp side effects.
+   */
+  private isNotificationsEnabled(): boolean {
+    return process.env.WHATSAPP_NOTIFICATIONS_ENABLED !== 'false';
+  }
+
+  /**
+   * Logs the notification that would have been sent when transport is disabled.
+   */
+  private logDisabledNotification(message: string): void {
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.warn(message);
+      return;
+    }
+
+    this.logger.log(message);
+  }
+
   private getClient(): twilio.Twilio | null {
     try {
       if (this.twilioClient) {
@@ -44,6 +63,13 @@ export class WhatsappService {
   }
 
   async sendMessage(to: string, body: string): Promise<void> {
+    if (!this.isNotificationsEnabled()) {
+      this.logDisabledNotification(
+        `WhatsApp notifications disabled; would send text message to ${to}.`,
+      );
+      return;
+    }
+
     const context = this.resolveMessageContext(to);
     if (!context) {
       return;
@@ -76,6 +102,13 @@ export class WhatsappService {
     contentSid: string,
     contentVariables: string,
   ): Promise<void> {
+    if (!this.isNotificationsEnabled()) {
+      this.logDisabledNotification(
+        `WhatsApp notifications disabled; would send content template ${contentSid} to ${to}.`,
+      );
+      return;
+    }
+
     const context = this.resolveMessageContext(to);
     if (!context) {
       throw new Error('WhatsApp transport is not configured');
@@ -103,6 +136,13 @@ export class WhatsappService {
     to: string;
     payload: TemplatePayload<K>;
   }): Promise<void> {
+    if (!this.isNotificationsEnabled()) {
+      this.logDisabledNotification(
+        `WhatsApp notifications disabled; would send template ${key} to ${to}.`,
+      );
+      return;
+    }
+
     let validatedPayload: TemplatePayload<K>;
 
     try {

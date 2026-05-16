@@ -11,6 +11,7 @@ import {
 import type { FormEvent, InvalidEvent } from "react";
 import type { Product, PublicProductCategory, PublicProductsMeta } from "@/types/models/product";
 import type { Order } from "@/types/models/order";
+import type { Tenant } from "@/types/models/tenant";
 import { createOrderAction, type CreateOrderState } from "@/actions/order-actions";
 import {
 	markAvailabilityRequestSentAction,
@@ -67,6 +68,7 @@ type ToastState = {
 
 type OrderFormProps = {
 	tenantSlug: string;
+	tenant: Tenant;
 	initialCategory?: string;
 	initialProducts: Product[];
 	initialProductsMeta: PublicProductsMeta;
@@ -83,6 +85,7 @@ type OrderFormProps = {
 
 export default function OrderForm({
 	tenantSlug,
+	tenant,
 	initialCategory,
 	initialProducts,
 	initialProductsMeta,
@@ -136,6 +139,7 @@ export default function OrderForm({
 			initialProducts.map((product) => [product.id, product]),
 		) as Record<number, Product>,
 	);
+	const deliveryAvailable = tenant.delivery_available !== false;
 
 	const loadMoreObserver = useRef<IntersectionObserver | null>(null);
 	const prefetchTriggeredRef = useRef<Set<string>>(new Set());
@@ -804,6 +808,7 @@ export default function OrderForm({
 				/>
 
 				<DeliveryDetailsSection
+					tenant={tenant}
 					initialOrder={initialOrder}
 					savedCustomerProfile={savedCustomerProfile}
 					notes={notes}
@@ -819,6 +824,7 @@ export default function OrderForm({
 					estimatedTotal={estimatedTotal}
 					orderRequest={orderRequest}
 					isPending={isPending}
+					deliveryAvailable={deliveryAvailable}
 					onSubmitClick={openReviewSheet}
 					triggerButtonRef={reviewTriggerButtonRef}
 				/>
@@ -830,6 +836,7 @@ export default function OrderForm({
 					estimatedTotal={estimatedTotal}
 					hasPricedItems={hasPricedItems}
 					orderRequest={orderRequest}
+					deliveryAvailable={deliveryAvailable}
 					selections={effectiveCartSelections}
 					knownProductsById={knownProductsById}
 					onClose={() => closeReviewSheet(true)}

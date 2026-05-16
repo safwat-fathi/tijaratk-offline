@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, Tenant } from '../../generated/prisma/client';
 import { TENANT_CATEGORIES, TenantCategory } from './constants/tenant-category';
 import { generateUniqueSlug } from '../common/utils/slug.utils';
+import { UpdateTenantDeliverySettingsDto } from './dto/update-tenant-delivery-settings.dto';
 
 @Injectable()
 export class TenantsService {
@@ -39,5 +40,24 @@ export class TenantsService {
 
   async findOneById(id: number): Promise<Tenant | null> {
     return this.prisma.tenant.findUnique({ where: { id } });
+  }
+
+  /**
+   * Updates merchant delivery settings used for public order creation.
+   */
+  async updateDeliverySettings(
+    id: number,
+    dto: UpdateTenantDeliverySettingsDto,
+  ): Promise<Tenant> {
+    const deliveryTimeWindow = dto.delivery_time_window?.trim() || null;
+
+    return this.prisma.tenant.update({
+      where: { id },
+      data: {
+        delivery_fee: dto.delivery_fee,
+        delivery_available: dto.delivery_available,
+        delivery_time_window: deliveryTimeWindow,
+      },
+    });
   }
 }

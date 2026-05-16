@@ -1,6 +1,9 @@
 import type { Order } from "@/types/models/order";
+import type { Tenant } from "@/types/models/tenant";
+import { formatCurrency } from "@/lib/utils/currency";
 
 type DeliveryDetailsSectionProps = {
+	tenant: Tenant;
 	initialOrder?: Order | null;
 	savedCustomerProfile?: {
 		name?: string;
@@ -17,6 +20,7 @@ type DeliveryDetailsSectionProps = {
 };
 
 export default function DeliveryDetailsSection({
+	tenant,
 	initialOrder,
 	savedCustomerProfile,
 	notes,
@@ -31,6 +35,9 @@ export default function DeliveryDetailsSection({
 		initialOrder?.customer?.phone || savedCustomerProfile?.phone || "";
 	const defaultAddress =
 		initialOrder?.customer?.address || savedCustomerProfile?.address || "";
+	const deliveryAvailable = tenant.delivery_available !== false;
+	const deliveryFee = formatCurrency(tenant.delivery_fee ?? 0) ?? "غير محدد";
+	const deliveryTimeWindow = tenant.delivery_time_window?.trim();
 
 	return (
 		<div
@@ -55,6 +62,35 @@ export default function DeliveryDetailsSection({
 					</svg>
 				</div>
 				<h2 className="text-xl font-bold text-brand-text">تفاصيل التوصيل</h2>
+			</div>
+
+			<div
+				className={`mb-5 rounded-lg border p-4 ${
+					deliveryAvailable
+						? "border-brand-primary/15 bg-brand-soft/50"
+						: "border-status-error/20 bg-status-error/10"
+				}`}
+			>
+				<div className="flex items-start justify-between gap-3">
+					<div className="min-w-0">
+						<p className="text-sm font-bold text-brand-text">
+							{deliveryAvailable ? "التوصيل متاح حالياً" : "التوصيل غير متاح حالياً"}
+						</p>
+						<p className="mt-1 text-sm leading-6 text-muted-foreground">
+							رسوم التوصيل: {deliveryFee}
+							{deliveryTimeWindow ? ` · الموعد المتوقع: ${deliveryTimeWindow}` : ""}
+						</p>
+					</div>
+					<span
+						className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
+							deliveryAvailable
+								? "bg-status-success/10 text-status-success"
+								: "bg-status-error/10 text-status-error"
+						}`}
+					>
+						{deliveryAvailable ? "متاح" : "متوقف"}
+					</span>
+				</div>
 			</div>
 
 			<div className="space-y-5">

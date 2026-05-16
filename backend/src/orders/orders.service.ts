@@ -83,6 +83,10 @@ export class OrdersService {
       throw new NotFoundException(`Tenant with slug ${tenantSlug} not found`);
     }
 
+    if (tenant.delivery_available === false) {
+      throw new BadRequestException('التوصيل غير متاح حاليا');
+    }
+
     return this.createForTenantId(tenant.id, createOrderDto);
   }
 
@@ -131,7 +135,8 @@ export class OrdersService {
           products.map((product) => [product.id, product]),
         );
 
-        const deliveryFee = createOrderDto.delivery_fee || 0;
+        const tenant = await manager.tenant.findUnique({ where: { id: tenantId } });
+        const deliveryFee = Number(tenant?.delivery_fee || 0);
         let subtotal: number | undefined;
         let total: number | undefined;
         let pricingMode = PricingMode.MANUAL;

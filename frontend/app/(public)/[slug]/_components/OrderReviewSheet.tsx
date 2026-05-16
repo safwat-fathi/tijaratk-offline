@@ -16,6 +16,7 @@ type OrderReviewSheetProps = {
 	estimatedTotal: number;
 	hasPricedItems: boolean;
 	orderRequest: string;
+	deliveryAvailable?: boolean;
 	selections: Record<number, ProductCartSelection>;
 	knownProductsById: Record<number, Product>;
 	onClose: () => void;
@@ -337,6 +338,7 @@ export default function OrderReviewSheet({
 	estimatedTotal,
 	hasPricedItems,
 	orderRequest,
+	deliveryAvailable = true,
 	selections,
 	knownProductsById,
 	onClose,
@@ -362,7 +364,7 @@ export default function OrderReviewSheet({
 	);
 
 	const hasOrderRequest = orderRequest.trim().length > 0;
-	const canSubmit = selectionEntries.length > 0 || hasOrderRequest;
+	const canSubmit = deliveryAvailable && (selectionEntries.length > 0 || hasOrderRequest);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -471,6 +473,12 @@ export default function OrderReviewSheet({
 								>
 									{orderRequest}
 								</p>
+							</div>
+						)}
+
+						{!deliveryAvailable && (
+							<div className="rounded-2xl border border-status-error/20 bg-status-error/10 p-3 text-sm font-semibold text-status-error">
+								التوصيل غير متاح حالياً. يمكنك الرجوع للمتجر لاحقاً عند فتح استقبال الطلبات.
 							</div>
 						)}
 					</div>

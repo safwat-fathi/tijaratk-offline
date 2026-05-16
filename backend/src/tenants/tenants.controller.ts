@@ -1,7 +1,9 @@
 import {
   Controller,
+  Body,
   Get,
   Param,
+  Patch,
   NotFoundException,
   Req,
   UnauthorizedException,
@@ -12,11 +14,13 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import CONSTANTS from 'src/common/constants';
 import { TenantsService } from './tenants.service';
+import { UpdateTenantDeliverySettingsDto } from './dto/update-tenant-delivery-settings.dto';
 
 @ApiTags('Tenants')
 @Controller('tenants')
@@ -45,6 +49,28 @@ export class TenantsController {
     }
 
     return tenant;
+  }
+
+  @Patch('me/delivery')
+  @UseGuards(AuthGuard(CONSTANTS.AUTH.JWT))
+  @ApiBearerAuth(CONSTANTS.ACCESS_TOKEN)
+  @ApiOperation({ summary: 'Update authenticated tenant delivery settings' })
+  @ApiBody({ type: UpdateTenantDeliverySettingsDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Delivery settings updated successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateMyDeliverySettings(
+    @Req() req: Request,
+    @Body() dto: UpdateTenantDeliverySettingsDto,
+  ) {
+    const tenantId = req.user?.tenant_id;
+    if (!tenantId) {
+      throw new UnauthorizedException('Tenant context is required');
+    }
+
+    return this.tenantsService.updateDeliverySettings(tenantId, dto);
   }
 
   @Get('public/:slug')

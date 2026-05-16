@@ -8,6 +8,7 @@ type OrderSubmitBarProps = {
 	estimatedTotal: number;
 	orderRequest: string;
 	isPending: boolean;
+	deliveryAvailable?: boolean;
 	onSubmitClick?: () => void;
 	triggerButtonRef?: Ref<HTMLButtonElement>;
 };
@@ -18,12 +19,15 @@ export default function OrderSubmitBar({
 	estimatedTotal,
 	orderRequest,
 	isPending,
+	deliveryAvailable = true,
 	onSubmitClick,
 	triggerButtonRef,
 }: OrderSubmitBarProps) {
 	if (!(totalItems > 0 || orderRequest.trim())) {
 		return null;
 	}
+
+	const isDisabled = isPending || !deliveryAvailable || (totalItems === 0 && !orderRequest.trim());
 
 	return (
 		<>
@@ -55,11 +59,17 @@ export default function OrderSubmitBar({
 						</div>
 					</div>
 
+					{!deliveryAvailable && (
+						<p className="mb-3 rounded-md border border-status-error/20 bg-status-error/10 px-3 py-2 text-sm font-semibold text-status-error">
+							التوصيل غير متاح حالياً ولا يمكن إرسال طلب جديد.
+						</p>
+					)}
+
 					<button
 						type="button"
 						ref={triggerButtonRef}
 						onClick={onSubmitClick}
-						disabled={isPending || (totalItems === 0 && !orderRequest.trim())}
+						disabled={isDisabled}
 						className="flex w-full items-center justify-center gap-3 rounded-lg bg-brand-primary py-4 text-lg font-bold text-white shadow-soft transition-[background-color,box-shadow,transform] duration-200 hover:bg-brand-primary-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/20"
 					>
 						{isPending ? (

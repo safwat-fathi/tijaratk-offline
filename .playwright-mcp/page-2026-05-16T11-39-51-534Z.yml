@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img "Tijaratk App Icon" [ref=e5]
+      - heading "تسجيل الدخول" [level=2] [ref=e6]
+      - paragraph [ref=e7]: الدخول إلى لوحة التحكم
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: رقم الهاتف
+        - textbox "رقم الهاتف" [ref=e12]
+      - generic [ref=e13]:
+        - generic [ref=e14]: كلمة المرور
+        - textbox "كلمة المرور" [ref=e16]
+      - button "دخول" [ref=e17]
+    - generic [ref=e21]:
+      - text: ليس لديك حساب؟
+      - link "إنشاء حساب" [ref=e22] [cursor=pointer]:
+        - /url: /merchant/register
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e32]

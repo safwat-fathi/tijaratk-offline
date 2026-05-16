@@ -155,6 +155,7 @@ export default async function StorePage({ params, searchParams }: Props) {
 
 				<OrderForm
 					tenantSlug={tenant.slug}
+					tenant={tenant}
 					initialCategory={category}
 					initialProducts={products}
 					initialProductsMeta={meta}

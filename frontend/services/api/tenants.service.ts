@@ -1,6 +1,12 @@
 import HttpService from "@/services/base/http.service";
 import { Tenant } from "@/types/models/tenant";
 
+type UpdateTenantDeliverySettingsRequest = {
+  delivery_fee: number;
+  delivery_available: boolean;
+  delivery_time_window?: string;
+};
+
 class TenantsService extends HttpService {
   constructor() {
     super("/tenants");
@@ -16,6 +22,14 @@ class TenantsService extends HttpService {
     return this.get<Tenant>("me", undefined, {
       authRequired: true,
       cache: "no-store",
+    });
+  }
+
+  public async updateMyDeliverySettings(
+    payload: UpdateTenantDeliverySettingsRequest,
+  ) {
+    return this.patch<Tenant>("me/delivery", payload, undefined, {
+      authRequired: true,
     });
   }
 }

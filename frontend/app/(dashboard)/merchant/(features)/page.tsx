@@ -10,6 +10,7 @@ import TodaySnapshot from "./_components/TodaySnapshot";
 import EndOfDayTeaser from "./_components/EndOfDayTeaser";
 import StorefrontLinkCard from "./_components/StorefrontLinkCard";
 import AvailabilityRequestsCard from "./_components/AvailabilityRequestsCard";
+import DeliverySettingsCard from "./_components/DeliverySettingsCard";
 import { DashboardStats } from "./_components/dashboard.types";
 
 export const metadata = {
@@ -46,6 +47,7 @@ export default async function Dashboard() {
 		tenantResponse.success && tenantResponse.data
 			? tenantResponse.data.slug
 			: undefined;
+	const tenant = tenantResponse.success ? tenantResponse.data : undefined;
 
 	// 1. Process Today's Snapshot
 	const todayOrders = allOrders.filter(o => isToday(o.created_at));
@@ -102,6 +104,7 @@ export default async function Dashboard() {
 				</h1>
 			</div>
 			<StorefrontLinkCard slug={tenantSlug} />
+			<DeliverySettingsCard tenant={tenant} />
 
 			{/* 1. Today Snapshot */}
 			<TodaySnapshot stats={stats} />
